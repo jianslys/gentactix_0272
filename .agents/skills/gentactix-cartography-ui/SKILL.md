@@ -6,12 +6,13 @@ description: >-
 
 # Gentactix 全屏印刷地图与战术卡片前端施工法典 (Cartography UI Codex V4.0)
 
-本技能定义 `web/index.html` 的全屏图台架构、`UI-03M1 ~ UI-03M4` 完整面板体系、美术风格统一铁律、红字 `data-ui-id` 零重叠强制制度与无欺骗 Chrome E2E 验真标准。一切实现必须 100% 服从 [SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md)（并兼容历史 V4 UI 分层定义 [SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md)）。
+本技能定义 `web/index.html` 的全屏图台架构、`UI-03M1 ~ UI-03M4` 完整面板体系、外置时间机只读粒子插值与 $I$ 场 `visibility=0` 预渲染环、红字 `data-ui-id` 零重叠强制制度与无欺骗 Chrome E2E 验真标准。一切实现必须 100% 服从 [SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md) 与 [SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md)。
 
-> **【V5 前端红线 · 彻底去静态示意与假位移】**：
-> - 严禁硬编码 `"PHASE 01 / 1.8km"`、`"林缘遮挡 · 散布示意"`、`"FIRE ENVELOPE / 示例范围"`、`"200m / 格 · 示意"` 等概念假画；比例尺 `updateScale()` 必须严格锚定二进制 `2^n` 与真实 `8.0 m / 格` 世界坐标系；
-> - 严禁保留单个静态 `#inspector` 固定卡片或 `@media` 吸边旧规则；必须销毁 `.workspace` 两子元素假定，彻底放行真多开、各自带 `×` 关闭与独立拖拽置顶的浮动 `UI-03`；
-> - 严禁前端硬编假偏移（如 `(+60*seq, -30*seq)`、`mine-1..3 (+20*k, +10*k)`）或假 `UI-14B` 字段；所有草图、可分割多边形、火控椭圆与命令下发必须严格对齐后端 `/api/state`、`/api/preview_plan`、`/api/unit_op` 与 `/api/commit_turn`。
+> **【V6 前端红线 · 根治 V5 六大缺陷与时间机放片】**：
+> - 严禁 `UI-03A` 与右上角 `×` 关闭钮及编号重叠；严禁 `#toast (UI-11)` 落在 `(0,0)` 与 `UI-04` 重叠；严禁初始卡片遮挡 `UI-04` 标题；严禁残留 `"ROUTE / 1.8km"`、`"~ 24 min"`、`"0友军"` 等写死假文本；
+> - 点击地图上任意 `.map-unit` 兵牌必须真实调用 `openFloatingUnitCard(u.id)` 弹出多张独立可拖拽 `UI-03` 卡片（E2E 严禁调全局函数作弊，必须真点 DOM 兵牌且实测推进后物理位移 `Δpos > 0`）；
+> - 严禁前端硬编假偏移（如 `(+72, -48)`、`(+40, -20)`）或未赋值 `pendingMapGoal`；必须支持在地图上真实点击设定目标点与多边形；
+> - **前端时间机只读粒子渲染**：预挂载 $I$ 场外围 16s 预渲染缓冲环敌军粒子（`initial_visibility = 0`），走表期间沿 `particle_tracks` 线性插值 $\mathbf{x}(t_{\text{ms}})$，滑入可见格自动翻为 `visibility = 1`；时钟到达 `exact_ms` 时在目标插值坐标 $\mathbf{x}(\text{exact\_ms})$ 上爆特效并刷出原装 `exact_hp_loss`。
 
 ---
 

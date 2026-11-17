@@ -6,11 +6,12 @@ description: >-
 
 # Gentactix 确定性世界事务内核施工法典 (Engine Codex)
 
-本技能锁死 `crates/gentactix-core` 与 `crates/gentactix-server` 的底层物理、数学与事务边界。一切代码实现必须与 [SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md)（权威总规，整合历史架构基线 [SPEC_FINAL_GENTACTIX_CORE_ENGINE.md](file:///D:/tools/gentactix/archive/legacy-docs/specs-v5-v7/SPEC_FINAL_GENTACTIX_CORE_ENGINE.md)）保持 100% 严丝合缝。
+本技能锁死 `crates/gentactix-core` 与 `crates/gentactix-server` 的底层物理、数学与外置时间机边界。一切代码实现必须与 [SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md)、[SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md) 及 [SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md) 保持 100% 严丝合缝。
 
-> **【绝对禁令 · 反懒计算与反孤岛】**：
+> **【绝对禁令 · 反懒计算、反孤岛与外置时间机零污染】**：
 > 1. 在集团军级（数万拉格朗日粒子）本地基准验证通过前，严禁任何“懒计算/连级阉割代理”，所有单位与粒子 100% 全量执行真实计算；
-> 2. 严禁只把数学算子留在 `fields/mod.rs` 供单元测试自嗨，却不接入 `sim_loop.rs`；严禁出现 `combat_logistics.rs` 中 `let _consumed_packets = std::mem::take(...)` 式的假消费与线性全表扫，以及测试里残留 `200.0 m` 网格假基准。
+> 2. 严禁只把数学算子留在 `fields/mod.rs` 或 `tactical_instance.rs` 供单元测试自嗨，必须在 `sim_loop.rs::step_subtick_16s` 中真实调用；
+> 3. **外置时间机（Time Machine）零业务污染铁律**：`16s` 步长引擎照常一次性算完位移、命中与原生物理伤害 `exact_hp_loss`（严禁人为切分或篡改伤害数值！）；时间机对内负责 `#0` 当回合拦单、按跨回合准备期拖入 `#1/#2/#3` 并在交界处按 `[1s..16s]` 窗口切段喂数（无须绑定 16s 正整数倍），对外用 `(SplitMix64(abs_sec) ^ FNV1a_64(unit_name))` 查五张品类时间表（`LUT_BULLET / LUT_SHELL / LUT_COMMAND / LUT_EVENT / LUT_MOVEMENT`）驱动只读粒子插值、$I$ 场外围 `visibility=0` 预渲染缓冲环与 `exact_ms` 毫秒放片。
 
 ---
 
