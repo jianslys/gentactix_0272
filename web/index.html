@@ -7,20 +7,130 @@
 <style>
 :root{--ink:#d6d9d4;--dim:#8f9b9b;--chrome:#242e32;--deep:#1b2428;--line:#3d484c;--paper:#ded8be;--blue:#436779;--red:#a94f43;--gold:#c5aa70;--green:#91a58c;--mono:"Cascadia Code",Consolas,monospace;--sans:"Segoe UI","Microsoft YaHei",sans-serif}
 *{box-sizing:border-box}body{margin:0;background:var(--deep);color:var(--ink);font:12px var(--sans);height:100dvh;overflow:hidden}button,input{font:inherit}button{color:inherit;cursor:pointer}button:disabled{cursor:default}button:focus-visible,a:focus-visible{outline:2px solid #dfc486;outline-offset:-2px}button{border:0;background:none}svg{display:block}button svg{width:17px;height:17px;flex-shrink:0}.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.45;stroke-linecap:square;stroke-linejoin:miter}.mono{font-family:var(--mono)}.muted{color:var(--dim)}.caps{font:10px var(--mono);letter-spacing:1.8px}.gold{color:var(--gold)}
-html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidden;width:100%;display:grid;height:100dvh;grid-template-rows:62px 39px minmax(0,1fr)}.topbar{display:flex;align-items:center;border-bottom:1px solid #435054;padding:0 22px;gap:27px;z-index:5;background:var(--deep)}.brand{display:flex;align-items:center;gap:11px;min-width:204px}.brand-mark{width:27px;height:31px;color:var(--gold)}.brand b{font:700 18px var(--sans);letter-spacing:3.3px}.brand small{display:block;color:var(--dim);font:8px var(--mono);letter-spacing:2.8px;margin-top:3px}.nav{height:100%;display:flex;gap:25px}.nav button{position:relative;letter-spacing:2px;color:#929c9c;padding:0 2px}.nav button.active{color:#ecdfbc}.nav button.active:after{position:absolute;content:"";height:2px;background:var(--gold);bottom:0;left:0;right:0}.top-right{margin-left:auto;display:flex;align-items:center;gap:19px}.concept-tag{font:9px var(--mono);letter-spacing:1.5px;border:1px solid #5d624f;color:#c9ba92;padding:6px 8px}.help-button{display:flex;align-items:center;gap:7px;color:#aeb7b5;font-size:11px}.clock{display:flex;align-items:baseline;gap:9px}.clock b{font:21px var(--mono);letter-spacing:1px}.clock span{font:10px var(--mono);color:#8e9a9b}.clock:before{content:"";width:5px;height:5px;background:var(--gold);border-radius:50%}.subbar{display:flex;align-items:center;background:#2c373b;border-bottom:1px solid #11191d;padding:0 20px;gap:17px;color:#b5bdb9;font-size:11px}.subbar .divider{width:1px;height:14px;background:#465055}.operation{color:#e0d1ae;letter-spacing:1px}.weather{display:flex;align-items:center;gap:7px}.subbar .right{margin-left:auto;display:flex;align-items:center;gap:15px}.control{height:26px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid #526064;color:#d1d8d4}.control:hover{background:#465155}.control[aria-pressed=true]{border-color:var(--gold);color:#eddbb6}.speed{font-family:var(--mono);font-size:11px}.workspace{display:grid;grid-template-columns:286px minmax(0,1fr);min-height:0}.eyebrow{font:9px var(--mono);letter-spacing:2px;color:#98a6a7;margin-bottom:9px}
+html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidden;width:100%;display:grid;height:100dvh;grid-template-rows:36px 26px minmax(0,1fr)}.topbar{display:flex;align-items:center;border-bottom:1px solid #435054;padding:0 14px;gap:18px;z-index:5;background:var(--deep);height:36px}.brand{display:flex;align-items:center;gap:8px;min-width:160px}.brand-mark{width:20px;height:24px;color:var(--gold)}.brand b{font:700 14px var(--sans);letter-spacing:2px}.brand small{display:block;color:var(--dim);font:7px var(--mono);letter-spacing:1.5px;margin-top:1px}.nav{height:100%;display:flex;gap:16px}.nav button{position:relative;letter-spacing:1.5px;color:#929c9c;padding:0 2px;font-size:11px}.nav button.active{color:#ecdfbc}.nav button.active:after{position:absolute;content:"";height:2px;background:var(--gold);bottom:0;left:0;right:0}.top-right{margin-left:auto;display:flex;align-items:center;gap:14px}.concept-tag{font:8px var(--mono);letter-spacing:1.2px;border:1px solid #5d624f;color:#c9ba92;padding:3px 6px}.help-button{display:flex;align-items:center;gap:5px;color:#aeb7b5;font-size:10px}.clock{display:flex;align-items:baseline;gap:6px}.clock b{font:16px var(--mono);letter-spacing:1px}.clock span{font:9px var(--mono);color:#8e9a9b}.clock:before{content:"";width:4px;height:4px;background:var(--gold);border-radius:50%}.subbar{display:flex;align-items:center;background:#2c373b;border-bottom:1px solid #11191d;padding:0 14px;gap:12px;color:#b5bdb9;font-size:10px;height:26px}.subbar .divider{width:1px;height:12px;background:#465055}.operation{color:#e0d1ae;letter-spacing:1px}.weather{display:flex;align-items:center;gap:6px}.subbar .right{margin-left:auto;display:flex;align-items:center;gap:10px}.control{height:20px;padding:0 8px;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid #526064;color:#d1d8d4;font-size:10px}.control:hover{background:#465155}.control[aria-pressed=true]{border-color:var(--gold);color:#eddbb6}.speed{font-family:var(--mono);font-size:10px}.workspace{position:relative;width:100%;height:100%;overflow:hidden;min-height:0;display:block}.eyebrow{font:9px var(--mono);letter-spacing:2px;color:#98a6a7;margin-bottom:9px}
 .map-area{position:relative;overflow:hidden;background:#ded7bd;isolation:isolate;min-width:0}.map-viewport{position:absolute;inset:0;cursor:grab;touch-action:none}.map-viewport.dragging{cursor:grabbing}.map-svg{width:100%;height:100%;background:#ddd6ba;user-select:none}.map-svg text{user-select:none}.map-title{position:absolute;left:25px;top:24px;z-index:2;color:#4e5144;--title-alpha:.4;--title-offset:4px}.title-button{display:block;text-align:left;padding:18px 16px 14px 0;background:radial-gradient(ellipse at 20% 30%,#ded8beed,transparent 80%);color:inherit;min-width:150px}.title-heading{display:block;font-family:"Noto Serif SC","Songti SC",SimSun,serif;font-size:21px;font-weight:400;letter-spacing:4px;text-shadow:0 1px #f3e9cf;transition:font-size .26s ease,letter-spacing .26s ease}.title-details{display:grid;grid-template-rows:1fr;opacity:var(--title-alpha);transform:translateY(var(--title-offset));transition:grid-template-rows .26s ease,margin .26s ease,opacity .1s linear;pointer-events:none;margin-top:9px}.title-details>span{overflow:hidden;display:flex;flex-direction:column;gap:5px;font:8px var(--mono);letter-spacing:1.5px;color:#747562}.map-title.compact .title-heading{font-size:13px;letter-spacing:2px}.map-title.compact .title-details{grid-template-rows:0fr;opacity:0;margin-top:0}.map-title .title-heading{opacity:calc(.65 + var(--title-alpha)*.35)}.map-stamp{position:absolute;right:24px;top:25px;color:#756d54;font:9px var(--mono);letter-spacing:2px;writing-mode:vertical-rl;display:flex;gap:13px;align-items:center;pointer-events:none}.map-stamp span{border:1px solid #969076;padding:8px 5px;font:10px var(--sans);letter-spacing:3px}.compass{position:absolute;right:35px;top:101px;width:47px;height:65px;pointer-events:none;color:#525c54}.map-tools{position:absolute;right:18px;top:215px;display:grid;background:#e9e3ccf0;border:1px solid #aaa68e;box-shadow:0 2px 8px #32372312}.map-tools button{width:32px;height:33px;display:grid;place-items:center;color:#4f5a53;border-bottom:1px solid #bdb79f}.map-tools button:last-child{border-bottom:0}.map-tools button:hover{background:#d0c8ae}.map-tools button.text-icon{font:20px var(--mono)}.zoom-readout{font:8px var(--mono);text-align:center;color:#656c5b;padding:6px 0;border-top:1px solid #c4bea8}.map-notice{position:absolute;bottom:75px;left:25px;color:#6c705e;display:flex;align-items:center;gap:6px;font-size:9px;pointer-events:none;padding-top:14px}.map-notice svg{width:12px;height:12px}.layer-dock{position:absolute;right:20px;bottom:18px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:22px;color:#414b42}.layer-card{width:274px;background:#f0ecdcf7;border:1px solid #777e6a;outline:1px solid #8d927544;outline-offset:-4px;box-shadow:0 8px 24px #3237231c;transform-origin:bottom right;transition:opacity .22s ease,transform .22s ease,visibility .22s;transform:translateY(12px) scale(.97);opacity:0;visibility:hidden;pointer-events:none}.layer-card.open{transform:translateY(0) scale(1);opacity:1;visibility:visible;pointer-events:auto}.layer-head{display:flex;align-items:center;justify-content:space-between;padding:24px 16px 10px;border-bottom:1px solid #9b9c802f;font-size:11px;letter-spacing:2px}.layer-head small{font:8px var(--mono);letter-spacing:1.5px;color:#79806c;margin-left:8px}.layer-close{font-size:19px;line-height:1;padding:3px 5px;color:#767c69}.layer-close:hover{color:#303d32}.layer-options{padding:12px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}.layer-option{font-size:11px;display:flex;align-items:center;gap:9px;color:#767e6d;white-space:nowrap;padding:7px 0;text-align:left}.layer-option:hover{color:#354e40}.layer-option .check{width:12px;height:12px;border:1px solid #8f9b8c;display:grid;place-items:center}.layer-option[aria-pressed=true] .check{background:#5d726a;border-color:#5d726a}.layer-option[aria-pressed=true] .check:after{content:"";width:5px;height:3px;border-left:1px solid #e5e8d7;border-bottom:1px solid #e5e8d7;transform:rotate(-45deg) translateY(-1px)}.layer-option[aria-pressed=true]{color:#293b34}.layer-toggle{position:relative;display:flex;align-items:center;gap:9px;background:#eee9d6f5;color:#414b42;border:1px solid #7c8470;padding:18px 14px 8px;font-size:11px;letter-spacing:2px;box-shadow:0 2px 8px #32372315;transition:background .15s}.layer-toggle:hover,.layer-toggle[aria-expanded=true]{background:#e0ddc7}.layer-toggle svg{width:14px;height:14px}.layer-chevron{font:12px var(--mono);transform:rotate(0);transition:transform .22s}.layer-toggle[aria-expanded=true] .layer-chevron{transform:rotate(180deg)}.scale{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);padding:19px 12px 7px;pointer-events:none;color:#373b32;background:#f0ebd7df;border:1px solid #65694c88;z-index:2}.scale-bar{display:flex;border:1px solid #363a30;height:6px;width:120px}.scale-bar i{flex:1;background:#363a30}.scale-bar i:nth-child(even){background:#f6f1e3}.scale-text{font:9px var(--mono);display:flex;justify-content:space-between;margin-bottom:3px}.scale-caption{font:8px var(--mono);text-align:center;letter-spacing:.5px;margin-top:5px;white-space:nowrap}.edge-coordinates{position:absolute;inset:0;pointer-events:none;border:8px solid #817c5310;z-index:-1}.map-unit{cursor:pointer;outline:0}.map-unit .selection-outline{opacity:0;fill:none;stroke:#455d62;stroke-width:1;stroke-dasharray:3 3}.map-unit[aria-pressed=true] .selection-outline{opacity:1}.map-unit:hover .selection-outline,.map-unit:focus-visible .selection-outline{opacity:1;stroke-width:2}.map-unit .symbol-body{filter:drop-shadow(0 2px 1px #393b372d)}.map-unit .unit-caption{font:11px var(--sans);fill:#3e4b43;paint-order:stroke;stroke:#e5dfc6;stroke-width:4px;stroke-linejoin:round;letter-spacing:.4px}.map-unit .unit-code{font:9px var(--mono);fill:#626b5c;paint-order:stroke;stroke:#e5dfc6;stroke-width:3px}.map-unit .echelon{font:10px var(--mono);font-weight:bold;fill:#344c59;paint-order:stroke;stroke:#e5dfc6;stroke-width:2px}.map-unit.enemy .echelon{fill:#984a3f}.map-unit.enemy .unit-caption{fill:#984a3f}.map-unit .unit-strength{font:8px var(--mono);fill:#3a504f}.carto-label{font-family:Georgia,"Times New Roman",SimSun,serif;fill:#606752;letter-spacing:3px}.place-label{font-family:Georgia,"Times New Roman",SimSun,serif;fill:#555f53;paint-order:stroke;stroke:#e3dec5;stroke-width:3px;stroke-linejoin:round;letter-spacing:2px}.terrain-label{font-family:Georgia,"Times New Roman",SimSun,serif;fill:#697258;font-style:italic;letter-spacing:6px}.tactical-label{font:9px var(--mono);letter-spacing:1px;paint-order:stroke;stroke:#e5dfc6;stroke-width:3px;stroke-linejoin:round}.sector-label{font:9px var(--mono);fill:#8a8c72;letter-spacing:1px}.route-line{stroke-dasharray:7 5}.route-end{fill:#d9cea7;stroke:#886b3c;stroke-width:1.5}.view-hidden{display:none!important}
-.inspector{position:relative;background:var(--chrome);border-right:1px solid #151e22;min-height:0;display:flex;flex-direction:column;z-index:4;overflow:auto;scrollbar-width:thin;scrollbar-color:#596365 transparent}.inspector-top,.inspector-section,.inspector-actions{position:relative;flex-shrink:0}.inspector-top{padding:24px 22px 19px;border-bottom:1px solid var(--line)}.inspector-heading{display:flex;justify-content:space-between;align-items:center}.inspector-heading .eyebrow{margin:0}.unit-display{display:flex;align-items:center;gap:15px;margin:24px 0 17px}.unit-display .big-symbol{width:58px;height:51px;flex:none;overflow:visible}.unit-display h2{font-size:18px;margin:0 0 7px;letter-spacing:1px;font-weight:500}.unit-display p{font:9px var(--mono);color:#91a5aa;margin:0;letter-spacing:1.2px}.status-tag{font:10px var(--sans);color:#b7c8ad;border:1px solid #56695e;padding:4px 7px;display:inline-flex;align-items:center;gap:6px}.status-tag:before{content:"";width:4px;height:4px;background:#a2b89b}.inspector-section{padding:19px 22px;border-bottom:1px solid var(--line)}.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;color:#b3bfba;font-size:10px;letter-spacing:2px}.section-title small{font:8px var(--mono);letter-spacing:1px;color:#778e91}.strength{display:flex;align-items:baseline;gap:6px;margin-bottom:19px}.strength b{font:32px var(--mono);color:#e0e3d8;letter-spacing:-1px}.strength span{font:12px var(--mono);color:#879896}.strength label{margin-left:auto;font-size:10px;color:#95a39e}.metric{margin:13px 0 0}.metric-head{display:flex;justify-content:space-between;font-size:10px;color:#a3b0ab;margin-bottom:7px}.metric-head b{font:10px var(--mono);color:#c2cbbd}.metric-track{height:4px;background:repeating-linear-gradient(90deg,#42524f 0,#42524f calc(10% - 3px),transparent calc(10% - 3px),transparent 10%)}.metric-fill{height:100%;background:repeating-linear-gradient(90deg,#a8b3a0 0,#a8b3a0 20px,transparent 20px,transparent 23px)}.metric.amber .metric-fill{background:repeating-linear-gradient(90deg,#bea574 0,#bea574 20px,transparent 20px,transparent 23px)}.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 16px}.datum label{font-size:9px;color:#8b9c98;display:block;margin-bottom:7px}.datum b{font-size:11px;font-weight:400;color:#d1d7cb}.order-card{position:relative;padding:0 0 0 18px;border-left:1px solid #667b7d}.order-card:before{position:absolute;content:"";left:-4px;top:2px;width:7px;height:7px;border:1px solid #c5b57f;background:var(--chrome)}.order-card .order-kind{font-size:12px;color:#ddd6bc}.order-card p{font-size:10px;color:#8fa2a0;line-height:1.9;margin:8px 0 11px}.order-distance{display:flex;gap:19px;font:10px var(--mono);color:#c4c9b6}.order-distance small{font-size:8px;color:#869995}.inspector-actions{padding:19px 22px;margin-top:auto;display:flex;flex-direction:column;gap:8px}.action-btn{width:100%;height:35px;border:1px solid #58696b;font-size:10px;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:9px}.action-btn.primary{border-color:#9a926e;background:#a7a0821c;color:#e2d7b5}.action-btn:hover{background:#465451}.action-btn[aria-pressed=true]{border-color:#b9ac7c;background:#b9ac7c22;color:#e3d6ae}.inspector-footnote{font:8px var(--mono);letter-spacing:1px;color:#778b8f;text-align:center;margin:5px 0 0}.footer{position:absolute;bottom:17px;left:25px;display:flex;flex-direction:column;gap:5px;padding:15px 0 0;color:#68715e;font:8px var(--mono);letter-spacing:.7px;pointer-events:none}.status-light{display:inline-block;width:4px;height:4px;background:#71816c;margin-right:7px}.toast{position:absolute;left:50%;bottom:91px;transform:translateX(-50%) translateY(10px);max-width:min(560px,90%);width:max-content;padding:24px 19px 12px;background:#253338f5;border:1px solid #8b987e;box-shadow:0 4px 20px #14252b22;color:#e2dfc6;font-size:11px;z-index:10;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;line-height:1.7}.toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}.mobile-inspector{display:none}dialog{color:#d5dcd4;background:#273438;border:1px solid #768780;max-width:570px;width:calc(100% - 40px);padding:30px 33px;box-shadow:0 25px 100px #0006}dialog::backdrop{background:#101e2499;backdrop-filter:blur(3px)}dialog h2{font-size:23px;font-weight:400;letter-spacing:3px;margin:14px 0 21px}dialog p{line-height:1.95;font-size:12px;color:#b7c1b7}dialog strong{color:#d6c8a6;font-weight:500}.design-swatches{display:flex;gap:8px;margin:25px 0}.design-swatches i{height:24px;flex:1}.dialog-close{border:1px solid #a89f78;padding:9px 18px;margin-top:13px;color:#ddcfaa;float:right}.dialog-kicker{font:9px var(--mono);letter-spacing:2px;color:#a5b0a0}
-.inspector-top{padding:30px 22px 12px}.unit-display{margin:16px 0 10px}.inspector-section{padding:23px 22px 11px}.section-title{margin-bottom:12px;font-size:11px}.strength{margin-bottom:13px}.metric{margin-top:11px}.data-grid{gap:15px 16px}.inspector-actions{padding:24px 22px 10px}.action-btn{height:32px;flex-shrink:0}.datum label{font-size:10px}
-[data-ui-id]::after{content:attr(data-ui-id);position:absolute;left:7px;top:5px;font:9px/1 var(--mono);letter-spacing:.3px;color:#b34135;pointer-events:none;z-index:12;white-space:nowrap}.topbar,.subbar{position:relative}.topbar::after,.subbar::after{left:5px;top:3px;font-size:8px;color:#ec8d81}.inspector [data-ui-id]::after,.inspector::after,.toast::after,dialog::after{color:#ee9286}.inspector::after{left:22px;top:10px}.inspector-top::after{left:auto;right:22px;top:10px}.inspector-section::after,.inspector-actions::after{left:22px;top:8px}.map-title::after,.map-notice::after,.footer::after{left:0;top:0}.map-tools{padding-top:17px}.map-tools::after{font-size:8px;left:4px}.compass-wrap{position:absolute;right:27px;top:118px;width:56px;height:84px;pointer-events:none}.compass-wrap .compass{inset:auto;left:5px;top:17px}.map-stamp{padding-top:15px}.map-stamp::after{writing-mode:horizontal-tb;left:-7px;top:0}.scale::after{font-size:8px;top:5px;left:8px}.layer-card::after{left:16px;top:9px}.layer-toggle::after{font-size:8px;left:9px;top:5px}
-.orbat-drawer[data-ui-id]::after,.cmd-drawer[data-ui-id]::after,.reorg-equip-panel[data-ui-id]::after,.orbat-body[data-ui-id]::after,.pulse-staging[data-ui-id]::after{color:#ee9286}
+.inspector,.unit-card{position:absolute;background:var(--chrome);border:1px solid #3d4a4f;box-shadow:0 8px 30px #101a1e44;min-height:0;display:flex;flex-direction:column;z-index:8;overflow:auto;scrollbar-width:thin;scrollbar-color:#596365 transparent;width:286px;max-height:calc(100vh - 80px);border-radius:2px}
+.inspector-top,.inspector-section,.inspector-actions{position:relative;flex-shrink:0}
+.inspector-top{padding:18px 18px 12px;border-bottom:1px solid var(--line);cursor:move;user-select:none}
+.inspector-heading{display:flex;justify-content:space-between;align-items:center}
+.inspector-heading .eyebrow{margin:0}
+.unit-display{display:flex;align-items:center;gap:12px;margin:12px 0 10px}
+.unit-display .big-symbol{width:48px;height:42px;flex:none;overflow:visible}
+.unit-display h2{font-size:16px;margin:0 0 5px;letter-spacing:1px;font-weight:500}
+.unit-display p{font:9px var(--mono);color:#91a5aa;margin:0;letter-spacing:1.2px}
+.status-tag{font:10px var(--sans);color:#b7c8ad;border:1px solid #56695e;padding:3px 6px;display:inline-flex;align-items:center;gap:6px}
+.status-tag:before{content:"";width:4px;height:4px;background:#a2b89b}
+.inspector-section{padding:14px 18px;border-bottom:1px solid var(--line)}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:#b3bfba;font-size:10px;letter-spacing:2px}
+.section-title small{font:8px var(--mono);letter-spacing:1px;color:#778e91}
+.strength{display:flex;align-items:baseline;gap:6px;margin-bottom:12px}
+.strength b{font:24px var(--mono);color:#e0e3d8;letter-spacing:-1px}
+.strength span{font:11px var(--mono);color:#879896}
+.strength label{margin-left:auto;font-size:10px;color:#95a39e}
+.metric{margin:10px 0 0}
+.metric-head{display:flex;justify-content:space-between;font-size:10px;color:#a3b0ab;margin-bottom:5px}
+.metric-head b{font:10px var(--mono);color:#c2cbbd}
+.metric-track{height:4px;background:repeating-linear-gradient(90deg,#42524f 0,#42524f calc(10% - 3px),transparent calc(10% - 3px),transparent 10%)}
+.metric-fill{height:100%;background:repeating-linear-gradient(90deg,#a8b3a0 0,#a8b3a0 20px,transparent 20px,transparent 23px)}
+.metric.amber .metric-fill{background:repeating-linear-gradient(90deg,#bea574 0,#bea574 20px,transparent 20px,transparent 23px)}
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.datum label{font-size:9px;color:#8b9c98;display:block;margin-bottom:5px}
+.datum b{font-size:11px;font-weight:400;color:#d1d7cb}
+.order-card{position:relative;padding:0 0 0 14px;border-left:1px solid #667b7d}
+.order-card:before{position:absolute;content:"";left:-4px;top:2px;width:7px;height:7px;border:1px solid #c5b57f;background:var(--chrome)}
+.order-card .order-kind{font-size:11px;color:#ddd6bc}
+.order-card p{font-size:10px;color:#8fa2a0;line-height:1.7;margin:6px 0 8px}
+.order-distance{display:flex;gap:14px;font:10px var(--mono);color:#c4c9b6}
+.order-distance small{font-size:8px;color:#869995}
+.inspector-actions{padding:14px 18px;margin-top:auto;display:flex;flex-direction:column;gap:6px}
+.action-btn{width:100%;height:30px;border:1px solid #58696b;font-size:10px;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:7px}
+.action-btn.primary{border-color:#9a926e;background:#a7a0821c;color:#e2d7b5}
+.action-btn:hover{background:#465451}
+.action-btn[aria-pressed=true]{border-color:#b9ac7c;background:#b9ac7c22;color:#e3d6ae}
+.inspector-footnote{font:8px var(--mono);letter-spacing:1px;color:#778b8f;text-align:center;margin:3px 0 0}
+
+/* UI-08 左下角紧凑日志占位框 */
+.footer{position:absolute;bottom:12px;left:14px;display:flex;flex-direction:column;gap:4px;padding:12px 14px 6px;color:#8e9a98;background:#182125ea;border:1px solid #364449;border-radius:2px;font:8px var(--mono);letter-spacing:.7px;z-index:4;min-width:180px}
+.status-light{display:inline-block;width:4px;height:4px;background:#71816c;margin-right:7px}
+
+/* UI-09 右上角参谋地图工具包 (内含指北针、UI-09A 绘图工具组、UI-05 图层项) */
+.map-tools-pack{position:absolute;right:14px;top:10px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;z-index:6}
+.tool-pack-row{display:flex;align-items:center;gap:8px;background:#1c2529ee;border:1px solid #3e4c52;padding:4px 8px;border-radius:2px}
+.draw-tool-btn{width:26px;height:26px;display:grid;place-items:center;color:#b6c1be;border:1px solid #4a595f;background:#243035;cursor:pointer;border-radius:2px;font-size:11px}
+.draw-tool-btn:hover,.draw-tool-btn.active{background:#384850;border-color:var(--gold);color:#ffffff}
+.compass-box{width:36px;height:48px;display:grid;place-items:center;color:#a2ad9b}
+
+/* UI-03M 集成指令框与子面板 (UI-03M1 ~ UI-03M4) */
+.integrated-cmd-box{position:fixed;top:70px;left:50%;transform:translateX(-50%);width:480px;max-width:92vw;background:#1e272be6;border:1px solid #4a585e;box-shadow:0 12px 40px #0c141777;border-radius:3px;z-index:20;display:none;flex-direction:column;color:#d6d9d4;backdrop-filter:blur(4px)}
+.integrated-cmd-box.open,.integrated-cmd-box:not(.hidden){display:flex}
+.cmd-box-head{padding:10px 14px;border-bottom:1px solid #364449;display:flex;align-items:center;justify-content:space-between}
+.cmd-box-head b{font:12px var(--sans);letter-spacing:1.5px;color:#e2dfc6}
+.cmd-box-close{font-size:18px;color:#91a5aa;line-height:1;cursor:pointer;padding:2px 6px}
+.cmd-box-close:hover{color:#fff}
+.cmd-unified-queue{padding:6px 12px;background:#161f23;border-bottom:1px solid #2d3b40;font:9px var(--mono)}
+.queue-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;color:#8ea0a3}
+.queue-clear-btn{padding:1px 6px;background:#2a363c;border:1px solid #44545b;color:#cad5cf;font-size:9px;border-radius:2px;cursor:pointer}
+.queue-items-container{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.queue-chip{padding:2px 6px;background:#26343a;border:1px solid #3f5057;border-radius:2px;color:#cad5cf;white-space:nowrap}
+.cmd-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 12px;border-bottom:1px solid #313f44;background:#1a2327}
+.cmd-tab-btn{padding:5px 0;text-align:center;font-size:10px;color:#9cadab;background:#222d32;border:1px solid #3a4a50;cursor:pointer;border-radius:2px}
+.cmd-tab-btn.active{background:#35454d;border-color:var(--gold);color:#f0e6cf}
+.cmd-box-content{display:flex;flex-direction:column;min-height:0}
+.cmd-subpanel{padding:14px 16px;display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;position:relative}
+.cmd-subpanel.hidden{display:none!important}
+.matrix-row{display:flex;align-items:center;gap:8px;font-size:11px}
+.row-label{width:68px;color:#9aa8a6;font-size:10px;flex-shrink:0}
+.btn-group,.btn-group-wrap{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+.sub-btn{padding:4px 8px;background:#26343a;border:1px solid #3f5057;border-radius:2px;color:#cad5cf;cursor:pointer;font-size:10px;transition:background .12s}
+.sub-btn:hover{background:#32434b;border-color:#b5aa70}
+.sub-btn.active{background:#3a4d55;border-color:var(--gold);color:#ffffff}
+.sub-btn:disabled{opacity:.35;cursor:not-allowed}
+.row-control{display:flex;align-items:center;gap:8px;flex:1}
+.sub-slider{flex:1;accent-color:var(--gold);cursor:pointer}
+.slider-val{font-size:9px;color:#e0d5b7;min-width:85px;text-align:right}
+.readout-box{display:flex;flex-wrap:wrap;gap:8px;font:9px var(--mono);color:#c5cfc8;background:#161f23;padding:6px 8px;border:1px solid #2d3b40;border-radius:2px;width:100%}
+.panel-foot{display:flex;justify-content:flex-end;margin-top:6px}
+.cmd-divider-dashed{border-bottom:1px dashed #3a474d;margin:2px 0;width:100%}
+.cmd-items-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:100%}
+.cmd-item-btn{padding:5px 2px;font-size:10px;text-align:center;background:#243136;border:1px solid #3f5056;color:#cdd7d2;border-radius:2px;cursor:pointer}
+.cmd-item-btn:hover{background:#32434b;border-color:#b5aa70}
+.cmd-item-btn.active{background:#3a4d55;border-color:var(--gold);color:#ffffff}
+.cmd-item-btn.disabled,.cmd-item-btn:disabled{opacity:.3;cursor:not-allowed;border-color:#2a363b;background:#1b2428;color:#6b7678;pointer-events:none}
+.roe-row{flex-direction:column;align-items:flex-start;gap:6px}
+.roe-title{font-size:10px;color:#b2bfbc;letter-spacing:1px}
+.roe-groups{display:flex;flex-direction:column;gap:4px;width:100%}
+.comms-grid{display:flex;flex-direction:column;gap:10px}
+.comms-ctrl-block{display:flex;flex-direction:column;gap:4px}
+.wire-status-card{display:flex;align-items:center;gap:6px;background:#161f23;padding:6px 8px;border:1px solid #2d3b40;border-radius:2px;font:9px var(--mono);color:#cad5cf}
+.comms-readout-panel{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#161f23;padding:8px 10px;border:1px solid #2d3b40;border-radius:2px}
+.comms-metric{display:flex;flex-direction:column;gap:2px}
+.comms-metric label{font-size:9px;color:#8e9e9b}
+.comms-metric b{font:11px var(--mono);color:#dfc78d}
+
+/* 全局红字 UI-ID 覆盖 */
+[data-ui-id]::after{content:attr(data-ui-id);position:absolute;left:7px;top:5px;font:9px/1 var(--mono);letter-spacing:.3px;color:#b34135;pointer-events:none;z-index:12;white-space:nowrap}
+.topbar,.subbar{position:relative}
+.topbar::after,.subbar::after{left:5px;top:3px;font-size:8px;color:#ec8d81}
+.inspector [data-ui-id]::after,.inspector::after,.unit-card [data-ui-id]::after,.unit-card::after,.toast::after,dialog::after{color:#ee9286}
+.inspector::after,.unit-card::after{left:18px;top:8px}
+.inspector-top::after{left:auto;right:18px;top:8px}
+.inspector-section::after,.inspector-actions::after{left:18px;top:6px}
+.map-title::after,.footer::after{left:0;top:0}
+.scale::after{font-size:8px;top:5px;left:8px}
+.layer-card::after{left:16px;top:9px}
+.layer-toggle::after{font-size:8px;left:9px;top:5px}
+.map-tools-pack[data-ui-id]::after{left:auto;right:6px;top:-10px;font-size:8px;color:#ee9286}
+.tool-pack-row[data-ui-id]::after{left:6px;top:3px;font-size:8px;color:#ee9286}
+.integrated-cmd-box[data-ui-id]::after{left:12px;top:6px;font-size:8.5px;color:#ee9286}
+.cmd-subpanel[data-ui-id]::after{left:12px;top:4px;font-size:8px;color:#ee9286}
+.pulse-staging[data-ui-id]::after{left:5px;top:7px;font-size:8.5px;color:#ec8d81}
+.orbat-drawer[data-ui-id]::after,.cmd-drawer[data-ui-id]::after,.reorg-equip-panel[data-ui-id]::after,.orbat-body[data-ui-id]::after{color:#ee9286}
 .orbat-drawer::after{left:12px;top:8px}
 .orbat-body{position:relative;padding-top:20px}
 .orbat-body::after{left:14px;top:4px}
 .reorg-equip-panel{position:relative;padding-top:20px}
 .reorg-equip-panel::after{left:12px;top:5px}
-.cmd-drawer::after{left:12px;top:8px}
-.pulse-staging{position:relative;display:inline-flex;align-items:center;padding:0 8px 0 42px;height:24px;background:#1e272b;border:1px solid #4a575c;color:#d1d7d3;font:10px var(--mono);border-radius:2px}
-.pulse-staging::after{left:5px;top:7px;font-size:8.5px;color:#ec8d81}
+.pulse-staging{position:relative;display:inline-flex;align-items:center;padding:0 8px 0 42px;height:20px;background:#1e272b;border:1px solid #4a575c;color:#d1d7d3;font:10px var(--mono);border-radius:2px}
 
 /* ORBAT 编制母树抽屉与四类修改面板 (纯净融合，绝无破坏视口高度) */
 .orbat-drawer,.cmd-drawer{position:fixed;top:62px;left:286px;width:340px;bottom:0;background:#202a2ef7;border-right:1px solid #3d4a4f;box-shadow:8px 0 24px #101a1e33;z-index:15;display:none;flex-direction:column;color:#d6d9d4}
@@ -68,14 +178,14 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 </header>
 <div class="subbar" data-ui-id="UI-02"><span class="operation" id="subbarOp">白桦行动 <span class="mono" style="color:#97a39a;margin-left:8px">OP. BIRCH</span></span><span class="divider"></span><span class="hide-phone mono" id="subbarDate">22 JUN 1944 · SUBTICK 16S</span><span class="divider"></span><span class="weather"><svg class="ico" style="width:14px;height:14px"><use href="#i-cloud"/></svg><span id="subbarWeather">薄云 18°C</span></span><div class="right"><span class="hide-tablet muted" id="subbarTurnState">8m战术基准 · 权威联机</span><div class="pulse-staging" id="pulseStagingBar" data-ui-id="UI-18">STEP 00/16S · 暂存 0</div><button class="control mobile-inspector" id="openInspector" aria-expanded="false"><svg class="ico"><use href="#i-panel"/></svg>部队</button><button class="control" id="orbatToggle" title="查看战术指挥链编制母树"><svg class="ico"><use href="#i-tree"/></svg>编制</button><button class="control" id="actionQueueToggle" title="第一类修改 · 计划行动任务队列">行动</button><button class="control" id="eventQueueToggle" title="第二类修改 · 计划事件队列">事件</button><button class="control" id="commandFieldToggle" title="第四类修改 · 指挥安排与场绘制">态势场</button><button class="control" id="play" aria-pressed="false"><svg class="ico"><use id="playIcon" href="#i-play"/></svg><span id="playLabel">预演</span></button><button class="control speed" id="speed" aria-label="切换演示时间速度">1×</button></div></div>
 <div class="workspace">
-<aside class="inspector" id="inspector" aria-label="选中单位详情" data-ui-id="UI-03">
-<div class="inspector-top" data-ui-id="UI-03A"><div class="inspector-heading"><div class="eyebrow">UNIT / INSPECTOR</div><button class="mobile-inspector" id="closeInspector" aria-label="关闭单位详情" style="font-size:19px">×</button><span class="mono muted hide-tablet" style="font-size:9px" id="inspectorId">F-0313</span></div><div class="unit-display"><svg class="big-symbol" id="inspectorSymbol" viewBox="0 0 60 50" aria-hidden="true"></svg><div><h2 id="unitName">第 3 步兵营</h2><p id="unitCode">3 / 91 INFANTRY</p></div></div><div class="status-tag" id="unitStatus">待命 · 通信正常</div></div>
+<aside class="inspector unit-card" id="inspector" aria-label="选中单位详情" data-ui-id="UI-03" style="left:20px;top:14px">
+<div class="inspector-top" data-ui-id="UI-03A" id="cardHandle-inspector"><div class="inspector-heading"><div class="eyebrow">UNIT / INSPECTOR</div><span class="mono muted" style="font-size:9px" id="inspectorId">F-0313</span></div><div class="unit-display"><svg class="big-symbol" id="inspectorSymbol" viewBox="0 0 60 50" aria-hidden="true"></svg><div><h2 id="unitName">第 3 步兵营</h2><p id="unitCode">3 / 91 INFANTRY</p></div></div><div class="status-tag" id="unitStatus">待命 · 通信正常</div></div>
 <div class="inspector-section" data-ui-id="UI-03B"><div class="section-title">作战实力 <small>COMBAT STRENGTH</small></div><div class="strength"><b id="unitStrength">642</b><span id="unitMax">/ 720</span><label>人员</label></div><div class="metric"><div class="metric-head"><span>组织度</span><b id="orgValue">92%</b></div><div class="metric-track"><div class="metric-fill" id="orgBar" style="width:92%"></div></div></div><div class="metric amber"><div class="metric-head"><span>弹药储备</span><b id="ammoValue">76%</b></div><div class="metric-track"><div class="metric-fill" id="ammoBar" style="width:76%"></div></div></div><div class="metric"><div class="metric-head"><span>补给水平</span><b id="supplyValue">88%</b></div><div class="metric-track"><div class="metric-fill" id="supplyBar" style="width:88%"></div></div></div></div>
 <div class="inspector-section" data-ui-id="UI-03C"><div class="section-title">位置与环境 <small>POSITION</small></div><div class="data-grid"><div class="datum"><label>军用格网</label><b class="mono" id="unitGrid">36U 045 · 050</b></div><div class="datum"><label>所在地域</label><b id="unitTerrain">林地边缘</b></div><div class="datum"><label>海拔</label><b class="mono" id="unitHeight">184 m</b></div><div class="datum"><label>态势可信度</label><b id="unitConfidence">己方实时报告</b></div></div></div>
 <div class="inspector-section" data-ui-id="UI-03D"><div class="section-title">当前意图 <small>COMMAND INTENT</small></div><div class="order-card"><div class="order-kind" id="orderName">向河桥展开</div><p id="orderText">沿道路抵达集结位置。保持隐蔽，<br>接敌前等待进一步命令。</p><div class="order-distance"><span id="orderDistance">1.8 <small>km</small></span><span id="orderEta">~ 24 <small>min</small></span></div></div></div>
-<div class="inspector-actions" data-ui-id="UI-03E"><button class="action-btn primary" id="planButton"><svg class="ico"><use href="#i-route"/></svg>查看行动路线</button><button class="action-btn" id="fireButton" aria-pressed="false"><svg class="ico"><use href="#i-target"/></svg>火控与视线分析</button><p class="inspector-footnote" id="inspectorFootnote">GENTACTIX LIVE · PURE-CPU 8M CORE</p></div>
+<div class="inspector-actions" data-ui-id="UI-03E"><button class="action-btn primary" id="planButton"><svg class="ico"><use href="#i-route"/></svg>查看行动路线</button><button class="action-btn" id="fireButton" aria-pressed="false"><svg class="ico"><use href="#i-target"/></svg>火控与视线分析</button><button class="action-btn" id="btnOpenCmdBox" style="border-color:#b9ac7c"><svg class="ico"><use href="#i-target"/></svg>指令选项 (Shift+A)</button><p class="inspector-footnote" id="inspectorFootnote">GENTACTIX LIVE · PURE-CPU 8M CORE</p></div>
 </aside>
-<main class="map-area" aria-label="交互式作战地图">
+<main class="map-area" aria-label="交互式作战地图" style="width:100%;height:100%">
 <div class="map-viewport" id="viewport"><svg class="map-svg" id="mapSvg" viewBox="0 0 1200 880" preserveAspectRatio="xMidYMid slice" role="group" aria-label="白桦河战区示意地图，可拖拽、缩放、选择兵牌">
 <defs>
 <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M100 0H0V100" fill="none" stroke="#848d7247" stroke-width=".7"/><path d="M50 0v100M0 50h100" fill="none" stroke="#999d8122" stroke-width=".45"/></pattern>
@@ -105,16 +215,41 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 <g id="intelLayer" class="view-hidden"><ellipse cx="833" cy="251" rx="118" ry="73" fill="#b59b5920" stroke="#9b844e" stroke-dasharray="5 5"/><text x="758" y="170" class="tactical-label" fill="#927540">接触位置不确定区 / LOW CONF.</text><ellipse cx="898" cy="489" rx="70" ry="57" fill="#b59b5915" stroke="#9b844e" stroke-dasharray="5 5"/></g>
 <g id="routesLayer"><path id="plannedRoute" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#f0e8cf" stroke-width="5"/><path id="plannedRouteInk" class="route-line" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#927445" stroke-width="1.9" marker-end="url(#routeArrow)"/><circle cx="560" cy="414" r="5" class="route-end"/><circle cx="690" cy="339" r="8" fill="#e5dab9" stroke="#8e7145" stroke-width="1.3"/><path d="M676 339h28m-14-14v28" stroke="#8e7145" stroke-width="1"/><rect x="508" y="436" width="106" height="22" fill="#ece5cf" stroke="#aba181" stroke-width=".6"/><text x="518" y="450" font-size="9" font-family="Consolas,monospace" fill="#7f6845">PHASE 01 / 1.8km</text><text x="703" y="330" class="tactical-label" fill="#7f6845">OBJ. A / 河桥</text></g>
 <g id="fireLayer" class="view-hidden"><circle id="rangeCircle" cx="455" cy="505" r="223" fill="none" stroke="#9c5247" stroke-width="1" stroke-dasharray="5 5" opacity=".57"/><path id="fireLive" d="M455 505 666 370" fill="none" stroke="#ad5446" stroke-width="1.8"/><path id="fireBlocked" d="M666 370 791 286" fill="none" stroke="#665c52" stroke-width="1.3" stroke-dasharray="4 5" marker-end="url(#fireArrow)"/><ellipse id="dispersion" cx="666" cy="370" rx="39" ry="16" transform="rotate(-33 666 370)" fill="#b3944820" stroke="#997b40" stroke-width="1.2" stroke-dasharray="4 3"/><path id="blockCross" d="m661 365 10 10m-10 0 10-10" stroke="#7e6642" stroke-width="2"/><text id="fireLabel" x="654" y="398" class="tactical-label" fill="#87693b">林缘遮挡 · 散布示意</text><text id="rangeLabel" x="330" y="714" class="tactical-label" fill="#9a584b">FIRE ENVELOPE / 示例范围</text></g>
+<g id="drawDraftLayer"></g>
+<g id="virtualInstancesLayer"></g>
 <g id="unitsLayer"></g><rect x="-500" y="-500" width="2200" height="1900" fill="url(#paperGrain)" style="mix-blend-mode:multiply;pointer-events:none" opacity=".57"/>
 </g></svg></div>
 <div class="map-title" id="mapTitle" data-ui-id="UI-04"><button class="title-button" id="titleToggle" aria-expanded="true" aria-controls="titleDetails" title="点击收为地区名；再次点击展开"><span class="title-heading" id="titleHeading">白桦河战区</span><span class="title-details" id="titleDetails"><span><span>NORTHERN SECTOR / SHEET 04</span><span>TOPOGRAPHIC SERIES · CONCEPT</span></span></span></button></div>
-<div class="map-stamp" data-ui-id="UI-12"><span>作战用图</span></div>
-<div class="compass-wrap" data-ui-id="UI-09" aria-label="指北针"><svg class="compass" viewBox="0 0 50 70" aria-hidden="true"><text x="25" y="10" text-anchor="middle" fill="currentColor" font-size="9" font-family="Consolas">N</text><path d="m25 17-9 32 9-7 9 7Z" fill="none" stroke="currentColor"/><path d="m25 17-9 32 9-7Z" fill="currentColor"/><path d="M25 42v19M10 42h30" stroke="currentColor" stroke-width=".65"/><circle cx="25" cy="42" r="18" fill="none" stroke="currentColor" stroke-width=".45"/></svg></div>
-<div class="map-tools" aria-label="地图工具" data-ui-id="UI-06"><button class="text-icon" id="zoomIn" aria-label="放大地图">+</button><button class="text-icon" id="zoomOut" aria-label="缩小地图">−</button><button id="resetView" aria-label="复位地图"><svg class="ico"><use href="#i-cross"/></svg></button><div class="zoom-readout" id="zoomReadout">100%</div></div>
-<div class="map-notice" data-ui-id="UI-13"><svg class="ico"><use href="#i-info"/></svg>拖动平移 · 滚轮缩放 · 点击兵牌查看详情</div>
-<div class="layer-dock" id="layerDock"><section class="layer-card" id="layerCard" aria-label="图层列表" aria-hidden="true" inert data-ui-id="UI-05"><header class="layer-head"><span>地图图层 <small>LAYERS</small></span><button class="layer-close" id="closeLayers" aria-label="关闭图层列表">×</button></header><div class="layer-options"><button class="layer-option" data-layer="terrain" aria-pressed="true"><span class="check"></span>地形</button><button class="layer-option" data-layer="labels" aria-pressed="true"><span class="check"></span>地名</button><button class="layer-option" data-layer="front" aria-pressed="true"><span class="check"></span>接触线</button><button class="layer-option" data-layer="routes" aria-pressed="true"><span class="check"></span>命令</button><button class="layer-option" data-layer="fire" aria-pressed="false"><span class="check"></span>火控</button></div></section><button class="layer-toggle" id="layerToggle" aria-expanded="false" aria-controls="layerCard" data-ui-id="UI-05A"><svg class="ico"><use href="#i-layers"/></svg><span id="layerToggleText">图层</span><span class="layer-chevron" aria-hidden="true">⌃</span></button></div>
-<div class="scale" id="meterGrid" data-ui-id="UI-07" aria-label="地图比例尺，200 米每主格，仅供概念演示"><div class="scale-text"><span>0</span><span id="scaleDistance">200 m</span></div><div class="scale-bar" id="scaleBar"><i></i><i></i><i></i><i></i></div><div class="scale-caption">200m / 格 · 示意</div></div>
-<footer class="footer" data-ui-id="UI-08"><span><i class="status-light"></i>LOCAL CONCEPT</span><span class="footer-grid" id="cursorGrid">GRID 36U / NORTHERN SECTOR</span></footer>
+
+<!-- UI-09 参谋地图工具包 (内含指北针、UI-09A 绘图工具组、UI-05 图层项) -->
+<div class="map-tools-pack" id="mapToolsPack" data-ui-id="UI-09" aria-label="参谋地图工具包">
+  <div class="tool-pack-row" id="drawToolsBar" data-ui-id="UI-09A">
+    <button class="draw-tool-btn" id="toolRuler" title="测距标定尺">📏</button>
+    <button class="draw-tool-btn" id="toolPen" title="战术草稿画笔">✏️</button>
+    <button class="draw-tool-btn" id="toolEraser" title="橡皮擦">🧹</button>
+    <button class="draw-tool-btn" id="toolPoly" title="多边形面积绘制">⬡</button>
+    <button class="draw-tool-btn" id="toolLine" title="折线段绘制">╱</button>
+    <div class="compass-box" title="指北针">
+      <svg class="compass" viewBox="0 0 50 70" style="width:28px;height:38px"><text x="25" y="10" text-anchor="middle" fill="currentColor" font-size="9" font-family="Consolas">N</text><path d="m25 17-9 32 9-7 9 7Z" fill="none" stroke="currentColor"/><path d="m25 17-9 32 9-7Z" fill="currentColor"/></svg>
+    </div>
+  </div>
+  <div class="layer-dock" id="layerDock" style="position:static">
+    <section class="layer-card" id="layerCard" aria-label="图层列表" aria-hidden="true" inert data-ui-id="UI-05">
+      <header class="layer-head"><span>地图图层 <small>LAYERS</small></span><button class="layer-close" id="closeLayers" aria-label="关闭图层列表">×</button></header>
+      <div class="layer-options">
+        <button class="layer-option" data-layer="terrain" aria-pressed="true"><span class="check"></span>地形</button>
+        <button class="layer-option" data-layer="labels" aria-pressed="true"><span class="check"></span>地名</button>
+        <button class="layer-option" data-layer="front" aria-pressed="true"><span class="check"></span>接触线</button>
+        <button class="layer-option" data-layer="routes" aria-pressed="true"><span class="check"></span>命令</button>
+        <button class="layer-option" data-layer="fire" aria-pressed="false"><span class="check"></span>火控</button>
+      </div>
+    </section>
+    <button class="layer-toggle" id="layerToggle" aria-expanded="false" aria-controls="layerCard" data-ui-id="UI-05A"><svg class="ico"><use href="#i-layers"/></svg><span id="layerToggleText">图层</span><span class="layer-chevron" aria-hidden="true">⌃</span></button>
+  </div>
+</div>
+
+<div class="scale" id="meterGrid" data-ui-id="UI-07" aria-label="地图比例尺"><div class="scale-text"><span>0</span><span id="scaleDistance">200 m</span></div><div class="scale-bar" id="scaleBar"><i></i><i></i><i></i><i></i></div><div class="scale-caption">200m / 格 · 示意</div></div>
+<footer class="footer" data-ui-id="UI-08"><span><i class="status-light"></i>日志记录与战场电传</span><span class="footer-grid" id="cursorGrid">GRID 36U / NORTHERN SECTOR</span></footer>
 <div class="toast" id="toast" role="status" data-ui-id="UI-11"></div>
 </main>
 </div>
@@ -142,81 +277,255 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
   </div>
 </aside>
 
-<!-- 第一类修改 · 计划行动任务队列 -->
-<section class="cmd-drawer" id="actionQueuePanel" data-ui-id="UI-15" aria-label="计划行动任务队列">
-  <div class="cmd-head">
-    <b>计划行动队列 <small class="mono muted">ACTION QUEUE</small></b>
-    <button id="closeActionQueue" style="font-size:18px;color:#91a5aa">×</button>
+<!-- 综合指令选项框 (UI-03M)，内含四大子窗口 UI-03M1~UI-03M4 -->
+<div class="integrated-cmd-box hidden" id="integratedCmdBox" data-ui-id="UI-03M" aria-label="综合指令选项框">
+  <div class="cmd-box-head">
+    <div class="cmd-box-title">
+      <b>综合指令选项 <small class="mono muted">INTEGRATED COMMAND</small></b>
+      <span class="mono muted" style="margin-left:8px;font-size:9px" id="cmdBoxTargetUnit">F-0313 (第 3 步兵营)</span>
+    </div>
+    <button class="cmd-box-close" id="closeCmdBox" aria-label="关闭指令选项">×</button>
   </div>
-  <div class="cmd-body">
-    <div class="section-title">行军姿态与射击控制</div>
-    <div class="cmd-grid">
-      <button class="cmd-btn active" id="btnModeNormal">常速 (Normal)</button>
-      <button class="cmd-btn" id="btnModeFast">强行军 (Fast)</button>
-      <button class="cmd-btn" id="btnModeSlow">潜行 (Slow)</button>
-      <button class="cmd-btn" id="btnModeHold">隐蔽停火</button>
-    </div>
-    <div class="section-title" style="margin-top:8px">任务动作排队 (16s 周期)</div>
-    <div class="cmd-grid">
-      <button class="cmd-btn" id="btnActionMove">排入移动</button>
-      <button class="cmd-btn" id="btnActionFire">排入射击</button>
-      <button class="cmd-btn" id="btnActionConceal">排入隐蔽</button>
-      <button class="cmd-btn" id="btnActionStop">排入停止</button>
-      <button class="cmd-btn" id="btnActionRetreat">排入撤退</button>
-      <button class="cmd-btn" id="btnClearAction">清空队列</button>
-    </div>
-    <div id="actionQueueDisplay" class="mono muted" style="font-size:10px;padding:8px;background:#182125;border:1px solid #364449;border-radius:2px">
-      暂无计划行动任务
-    </div>
-  </div>
-</section>
 
-<!-- 第二类修改 · 计划事件队列 -->
-<section class="cmd-drawer" id="eventQueuePanel" data-ui-id="UI-16" aria-label="计划事件队列">
-  <div class="cmd-head">
-    <b>计划事件队列 <small class="mono muted">EVENT QUEUE</small></b>
-    <button id="closeEventQueue" style="font-size:18px;color:#91a5aa">×</button>
-  </div>
-  <div class="cmd-body">
-    <div class="section-title">工兵与战术读秒事件</div>
-    <div class="cmd-grid">
-      <button class="cmd-btn" id="btnEventMine">布设雷区</button>
-      <button class="cmd-btn" id="btnEventTrench">挖掘堑壕</button>
-      <button class="cmd-btn" id="btnEventBuild">构筑工事</button>
-      <button class="cmd-btn" id="btnEventDemolish">爆破拆除</button>
-      <button class="cmd-btn" id="btnEventRadio">静默/诱饵</button>
-      <button class="cmd-btn" id="btnEventRangefind">炮兵测距</button>
+  <!-- 共享统一队列列表 (#1, #2...) -->
+  <div class="cmd-unified-queue" id="unifiedQueueBar">
+    <div class="queue-head">
+      <span>统一规划队列 <small class="mono muted">SHARED QUEUE</small></span>
+      <button class="queue-clear-btn" id="btnClearUnifiedQueue">清空</button>
     </div>
-    <div id="eventQueueDisplay" class="mono muted" style="font-size:10px;padding:8px;background:#182125;border:1px solid #364449;border-radius:2px">
-      暂无计划事件
+    <div class="queue-items-container" id="unifiedQueueList">
+      <span class="queue-empty-text mono muted">暂无计划任务或事件</span>
     </div>
   </div>
-</section>
 
-<!-- 第四类修改 · 指挥安排与场绘制 -->
-<section class="cmd-drawer" id="commandFieldPanel" data-ui-id="UI-17" aria-label="指挥安排与场绘制">
-  <div class="cmd-head">
-    <b>指挥安排与场绘制 <small class="mono muted">COMMAND FIELD</small></b>
-    <button id="closeCommandField" style="font-size:18px;color:#91a5aa">×</button>
+  <!-- 选项卡切换栏 -->
+  <div class="cmd-tabs">
+    <button class="cmd-tab-btn active" id="tabTask" data-target="panelTask">1 任务队列 (UI-03M1)</button>
+    <button class="cmd-tab-btn" id="tabEvent" data-target="panelEvent">2 宏事件 (UI-03M2)</button>
+    <button class="cmd-tab-btn" id="tabCmd" data-target="panelCmd">3 指挥安排 (UI-03M3)</button>
+    <button class="cmd-tab-btn" id="tabComms" data-target="panelComms">4 通信调谐 (UI-03M4)</button>
   </div>
-  <div class="cmd-body">
-    <div class="section-title">战役战术线与责任区 (AO)</div>
-    <div class="cmd-grid">
-      <button class="cmd-btn" id="btnFieldAo">划分任务AO</button>
-      <button class="cmd-btn" id="btnFieldAttack">绘制进攻线</button>
-      <button class="cmd-btn" id="btnFieldMove">绘制移动线</button>
-      <button class="cmd-btn" id="btnFieldDeploy">绘制部署线</button>
+
+  <div class="cmd-box-content">
+    <!-- UI-03M1 任务队列四行级联配置窗口 -->
+    <div class="cmd-subpanel" id="panelTask" data-ui-id="UI-03M1">
+      <div class="matrix-row" id="taskRow1">
+        <label class="row-label">一 · 动作</label>
+        <div class="btn-group">
+          <button class="sub-btn active" data-action="move" id="btnTaskMove">移动</button>
+          <button class="sub-btn" data-action="fire" id="btnTaskFire">射击</button>
+          <button class="sub-btn" data-action="stop" id="btnTaskStop">停止</button>
+          <button class="sub-btn" data-action="retreat" id="btnTaskRetreat">撤退</button>
+        </div>
+      </div>
+      <div class="matrix-row" id="taskRow2">
+        <label class="row-label">二 · 姿态</label>
+        <div class="btn-group" id="taskModeGroup">
+          <button class="sub-btn active" data-mode="fast">快速</button>
+          <button class="sub-btn" data-mode="normal">正常</button>
+          <button class="sub-btn" data-mode="stealth">隐蔽</button>
+        </div>
+      </div>
+      <div class="matrix-row" id="taskRow3">
+        <label class="row-label" id="taskRow3Label">三 · 约束</label>
+        <div class="row-control" id="taskRow3Control">
+          <input type="range" min="0" max="100" value="80" class="sub-slider" id="taskParamSlider">
+          <span class="mono slider-val" id="taskParamVal">0.80 (直线偏好)</span>
+        </div>
+      </div>
+      <div class="matrix-row" id="taskRow4">
+        <label class="row-label">四 · 预估</label>
+        <div class="readout-box" id="taskReadout">
+          <span id="taskReadout1">速度: 4.0 m/s</span>
+          <span id="taskReadout2">ETA: ~48 s</span>
+          <span id="taskReadout3">组织度代价: -4%</span>
+        </div>
+      </div>
+      <div class="panel-foot">
+        <button class="action-btn primary" id="btnConfirmTask">排入队列并在地图标定点</button>
+      </div>
     </div>
-    <div class="section-title" style="margin-top:8px">连续势场叠加显示</div>
-    <div class="cmd-grid">
-      <button class="cmd-btn" id="toggleGravField">任务引力场 G</button>
-      <button class="cmd-btn" id="toggleRepulseField">信息斥力场 I</button>
+
+    <!-- UI-03M2 事件宏配置窗口 (带严格装备门控) -->
+    <div class="cmd-subpanel hidden" id="panelEvent" data-ui-id="UI-03M2">
+      <div class="matrix-row" id="eventRow1">
+        <label class="row-label">一 · 宏事件</label>
+        <div class="btn-group-wrap" id="eventMacroGroup">
+          <button class="sub-btn active" data-event="mine" data-req="mine" id="btnEvMine">布雷</button>
+          <button class="sub-btn" data-event="trench" data-req="shovel" id="btnEvTrench">挖掘</button>
+          <button class="sub-btn" data-event="build" data-req="building_mat" id="btnEvBuild">建造</button>
+          <button class="sub-btn" data-event="demolish" data-req="explosive" id="btnEvDemolish">爆破</button>
+          <button class="sub-btn" data-event="clear" data-req="clearance_kit" id="btnEvClear">拆除</button>
+          <button class="sub-btn" data-event="rangefind" data-req="rangefinder" id="btnEvRangefind">测距</button>
+          <button class="sub-btn" data-event="firstaid" data-req="firstaid" id="btnEvFirstAid">战地救护</button>
+          <button class="sub-btn" data-event="scavenge" data-req="supplies_bag" id="btnEvScavenge">补给与搜刮</button>
+          <button class="sub-btn" data-event="wireline" data-req="wire_cable" id="btnEvWireline">架设与拉线</button>
+        </div>
+      </div>
+      <div class="matrix-row" id="eventRow2">
+        <label class="row-label" id="eventRow2Label">二 · 类型</label>
+        <div class="btn-group" id="eventSubtypeGroup">
+          <button class="sub-btn active" data-sub="tm46">TM-46 反坦克地雷</button>
+          <button class="sub-btn" data-sub="pmd6">PMD-6 杀伤地雷</button>
+        </div>
+      </div>
+      <div class="matrix-row" id="eventRow3">
+        <label class="row-label" id="eventRow3Label">三 · 密度</label>
+        <div class="row-control" id="eventRow3Control">
+          <input type="range" min="1" max="10" value="4" class="sub-slider" id="eventParamSlider">
+          <span class="mono slider-val" id="eventParamVal">4 枚/10m</span>
+        </div>
+      </div>
+      <div class="matrix-row" id="eventRow4">
+        <label class="row-label">四 · 预估</label>
+        <div class="readout-box" id="eventReadout">
+          <span id="evReadout1">预估器材消耗: 16 枚</span>
+          <span id="evReadout2">耗时: ~128 s</span>
+          <span id="evReadout3">生成逐点虚拟实例并施工</span>
+        </div>
+      </div>
+      <div class="panel-foot">
+        <button class="action-btn primary" id="btnConfirmEvent">在地图绘制并排入队列</button>
+      </div>
     </div>
-    <div id="commandFieldDisplay" class="mono muted" style="font-size:10px;padding:8px;background:#182125;border:1px solid #364449;border-radius:2px">
-      场状态：引力场 [关] · 斥力场 [关]
+
+    <!-- UI-03M3 指挥面板 (6/7 互斥场) -->
+    <div class="cmd-subpanel hidden" id="panelCmd" data-ui-id="UI-03M3">
+      <!-- 行 1：指定受令对象 -->
+      <div class="matrix-row" id="cmdRow1">
+        <label class="row-label">一 · 对象</label>
+        <div class="btn-group" id="cmdTargetGroup">
+          <button class="sub-btn active" data-target-scope="single">指定单一单位</button>
+          <button class="sub-btn" data-target-scope="multi">指定许多单位</button>
+          <button class="sub-btn" data-target-scope="global">下属全局</button>
+        </div>
+      </div>
+      <!-- 行 2：虚线 -->
+      <div class="cmd-divider-dashed"></div>
+      <!-- 行 3：模式切换 -->
+      <div class="matrix-row" id="cmdRow3">
+        <label class="row-label">三 · 模式</label>
+        <div class="btn-group" id="cmdModeGroup">
+          <button class="sub-btn active" data-cmd-mode="order" id="btnModeOrder">指令 (画线)</button>
+          <button class="sub-btn" data-cmd-mode="ao" id="btnModeAo">AO (画面)</button>
+        </div>
+      </div>
+      <!-- 行 4：13 个战术项 (互斥可用) -->
+      <div class="matrix-row" id="cmdRow4">
+        <label class="row-label">四 · 战术项</label>
+        <div class="cmd-items-grid" id="cmdItemsGrid">
+          <!-- 基础 7 项 -->
+          <button class="cmd-item-btn" id="itemAtk" data-item="attack">进攻</button>
+          <button class="cmd-item-btn" id="itemAssault" data-item="assault">突击</button>
+          <button class="cmd-item-btn" id="itemMove" data-item="move">移动</button>
+          <button class="cmd-item-btn" id="itemRetreat" data-item="retreat">撤退</button>
+          <button class="cmd-item-btn" id="itemDef" data-item="defend">防御</button>
+          <button class="cmd-item-btn disabled" id="itemRecce" data-item="recce" disabled>侦察</button>
+          <button class="cmd-item-btn disabled" id="itemRally" data-item="rally" disabled>集合</button>
+          <!-- 高级 6 项 -->
+          <button class="cmd-item-btn disabled" id="itemSuppress" data-item="suppress" disabled>区域压制</button>
+          <button class="cmd-item-btn disabled" id="itemSector" data-item="sector" disabled>警戒扇区</button>
+          <button class="cmd-item-btn disabled" id="itemMedic" data-item="medic" disabled>战地救护</button>
+          <button class="cmd-item-btn disabled" id="itemBreach" data-item="breach" disabled>排雷与破障</button>
+          <button class="cmd-item-btn disabled" id="itemResupply" data-item="resupply" disabled>弹药补给与搜刮</button>
+          <button class="cmd-item-btn" id="itemWire" data-item="wire">架设与拉线</button>
+        </div>
+      </div>
+      <!-- 行 5：虚线 -->
+      <div class="cmd-divider-dashed"></div>
+      <!-- 行 6：交战规则开关 -->
+      <div class="matrix-row roe-row" id="cmdRow6">
+        <div class="roe-title">交战规则开关 (ROE)</div>
+        <div class="roe-groups">
+          <div class="btn-group roe-group" id="roeFireGroup">
+            <button class="sub-btn active" data-roe="free">自由开火</button>
+            <button class="sub-btn" data-roe="return">仅还击</button>
+            <button class="sub-btn" data-roe="hold">严禁开火</button>
+          </div>
+          <div class="btn-group roe-group" id="roeModeGroup" style="margin-top:4px">
+            <button class="sub-btn active" data-roemode="ammo">节约弹药模式</button>
+            <button class="sub-btn" data-roemode="formation">队形模式</button>
+            <button class="sub-btn" data-roemode="equip">装备模式</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-foot">
+        <button class="action-btn primary" id="btnConfirmCmd">生成指挥场 (下个16s生效)</button>
+      </div>
+    </div>
+
+    <!-- UI-03M4 军用通信设备手动调谐窗口 -->
+    <div class="cmd-subpanel hidden" id="panelComms" data-ui-id="UI-03M4">
+      <div class="comms-grid">
+        <div class="comms-ctrl-block">
+          <div class="section-title">频段与频率谐振微调</div>
+          <div class="btn-group" id="commsBandGroup">
+            <button class="sub-btn active" data-band="vhf">VHF 超短波 (视距)</button>
+            <button class="sub-btn" data-band="hf">HF 中短波 (山林绕射)</button>
+          </div>
+          <div class="row-control" style="margin-top:6px">
+            <input type="range" min="380" max="480" value="420" class="sub-slider" id="commsFreqSlider">
+            <span class="mono slider-val" id="commsFreqVal">42.0 MHz</span>
+          </div>
+        </div>
+
+        <div class="comms-ctrl-block">
+          <div class="section-title">发射功率档位</div>
+          <div class="btn-group" id="commsPowerGroup">
+            <button class="sub-btn" data-power="0">静默 (0W)</button>
+            <button class="sub-btn" data-power="1">低功 (1W)</button>
+            <button class="sub-btn active" data-power="5">额定 (5W)</button>
+            <button class="sub-btn" data-power="20">超载 (20W)</button>
+          </div>
+        </div>
+
+        <div class="comms-ctrl-block">
+          <div class="section-title">天线模式与定向方位角</div>
+          <div class="btn-group" id="commsAntennaGroup">
+            <button class="sub-btn active" data-ant="whip">行军鞭状</button>
+            <button class="sub-btn" data-ant="omni">驻止全向</button>
+            <button class="sub-btn" data-ant="dir">定向增益</button>
+          </div>
+          <div class="row-control" style="margin-top:6px">
+            <input type="range" min="0" max="360" value="90" class="sub-slider" id="commsAzimuthSlider">
+            <span class="mono slider-val" id="commsAzimuthVal">方位: 090°</span>
+          </div>
+        </div>
+
+        <div class="comms-ctrl-block">
+          <div class="section-title">有线电话交换回路</div>
+          <div class="wire-status-card" id="wireCard">
+            <span class="status-light" style="background:#5aa469"></span>
+            <span>回路通畅 · MSR 06 沿线 3.2km 接通</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="comms-readout-panel">
+        <div class="comms-metric">
+          <label>谐振匹配度</label>
+          <b class="mono" id="commsMatchVal">95%</b>
+        </div>
+        <div class="comms-metric">
+          <label>传导乘数 η</label>
+          <b class="mono" id="commsEtaVal">0.95</b>
+        </div>
+        <div class="comms-metric">
+          <label>有效指挥半径</label>
+          <b class="mono" id="commsRadiusVal">4.8 km</b>
+        </div>
+        <div class="comms-metric">
+          <label>下属重寻思惩罚</label>
+          <b class="mono" id="commsRethinkVal">0 步长 (正常)</b>
+        </div>
+      </div>
+
+      <div class="panel-foot">
+        <button class="action-btn primary" id="btnApplyComms">应用电台调谐参数</button>
+      </div>
     </div>
   </div>
-</section>
+</div>
 
 <dialog id="designDialog" data-ui-id="UI-10" aria-label="美术设计说明"><div class="dialog-kicker">GENTACTIX / ART DIRECTION STUDY 01</div><h2>印刷地图，精确指挥。</h2><p><strong>底图来自 SD2 的视觉方向</strong>：暖灰纸色、低饱和道路、印刷式森林和等高线。没有厚重木桌、做旧污渍或装饰性立体棋子。</p><p><strong>兵牌采用 APP-6 风格的符号语法</strong>：蓝色矩形为己方，红色菱形为敌方；框内表示兵种，框上表示梯队。此页是美术示意，并非完整的 APP-6 标准实现。</p><p><strong>信息组织借鉴 CMO</strong>：单位详情集中在左侧，图层收于右下角，比例尺固定在屏幕底边。火控、路线和情报按需叠加。红色小字 UI-ID 为评审定位标记，不属于战场情报。</p><div class="design-swatches" aria-label="纸张、石墨、友军蓝、敌军红、注记金色板"><i style="background:#ddd7bd"></i><i style="background:#1b2428;border:1px solid #475459"></i><i style="background:#688591"></i><i style="background:#a94f43"></i><i style="background:#c5aa70"></i></div><p style="font-size:11px">可操作：选择兵牌、切换图层、拖动与缩放地图、切换情报视图、播放示意时钟。地图、兵力、路径和火控均为虚构静态样例，不读取或修改正在重构的后端。</p><button class="dialog-close" id="closeDesign">返回作战地图</button></dialog>
 
@@ -231,15 +540,16 @@ for(const a of forestAreas){let d='';for(let i=0;i<=64;i++){const t=i/64*Math.PI
 for(const hill of [{x:427,y:251,rx:140,ry:95},{x:921,y:553,rx:146,ry:183},{x:151,y:722,rx:221,ry:138},{x:997,y:63,rx:179,ry:157},{x:423,y:878,rx:177,ry:121}]){for(let ring=1;ring<11;ring++){const factor=.23+ring*.18;let d='';for(let i=0;i<=100;i++){const a=i/100*Math.PI*2,n=1+.09*Math.sin(a*3+hill.x)+.05*Math.sin(a*7+ring*.14);d+=(i?'L':'M')+(hill.x+Math.cos(a)*hill.rx*factor*n).toFixed(1)+' '+(hill.y+Math.sin(a)*hill.ry*factor*n).toFixed(1);}svgNode('path',{d:d+'Z','stroke-width':ring%4===0?1.2:.65},$('contours'));}}
 for(const place of [{x:158,y:457,count:18},{x:535,y:346,count:22},{x:909,y:298,count:25},{x:397,y:702,count:15},{x:317,y:326,count:11}]){for(let i=0;i<place.count;i++){const x=place.x+(random()-.5)*74,y=place.y+(random()-.5)*44,w=3+random()*5,h=2+random()*3;svgNode('rect',{x,y,width:w,height:h,fill:'#777a67',opacity:.65,transform:`rotate(${random()*35-17} ${x} ${y})`},$('villages'));}}
 
-// 基础预设单位 (10 APP-6 战术兵牌)
+// 基础预设单位 (10 APP-6 战术兵牌，含工程装备账本)
+const DEFAULT_INVENTORY = ['mine', 'shovel', 'building_mat', 'explosive', 'clearance_kit', 'rangefinder', 'firstaid', 'supplies_bag', 'wire_cable'];
 let units=[
-{id:'u3',name:'第 3 步兵营',code:'3 / 91 INFANTRY',short:'3 / 91',type:'infantry',echelon:'II',x:455,y:505,strength:642,max:720,org:92,ammo:76,supply:88,terrain:'林地边缘',height:184,status:'待命 · 通信正常',order:'向河桥展开'},
-{id:'u1',name:'第 1 步兵营',code:'1 / 91 INFANTRY',short:'1 / 91',type:'infantry',echelon:'II',x:513,y:257,strength:681,max:720,org:96,ammo:85,supply:91,terrain:'北侧林间道路',height:176,status:'警戒 · 通信正常',order:'保持北翼警戒'},
-{id:'u2',name:'第 2 步兵营',code:'2 / 91 INFANTRY',short:'2 / 91',type:'infantry',echelon:'II',x:408,y:651,strength:608,max:720,org:85,ammo:82,supply:90,terrain:'道路交汇处',height:162,status:'集结 · 通信正常',order:'保持第二梯队'},
-{id:'hq',name:'第 91 团指挥部',code:'HQ / 91 REGIMENT',short:'HQ / 91',type:'hq',echelon:'III',x:246,y:553,strength:86,max:92,org:97,ammo:94,supply:95,terrain:'村落西侧',height:158,status:'指挥 · 通信正常',order:'协调第一梯队'},
-{id:'arty',name:'第 2 炮兵营',code:'2 / 31 ARTILLERY',short:'2 / 31 ART',type:'artillery',echelon:'II',x:257,y:726,strength:312,max:360,org:89,ammo:64,supply:78,terrain:'隐蔽炮阵地',height:170,status:'待命 · 火力可用',order:'准备渡口火力支援',support:true},
-{id:'recon',name:'师属侦察连',code:'RECON / 31 DIV.',short:'31 RECON',type:'recon',echelon:'I',x:638,y:277,strength:94,max:120,org:90,ammo:79,supply:80,terrain:'河岸观察所',height:154,status:'观察 · 通信正常',order:'监视河流东岸',support:true},
-{id:'armor',name:'独立坦克连',code:'ARMOR / ATTACHED',short:'7 ARMOR',type:'armor',echelon:'I',x:245,y:380,strength:57,max:65,org:94,ammo:87,supply:85,terrain:'西侧集结区',height:165,status:'待机 · 通信正常',order:'保持机动预备队',support:true},
+{id:'u3',name:'第 3 步兵营',code:'3 / 91 INFANTRY',short:'3 / 91',type:'infantry',echelon:'II',x:455,y:505,strength:642,max:720,org:92,ammo:76,supply:88,terrain:'林地边缘',height:184,status:'待命 · 通信正常',order:'向河桥展开',inventory:[...DEFAULT_INVENTORY]},
+{id:'u1',name:'第 1 步兵营',code:'1 / 91 INFANTRY',short:'1 / 91',type:'infantry',echelon:'II',x:513,y:257,strength:681,max:720,org:96,ammo:85,supply:91,terrain:'北侧林间道路',height:176,status:'警戒 · 通信正常',order:'保持北翼警戒',inventory:[...DEFAULT_INVENTORY]},
+{id:'u2',name:'第 2 步兵营',code:'2 / 91 INFANTRY',short:'2 / 91',type:'infantry',echelon:'II',x:408,y:651,strength:608,max:720,org:85,ammo:82,supply:90,terrain:'道路交汇处',height:162,status:'集结 · 通信正常',order:'保持第二梯队',inventory:[...DEFAULT_INVENTORY]},
+{id:'hq',name:'第 91 团指挥部',code:'HQ / 91 REGIMENT',short:'HQ / 91',type:'hq',echelon:'III',x:246,y:553,strength:86,max:92,org:97,ammo:94,supply:95,terrain:'村落西侧',height:158,status:'指挥 · 通信正常',order:'协调第一梯队',inventory:[...DEFAULT_INVENTORY]},
+{id:'arty',name:'第 2 炮兵营',code:'2 / 31 ARTILLERY',short:'2 / 31 ART',type:'artillery',echelon:'II',x:257,y:726,strength:312,max:360,org:89,ammo:64,supply:78,terrain:'隐蔽炮阵地',height:170,status:'待命 · 火力可用',order:'准备渡口火力支援',support:true,inventory:[...DEFAULT_INVENTORY]},
+{id:'recon',name:'师属侦察连',code:'RECON / 31 DIV.',short:'31 RECON',type:'recon',echelon:'I',x:638,y:277,strength:94,max:120,org:90,ammo:79,supply:80,terrain:'河岸观察所',height:154,status:'观察 · 通信正常',order:'监视河流东岸',support:true,inventory:[...DEFAULT_INVENTORY]},
+{id:'armor',name:'独立坦克连',code:'ARMOR / ATTACHED',short:'7 ARMOR',type:'armor',echelon:'I',x:245,y:380,strength:57,max:65,org:94,ammo:87,supply:85,terrain:'西侧集结区',height:165,status:'待机 · 通信正常',order:'保持机动预备队',support:true,inventory:[...DEFAULT_INVENTORY]},
 {id:'e1',name:'敌步兵接触',code:'CONTACT / E-017',short:'ENY 017',type:'infantry',echelon:'II ?',x:791,y:286,enemy:true,terrain:'白桦镇西侧',height:169,status:'推定位置 · 3 分钟前',order:'持续观察，不确定'},
 {id:'e2',name:'敌装甲接触',code:'CONTACT / E-023',short:'ENY 023',type:'armor',echelon:'I ?',x:887,y:464,enemy:true,terrain:'高地东北坡',height:204,status:'未经确认 · 8 分钟前',order:'核实兵种与规模'},
 {id:'e3',name:'敌步兵接触',code:'CONTACT / E-031',short:'ENY 031',type:'infantry',echelon:'II ?',x:887,y:706,enemy:true,terrain:'河岸林地',height:158,status:'推定位置 · 5 分钟前',order:'监视南侧通道'}
@@ -259,6 +569,7 @@ function renderUnitsLayer(){
     const c=svgNode('text',{x:30,y:77,'text-anchor':'middle',class:'unit-code'},g);
     c.textContent=u.enemy?'推定 · '+u.echelon:(u.type==='hq'?'团指挥所':u.strength+' PERS');
     g.addEventListener('click',()=>selectUnit(u.id,true));
+    g.addEventListener('contextmenu',e=>{e.preventDefault();selectUnit(u.id,true);openCmdBox('panelTask');});
     g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectUnit(u.id,true);}});
   }
 }
@@ -350,7 +661,7 @@ function updateScale(){
 
 function applyView(){
   $('mapScene').setAttribute('transform',`translate(${600+pan.x} ${440+pan.y}) scale(${zoom}) translate(-600 -440)`);
-  $('zoomReadout').textContent=Math.round(zoom*100)+'%';
+  if($('zoomReadout'))$('zoomReadout').textContent=Math.round(zoom*100)+'%';
   const alpha=Math.max(0,Math.min(1,(zoom-.7)/.9));
   $('mapTitle').style.setProperty('--title-alpha',alpha);
   $('mapTitle').style.setProperty('--title-offset',(1-alpha)*6+'px');
@@ -372,9 +683,9 @@ function animateZoom(target){
 }
 
 function zoomBy(amount){animateZoom(zoomTarget*amount);}
-$('zoomIn').addEventListener('click',()=>zoomBy(1.2));
-$('zoomOut').addEventListener('click',()=>zoomBy(1/1.2));
-$('resetView').addEventListener('click',()=>{pan={x:0,y:0};animateZoom(1);});
+if($('zoomIn'))$('zoomIn').addEventListener('click',()=>zoomBy(1.2));
+if($('zoomOut'))$('zoomOut').addEventListener('click',()=>zoomBy(1/1.2));
+if($('resetView'))$('resetView').addEventListener('click',()=>{pan={x:0,y:0};animateZoom(1);});
 reducedMotion.addEventListener('change',()=>{if(reducedMotion.matches)animateZoom(zoomTarget);});
 new ResizeObserver(applyView).observe($('viewport'));
 
@@ -435,65 +746,39 @@ function setInspector(on){
   if(narrowScreen.matches){if(on)$('closeInspector').focus();else if(hadFocus)$('openInspector').focus();}
 }
 narrowScreen.addEventListener('change',syncInspector);
-$('openInspector').addEventListener('click',()=>setInspector(!$('inspector').classList.contains('mobile-open')));
-$('closeInspector').addEventListener('click',()=>setInspector(false));
+if($('openInspector'))$('openInspector').addEventListener('click',()=>setInspector(!$('inspector').classList.contains('mobile-open')));
+if($('closeInspector'))$('closeInspector').addEventListener('click',()=>setInspector(false));
 
-// 视图切换与四类修改抽屉面板互斥控制
-const ALL_DRAWERS = ['orbatDrawer', 'actionQueuePanel', 'eventQueuePanel', 'commandFieldPanel'];
-function closeAllDrawers(){
-  ALL_DRAWERS.forEach(id=>{
-    const el=$(id);
-    if(el)el.classList.remove('open');
+// UI-03 自由拖拽卡片系统
+let isCardDragging=false,cardDragStart={x:0,y:0,left:20,top:14};
+const cardHandle=$('cardHandle-inspector')||$('inspector');
+if(cardHandle){
+  cardHandle.addEventListener('mousedown',e=>{
+    if(e.target.closest('button,a,input'))return;
+    isCardDragging=true;
+    const r=$('inspector').getBoundingClientRect();
+    cardDragStart={x:e.clientX,y:e.clientY,left:r.left,top:r.top};
+    document.body.style.userSelect='none';
   });
-  if($('orbatToggle'))$('orbatToggle').setAttribute('aria-pressed','false');
-  if($('actionQueueToggle'))$('actionQueueToggle').setAttribute('aria-pressed','false');
-  if($('eventQueueToggle'))$('eventQueueToggle').setAttribute('aria-pressed','false');
-  if($('commandFieldToggle'))$('commandFieldToggle').setAttribute('aria-pressed','false');
+  window.addEventListener('mousemove',e=>{
+    if(!isCardDragging)return;
+    const dx=e.clientX-cardDragStart.x,dy=e.clientY-cardDragStart.y;
+    $('inspector').style.left=Math.max(0,cardDragStart.left+dx)+'px';
+    $('inspector').style.top=Math.max(0,cardDragStart.top+dy)+'px';
+  });
+  window.addEventListener('mouseup',()=>{if(isCardDragging){isCardDragging=false;document.body.style.userSelect='';}});
 }
-function setDrawerOpen(id, on){
-  const el=$(id);
-  if(!el)return;
-  if(on){
-    closeAllDrawers();
-    el.classList.add('open');
-    if(id==='orbatDrawer'){
-      if($('orbatToggle'))$('orbatToggle').setAttribute('aria-pressed','true');
-      buildOrbatList();
-    }else if(id==='actionQueuePanel'){
-      if($('actionQueueToggle'))$('actionQueueToggle').setAttribute('aria-pressed','true');
-    }else if(id==='eventQueuePanel'){
-      if($('eventQueueToggle'))$('eventQueueToggle').setAttribute('aria-pressed','true');
-    }else if(id==='commandFieldPanel'){
-      if($('commandFieldToggle'))$('commandFieldToggle').setAttribute('aria-pressed','true');
-    }
-  }else{
-    el.classList.remove('open');
-    if(id==='orbatDrawer'&&$('orbatToggle'))$('orbatToggle').setAttribute('aria-pressed','false');
-    else if(id==='actionQueuePanel'&&$('actionQueueToggle'))$('actionQueueToggle').setAttribute('aria-pressed','false');
-    else if(id==='eventQueuePanel'&&$('eventQueueToggle'))$('eventQueueToggle').setAttribute('aria-pressed','false');
-    else if(id==='commandFieldPanel'&&$('commandFieldToggle'))$('commandFieldToggle').setAttribute('aria-pressed','false');
-  }
-}
-function toggleDrawer(id){
-  const el=$(id);
-  if(!el)return;
-  setDrawerOpen(id,!el.classList.contains('open'));
-}
+
+// ORBAT 编制母树抽屉控制
 function setOrbatOpen(on){
-  setDrawerOpen('orbatDrawer',on);
+  const el=$('orbatDrawer');
+  if(!el)return;
+  el.classList.toggle('open',on);
+  if($('orbatToggle'))$('orbatToggle').setAttribute('aria-pressed',String(on));
+  if(on)buildOrbatList();
 }
-
-if($('orbatToggle'))$('orbatToggle').addEventListener('click',()=>toggleDrawer('orbatDrawer'));
-if($('closeOrbat'))$('closeOrbat').addEventListener('click',()=>setDrawerOpen('orbatDrawer',false));
-
-if($('actionQueueToggle'))$('actionQueueToggle').addEventListener('click',()=>toggleDrawer('actionQueuePanel'));
-if($('closeActionQueue'))$('closeActionQueue').addEventListener('click',()=>setDrawerOpen('actionQueuePanel',false));
-
-if($('eventQueueToggle'))$('eventQueueToggle').addEventListener('click',()=>toggleDrawer('eventQueuePanel'));
-if($('closeEventQueue'))$('closeEventQueue').addEventListener('click',()=>setDrawerOpen('eventQueuePanel',false));
-
-if($('commandFieldToggle'))$('commandFieldToggle').addEventListener('click',()=>toggleDrawer('commandFieldPanel'));
-if($('closeCommandField'))$('closeCommandField').addEventListener('click',()=>setDrawerOpen('commandFieldPanel',false));
+if($('orbatToggle'))$('orbatToggle').addEventListener('click',()=>setOrbatOpen(!$('orbatDrawer').classList.contains('open')));
+if($('closeOrbat'))$('closeOrbat').addEventListener('click',()=>setOrbatOpen(false));
 
 function buildOrbatList(){
   const list=$('orbatTreeList');
@@ -511,6 +796,82 @@ function buildOrbatList(){
     });
     list.appendChild(item);
   });
+}
+
+// UI-03M 综合指令选项框与子面板控制
+const cmdBox=$('integratedCmdBox');
+function openCmdBox(subpanelId='panelTask'){
+  if(!cmdBox)return;
+  cmdBox.classList.remove('hidden');
+  cmdBox.classList.add('open');
+  if(selected){
+    if($('cmdBoxTargetUnit'))$('cmdBoxTargetUnit').textContent=`${selected.id.toUpperCase()} (${selected.name})`;
+    syncEquipmentGating();
+  }
+  switchCmdTab(subpanelId);
+  notify('已呼出综合指令选项框 (UI-03M)');
+}
+function closeCmdBox(){
+  if(!cmdBox)return;
+  cmdBox.classList.add('hidden');
+  cmdBox.classList.remove('open');
+}
+if($('closeCmdBox'))$('closeCmdBox').addEventListener('click',closeCmdBox);
+if($('btnOpenCmdBox'))$('btnOpenCmdBox').addEventListener('click',()=>openCmdBox('panelTask'));
+
+window.addEventListener('keydown',e=>{
+  if(e.shiftKey&&(e.key==='A'||e.key==='a')){
+    e.preventDefault();
+    openCmdBox('panelTask');
+  }
+});
+
+// 顶栏抽屉按钮无缝重定向到 UI-03M 对应 Tab
+if($('actionQueueToggle'))$('actionQueueToggle').addEventListener('click',()=>openCmdBox('panelTask'));
+if($('eventQueueToggle'))$('eventQueueToggle').addEventListener('click',()=>openCmdBox('panelEvent'));
+if($('commandFieldToggle'))$('commandFieldToggle').addEventListener('click',()=>openCmdBox('panelCmd'));
+
+function switchCmdTab(targetPanelId){
+  document.querySelectorAll('.cmd-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.target===targetPanelId));
+  document.querySelectorAll('.cmd-subpanel').forEach(p=>p.classList.toggle('hidden',p.id!==targetPanelId));
+}
+document.querySelectorAll('.cmd-tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>switchCmdTab(btn.dataset.target));
+});
+
+// 统一队列系统
+let unifiedQueue=[];
+function renderUnifiedQueue(){
+  const container=$('unifiedQueueList');
+  if(!container)return;
+  if(unifiedQueue.length===0){
+    container.innerHTML='<span class="queue-empty-text mono muted">暂无计划任务或事件</span>';
+    return;
+  }
+  container.innerHTML=unifiedQueue.map(item=>`
+    <span class="queue-chip mono">#${item.seq} ${item.title} <small style="color:#dfc78d">@#${item.seq}</small></span>
+  `).join('');
+}
+if($('btnClearUnifiedQueue')){
+  $('btnClearUnifiedQueue').addEventListener('click',()=>{
+    stagedOpsCount=Math.max(0,stagedOpsCount-unifiedQueue.length);
+    unifiedQueue=[];
+    stagedActions=[];
+    stagedEvents=[];
+    renderUnifiedQueue();
+    updatePulseStaging();
+    $('virtualInstancesLayer').innerHTML='';
+    notify('已清空统一规划队列');
+  });
+}
+
+function addVirtualInstance(x,y,label){
+  const layer=$('virtualInstancesLayer');
+  if(!layer)return;
+  const g=svgNode('g',{class:'virtual-instance',transform:`translate(${x} ${y})`},layer);
+  svgNode('rect',{x:-25,y:-15,width:50,height:30,fill:'#4c687522',stroke:'#c5aa70','stroke-width':'1.2','stroke-dasharray':'3 3'},g);
+  const t=svgNode('text',{x:0,y:4,'text-anchor':'middle',fill:'#e6dab8',font:'9px Consolas, monospace'},g);
+  t.textContent=label;
 }
 
 // -----------------------------------------------------------------------------
@@ -552,78 +913,302 @@ function updatePulseStaging(){
   });
 });
 
-// 第一类修改 · 计划行动任务队列 (UI-15)
-['btnActionMove','btnActionFire','btnActionConceal','btnActionStop','btnActionRetreat'].forEach(btnId=>{
-  const btn=$(btnId);
-  if(!btn)return;
-  btn.addEventListener('click',()=>{
-    stagedOpsCount++;
-    const actionName=btn.textContent.replace('排入','');
-    const uName=selected?selected.name:'单位';
-    const uId=selected?selected.id:'u3';
-    stagedActions.push({unit_id:uId,action:actionName});
-    updatePulseStaging();
-    const display=$('actionQueueDisplay');
-    if(display)display.textContent=`已排入 ${stagedActions.length} 项行动：最新 [${actionName} -> ${uName}]`;
-    notify(`行动队列已追加：[${uName}] ${actionName}`);
-  });
-});
-if($('btnClearAction')){
-  $('btnClearAction').addEventListener('click',()=>{
-    stagedOpsCount=Math.max(0,stagedOpsCount-stagedActions.length);
-    stagedActions=[];
-    updatePulseStaging();
-    const display=$('actionQueueDisplay');
-    if(display)display.textContent='暂无计划行动任务';
-    notify('已清空行动队列暂存');
+// -----------------------------------------------------------------------------
+// UI-03M1 任务队列四行级联状态机
+// -----------------------------------------------------------------------------
+let currentTaskAction='move',currentTaskMode='fast';
+function updateTaskMatrixUI(){
+  const modeGroup=$('taskModeGroup');
+  const row3=$('taskRow3'),row3Label=$('taskRow3Label');
+  const slider=$('taskParamSlider'),valText=$('taskParamVal');
+  const r1=$('taskReadout1'),r2=$('taskReadout2'),r3=$('taskReadout3');
+  if(!modeGroup)return;
+
+  if(currentTaskAction==='move'){
+    modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='fast'?'active':''}" data-mode="fast">快速</button><button class="sub-btn ${currentTaskMode==='normal'?'active':''}" data-mode="normal">正常</button><button class="sub-btn ${currentTaskMode==='stealth'?'active':''}" data-mode="stealth">隐蔽</button>`;
+    if(row3)row3.style.display='flex';
+    if(row3Label)row3Label.textContent='三 · 约束';
+    if(slider){slider.min=0;slider.max=100;slider.value=80;}
+    if(valText)valText.textContent='0.80 (直线偏好)';
+    if(r1)r1.textContent='速度: '+(currentTaskMode==='fast'?'5.6 m/s':(currentTaskMode==='stealth'?'2.2 m/s':'4.0 m/s'));
+    if(r2)r2.textContent='ETA: ~48 s';
+    if(r3)r3.textContent='体能/组织度: -4%';
+  }else if(currentTaskAction==='fire'){
+    modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='fast'?'active':''}" data-mode="fast">快速</button><button class="sub-btn ${currentTaskMode==='normal'?'active':''}" data-mode="normal">正常</button><button class="sub-btn ${currentTaskMode==='accurate'?'active':''}" data-mode="accurate">精准</button>`;
+    if(row3)row3.style.display='flex';
+    if(row3Label)row3Label.textContent='三 · 轮数';
+    if(slider){slider.min=1;slider.max=10;slider.value=3;}
+    if(valText)valText.textContent='3 轮 (持续压制)';
+    if(r1)r1.textContent='每轮耗时: 16 s';
+    if(r2)r2.textContent='总射击耗时: 48 s';
+    if(r3)r3.textContent='预估弹药消耗: 36 发';
+  }else if(currentTaskAction==='stop'){
+    modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='prone'?'active':''}" data-mode="prone">趴下</button><button class="sub-btn ${currentTaskMode==='cover'?'active':''}" data-mode="cover">掩体</button><button class="sub-btn ${currentTaskMode==='hold'?'active':''}" data-mode="hold">原地不动</button>`;
+    if(row3)row3.style.display='flex';
+    if(row3Label)row3Label.textContent='三 · 时间';
+    if(slider){slider.min=16;slider.max=320;slider.step=16;slider.value=32;}
+    if(valText)valText.textContent='32 秒 (2步长)';
+    if(r1)r1.textContent='掩体减伤: +40%';
+    if(r2)r2.textContent='隐蔽加成: +30%';
+    if(r3)r3.textContent='预估组织度恢复: +8%';
+  }else if(currentTaskAction==='retreat'){
+    modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='orderly'?'active':''}" data-mode="orderly">有序撤退</button><button class="sub-btn ${currentTaskMode==='flee'?'active':''}" data-mode="flee">直接跑路</button>`;
+    if(currentTaskMode==='flee'){
+      // 铁律：选 直接跑路 时隐藏第三行，自治逃逸不可控方向！
+      if(row3)row3.style.display='none';
+      if(r1)r1.textContent='撤退速度: 6.8 m/s';
+      if(r2)r2.textContent='自治态: I/G场无序逃逸';
+      if(r3)r3.textContent='代价: 丧失战场控制权';
+    }else{
+      if(row3)row3.style.display='flex';
+      if(row3Label)row3Label.textContent='三 · 抛弃';
+      if(valText)valText.textContent='抛弃重武器';
+      if(r1)r1.textContent='撤退速度: 4.8 m/s';
+      if(r2)r2.textContent='ETA: ~64 s';
+      if(r3)r3.textContent='交替掩护后撤';
+    }
+  }
+
+  modeGroup.querySelectorAll('.sub-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      currentTaskMode=btn.dataset.mode;
+      updateTaskMatrixUI();
+    });
   });
 }
 
-// 第二类修改 · 计划事件队列 (UI-16)
-['btnEventMine','btnEventTrench','btnEventBuild','btnEventDemolish','btnEventRadio','btnEventRangefind'].forEach(btnId=>{
-  const btn=$(btnId);
+['btnTaskMove','btnTaskFire','btnTaskStop','btnTaskRetreat'].forEach(id=>{
+  const btn=$(id);
   if(!btn)return;
   btn.addEventListener('click',()=>{
-    stagedOpsCount++;
-    const evName=btn.textContent;
-    const uId=selected?selected.id:'u3';
-    stagedEvents.push({unit_id:uId,event:evName});
-    updatePulseStaging();
-    const display=$('eventQueueDisplay');
-    if(display)display.textContent=`已排入 ${stagedEvents.length} 项事件：最新 [${evName}]`;
-    notify(`计划事件已排入：${evName}`);
+    document.querySelectorAll('#taskRow1 .sub-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTaskAction=btn.dataset.action;
+    currentTaskMode=currentTaskAction==='retreat'?'orderly':'fast';
+    updateTaskMatrixUI();
   });
 });
 
-// 第四类修改 · 指挥安排与场绘制 (UI-17)
-['btnFieldAo','btnFieldAttack','btnFieldMove','btnFieldDeploy'].forEach(btnId=>{
-  const btn=$(btnId);
-  if(!btn)return;
+if($('taskParamSlider')){
+  $('taskParamSlider').addEventListener('input',e=>{
+    if(currentTaskAction==='move'){
+      $('taskParamVal').textContent=(e.target.value/100).toFixed(2)+(e.target.value>80?' (直线偏好)':' (避障偏好)');
+    }else if(currentTaskAction==='fire'){
+      $('taskParamVal').textContent=e.target.value>=10?'MAX (持续压制直至打光)':`${e.target.value} 轮射击`;
+    }else if(currentTaskAction==='stop'){
+      $('taskParamVal').textContent=`${e.target.value} 秒 (${Math.round(e.target.value/16)}步长)`;
+    }
+  });
+}
+
+function commitTaskToQueue(){
+  stagedOpsCount++;
+  const seq=unifiedQueue.length+1;
+  const taskItem={
+    seq,
+    type:'task',
+    action:currentTaskAction,
+    mode:currentTaskMode,
+    title:`${currentTaskAction==='move'?'移动':(currentTaskAction==='fire'?'射击':(currentTaskAction==='stop'?'停止':'撤退'))} (${currentTaskMode})`
+  };
+  unifiedQueue.push(taskItem);
+  stagedActions.push({unit_id:selected?selected.id:'u3',action:taskItem.title});
+  renderUnifiedQueue();
+  updatePulseStaging();
+  const targetX=(selected?selected.x:455)+60*seq;
+  const targetY=(selected?selected.y:505)-30*seq;
+  addVirtualInstance(targetX,targetY,`@#${seq}`);
+  notify(`任务已排入队列：#${seq} ${taskItem.title}，已生成 @#${seq} 虚拟实例`);
+}
+if($('btnConfirmTask'))$('btnConfirmTask').addEventListener('click',commitTaskToQueue);
+
+// -----------------------------------------------------------------------------
+// UI-03M2 九大事件宏与装备门控状态机
+// -----------------------------------------------------------------------------
+let currentEvent='mine';
+function syncEquipmentGating(){
+  const inv=(selected&&selected.inventory)?selected.inventory:['mine','shovel','building_mat','explosive','clearance_kit','rangefinder','firstaid','supplies_bag','wire_cable'];
+  document.querySelectorAll('#eventMacroGroup .sub-btn').forEach(btn=>{
+    const req=btn.dataset.req;
+    btn.style.display=inv.includes(req)?'inline-block':'none';
+  });
+}
+
+function updateEventMatrixUI(){
+  const subtypeGroup=$('eventSubtypeGroup');
+  const row3Label=$('eventRow3Label');
+  const slider=$('eventParamSlider'),valText=$('eventParamVal');
+  const r1=$('evReadout1'),r2=$('evReadout2'),r3=$('evReadout3');
+  if(!subtypeGroup)return;
+
+  if(currentEvent==='mine'){
+    subtypeGroup.innerHTML=`<button class="sub-btn active" data-sub="tm46">TM-46 反坦克地雷</button><button class="sub-btn" data-sub="pmd6">PMD-6 杀伤地雷</button>`;
+    if(row3Label)row3Label.textContent='三 · 密度';
+    if(slider){slider.min=1;slider.max=10;slider.value=4;}
+    if(valText)valText.textContent='4 枚/10m';
+    if(r1)r1.textContent='预估器材消耗: 16 枚';
+    if(r2)r2.textContent='耗时: ~128 s';
+    if(r3)r3.textContent='生成逐颗地雷虚拟实例并施工';
+  }else if(currentEvent==='trench'){
+    subtypeGroup.innerHTML=`<button class="sub-btn active" data-sub="foxhole">散兵坑</button><button class="sub-btn" data-sub="trench">堑壕段</button>`;
+    if(row3Label)row3Label.textContent='三 · 深度/数量';
+    if(slider){slider.min=1;slider.max=8;slider.value=3;}
+    if(valText)valText.textContent='3 处散兵坑';
+    if(r1)r1.textContent='预估组织度消耗: -12%';
+    if(r2)r2.textContent='耗时: ~96 s';
+    if(r3)r3.textContent='生成虚拟掩体实例，单位沿线挖掘';
+  }else if(currentEvent==='demolish'){
+    subtypeGroup.innerHTML=`<button class="sub-btn active" data-sub="timed">定时引爆</button><button class="sub-btn" data-sub="switch">起爆开关 (需电缆)</button>`;
+    if(row3Label)row3Label.textContent='三 · 当量';
+    if(slider){slider.min=5;slider.max=50;slider.value=25;}
+    if(valText)valText.textContent='25 kg 梯恩梯';
+    if(r1)r1.textContent='杀伤半径: 18 m';
+    if(r2)r2.textContent='耗时: ~48 s';
+    if(r3)r3.textContent='强制接撤离任务，在撤离点生成起爆开关';
+  }else{
+    subtypeGroup.innerHTML=`<button class="sub-btn active" data-sub="standard">标准作业</button>`;
+    if(row3Label)row3Label.textContent='三 · 规模';
+    if(slider){slider.min=1;slider.max=5;slider.value=2;}
+    if(valText)valText.textContent='2 级规模';
+    if(r1)r1.textContent='物资消耗: 正常';
+    if(r2)r2.textContent='耗时: ~64 s';
+    if(r3)r3.textContent='生成虚拟施工点，单位边走边干';
+  }
+}
+
+document.querySelectorAll('#eventMacroGroup .sub-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    stagedOpsCount++;
-    const fieldOp=btn.textContent;
-    stagedFieldDirectives[btnId]=true;
-    updatePulseStaging();
-    notify(`指挥安排已设定：${fieldOp}`);
+    document.querySelectorAll('#eventMacroGroup .sub-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentEvent=btn.dataset.event;
+    updateEventMatrixUI();
   });
 });
-let gravOn=false,repulseOn=false;
-if($('toggleGravField')){
-  $('toggleGravField').addEventListener('click',()=>{
-    gravOn=!gravOn;
-    $('toggleGravField').classList.toggle('active',gravOn);
-    $('commandFieldDisplay').textContent=`场状态：引力场 [${gravOn?'开':'关'}] · 斥力场 [${repulseOn?'开':'关'}]`;
-    notify(`任务引力场 G：${gravOn?'已开启可视化':'已关闭'}`);
+
+function commitEventToQueue(){
+  stagedOpsCount++;
+  const seq=unifiedQueue.length+1;
+  const evItem={
+    seq,
+    type:'event',
+    event:currentEvent,
+    title:`宏:${currentEvent}`
+  };
+  unifiedQueue.push(evItem);
+  stagedEvents.push({unit_id:selected?selected.id:'u3',event:evItem.title});
+  renderUnifiedQueue();
+  updatePulseStaging();
+  const originX=(selected?selected.x:455)+30,originY=(selected?selected.y:505)+20;
+  for(let k=1;k<=3;k++){
+    addVirtualInstance(originX+k*20,originY+k*10,`${currentEvent}-${k}`);
+  }
+  notify(`事件已排入队列：#${seq} ${evItem.title}，已生成施工虚拟实例`);
+}
+if($('btnConfirmEvent'))$('btnConfirmEvent').addEventListener('click',commitEventToQueue);
+
+// -----------------------------------------------------------------------------
+// UI-03M3 六行指挥面板与 6/7 严格互斥逻辑
+// -----------------------------------------------------------------------------
+let cmdMode='order';
+const ORDER_ALLOWED=['attack','assault','move','retreat','defend','wire'];
+const AO_ALLOWED=['recce','rally','suppress','sector','medic','breach','resupply'];
+
+function updateCmdExclusivity(){
+  document.querySelectorAll('#cmdItemsGrid .cmd-item-btn').forEach(btn=>{
+    const item=btn.dataset.item;
+    const isAllowed=cmdMode==='order'?ORDER_ALLOWED.includes(item):AO_ALLOWED.includes(item);
+    btn.disabled=!isAllowed;
+    btn.classList.toggle('disabled',!isAllowed);
   });
 }
-if($('toggleRepulseField')){
-  $('toggleRepulseField').addEventListener('click',()=>{
-    repulseOn=!repulseOn;
-    $('toggleRepulseField').classList.toggle('active',repulseOn);
-    $('commandFieldDisplay').textContent=`场状态：引力场 [${gravOn?'开':'关'}] · 斥力场 [${repulseOn?'开':'关'}]`;
-    notify(`信息斥力场 I：${repulseOn?'已开启可视化':'已关闭'}`);
+
+if($('btnModeOrder')){
+  $('btnModeOrder').addEventListener('click',()=>{
+    cmdMode='order';
+    $('btnModeOrder').classList.add('active');
+    if($('btnModeAo'))$('btnModeAo').classList.remove('active');
+    updateCmdExclusivity();
+    notify('切换至 [指令 (画线)] 模式：仅可用进攻/突击/移动/撤退/防御/架设');
   });
 }
+if($('btnModeAo')){
+  $('btnModeAo').addEventListener('click',()=>{
+    cmdMode='ao';
+    $('btnModeAo').classList.add('active');
+    if($('btnModeOrder'))$('btnModeOrder').classList.remove('active');
+    updateCmdExclusivity();
+    notify('切换至 [AO (画面)] 模式：仅可用侦察/集合/压制/警戒/救护/破障/补给');
+  });
+}
+
+document.querySelectorAll('#cmdItemsGrid .cmd-item-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(btn.disabled)return;
+    document.querySelectorAll('#cmdItemsGrid .cmd-item-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+if($('btnConfirmCmd')){
+  $('btnConfirmCmd').addEventListener('click',()=>{
+    stagedOpsCount++;
+    const activeItem=document.querySelector('#cmdItemsGrid .cmd-item-btn.active');
+    const name=activeItem?activeItem.textContent:'态势场';
+    stagedFieldDirectives[name]=true;
+    updatePulseStaging();
+    notify(`已生成欧拉势场 [${cmdMode.toUpperCase()}: ${name}]，将于下个 16s 步长生效`);
+  });
+}
+
+// -----------------------------------------------------------------------------
+// UI-03M4 军用通信设备手动调谐
+// -----------------------------------------------------------------------------
+function updateCommsMetrics(){
+  const slider=$('commsFreqSlider');
+  const freq=parseInt(slider?slider.value:420);
+  if($('commsFreqVal'))$('commsFreqVal').textContent=(freq/10).toFixed(1)+' MHz';
+  const delta=Math.abs(freq-420);
+  const match=Math.max(20,100-delta*2);
+  const eta=(match/100).toFixed(2);
+  const radius=(4.8*(match/100)).toFixed(1);
+  const rethink=match<70?Math.ceil((100-match)/10):0;
+  if($('commsMatchVal'))$('commsMatchVal').textContent=match+'%';
+  if($('commsEtaVal'))$('commsEtaVal').textContent=eta;
+  if($('commsRadiusVal'))$('commsRadiusVal').textContent=radius+' km';
+  if($('commsRethinkVal'))$('commsRethinkVal').textContent=rethink>0?`${rethink} 步长 (迟滞重寻思)`:'0 步长 (正常)';
+}
+if($('commsFreqSlider'))$('commsFreqSlider').addEventListener('input',updateCommsMetrics);
+if($('commsAzimuthSlider')){
+  $('commsAzimuthSlider').addEventListener('input',e=>{
+    if($('commsAzimuthVal'))$('commsAzimuthVal').textContent=`方位: ${String(e.target.value).padStart(3,'0')}°`;
+  });
+}
+if($('btnApplyComms')){
+  $('btnApplyComms').addEventListener('click',()=>{
+    updateCommsMetrics();
+    notify('军用电台调谐参数已应用，场传导乘数 η 已更新');
+  });
+}
+
+// -----------------------------------------------------------------------------
+// UI-09A 绘图工具栏交互
+// -----------------------------------------------------------------------------
+document.querySelectorAll('#drawToolsBar .draw-tool-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const wasActive=btn.classList.contains('active');
+    document.querySelectorAll('#drawToolsBar .draw-tool-btn').forEach(b=>b.classList.remove('active'));
+    if(!wasActive){
+      btn.classList.add('active');
+      notify(`已激活图台工具：${btn.title}`);
+    }
+  });
+});
+
+// 初始化子面板状态
+updateTaskMatrixUI();
+updateEventMatrixUI();
+updateCmdExclusivity();
+updateCommsMetrics();
 
 document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b===btn));
@@ -632,17 +1217,18 @@ document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('clic
   if(view==='orders'){
     if(selected.enemy)selectUnit('u3');
     setLayer('routes',true);
-    setDrawerOpen('actionQueuePanel',true);
+    openCmdBox('panelTask');
     notify('行动规划视图：金色虚线表示拟定路线，已呼出计划行动任务队列。');
   }else if(view==='intelligence'){
-    setDrawerOpen('orbatDrawer',true);
+    setOrbatOpen(true);
     notify('情报分析视图：已展开德军战术编制母树（ORBAT）。');
   }else{
-    closeAllDrawers();
+    closeCmdBox();
+    setOrbatOpen(false);
   }
 }));
 
-$('planButton').addEventListener('click',()=>{
+if($('planButton'))$('planButton').addEventListener('click',()=>{
   if(selected.enemy){
     pan={x:(600-selected.x)*zoom,y:(440-selected.y)*zoom};
     applyView();
@@ -655,7 +1241,7 @@ $('planButton').addEventListener('click',()=>{
 });
 
 // 火控视线分析与开火指令
-$('fireButton').addEventListener('click',async()=>{
+if($('fireButton'))$('fireButton').addEventListener('click',async()=>{
   setLayer('fire',!layerState.fire);
   updateAnalysis();
   if(layerState.fire){
@@ -672,7 +1258,7 @@ $('fireButton').addEventListener('click',async()=>{
 const SPEED_STEPS = [1, 2, 4, 8, 16];
 let speedIdx = 0;
 speed = SPEED_STEPS[speedIdx];
-$('speed').addEventListener('click',()=>{
+if($('speed'))$('speed').addEventListener('click',()=>{
   speedIdx = (speedIdx + 1) % SPEED_STEPS.length;
   speed = SPEED_STEPS[speedIdx];
   $('speed').textContent = speed + '×';
@@ -715,7 +1301,7 @@ setInterval(()=>{
 }, 50);
 
 // 回合推进控制 (Play / Pause)
-$('play').addEventListener('click',()=>{
+if($('play'))$('play').addEventListener('click',()=>{
   running=!running;
   $('play').setAttribute('aria-pressed',String(running));
   $('playLabel').textContent=running?'暂停':'预演';
@@ -726,9 +1312,9 @@ $('play').addEventListener('click',()=>{
   }
 });
 
-$('designHelp').addEventListener('click',()=>$('designDialog').showModal());
-$('closeDesign').addEventListener('click',()=>$('designDialog').close());
-$('designDialog').addEventListener('click',e=>{
+if($('designHelp'))$('designHelp').addEventListener('click',()=>$('designDialog').showModal());
+if($('closeDesign'))$('closeDesign').addEventListener('click',()=>$('designDialog').close());
+if($('designDialog'))$('designDialog').addEventListener('click',e=>{
   if(e.target===$('designDialog')){
     const r=$('designDialog').getBoundingClientRect();
     if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('designDialog').close();
@@ -736,14 +1322,10 @@ $('designDialog').addEventListener('click',e=>{
 });
 
 document.addEventListener('keydown',e=>{
-  if(e.key!=='Escape'||$('designDialog').open)return;
-  if(ALL_DRAWERS.some(id=>{const el=$(id);return el&&el.classList.contains('open');})){
-    closeAllDrawers();
-  }else if(narrowScreen.matches&&$('inspector').classList.contains('mobile-open')){
-    setInspector(false);
-  }else{
-    setLayersOpen(false);
-  }
+  if(e.key!=='Escape'||($('designDialog')&&$('designDialog').open))return;
+  closeCmdBox();
+  setOrbatOpen(false);
+  setLayersOpen(false);
 });
 
 // -----------------------------------------------------------------------------

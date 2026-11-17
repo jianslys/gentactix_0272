@@ -76,29 +76,31 @@ try {
   await evaluate('new Promise(resolve => {if(document.readyState === "complete")resolve();else window.addEventListener("load",resolve,{once:true});})');
   await settle(800);
 
-  // 1. 结构与旧残留检查
+  // 1. 结构与 SPEC V4.0 铁律检查 (彻底物理删除 UI-06/12/13，Viewport 铺满全屏，UI-03 多开浮动卡片)
   await check('No old ugly logs or roster sidebars exist', '!document.querySelector(".sidebar,.map-log,#rosterPane,#eventsPane") && !document.body.textContent.includes("行动记录")');
+  await check('UI-06, UI-12, UI-13 are completely deleted from DOM', '!document.querySelector("[data-ui-id=\\"UI-06\\"],[data-ui-id=\\"UI-12\\"],[data-ui-id=\\"UI-13\\"],.map-tools,.map-stamp,.map-notice")');
   await check('Workspace contains only inspector and map', 'document.querySelector(".workspace").children.length===2 && document.querySelector(".workspace").firstElementChild.id==="inspector"');
-  await check('Viewport extends to bottom of screen', 'document.getElementById("viewport").getBoundingClientRect().bottom === window.innerHeight');
-  await check('Inspector left edge is 0 and touches viewport', 'document.getElementById("inspector").getBoundingClientRect().left === 0 && document.getElementById("viewport").getBoundingClientRect().left === document.getElementById("inspector").getBoundingClientRect().right');
+  await check('Viewport extends to bottom and full screen', 'document.getElementById("viewport").getBoundingClientRect().bottom === window.innerHeight && document.getElementById("viewport").getBoundingClientRect().left === 0');
+  await check('Inspector is a draggable unit-card handle', '!!document.getElementById("cardHandle-inspector")');
 
   // 2. 桌面端 inspector 绝不出现垂直滚动条
   const inspMetrics = await evaluate('({ client: document.getElementById("inspector").clientHeight, scroll: document.getElementById("inspector").scrollHeight, fireBottom: document.getElementById("fireButton").getBoundingClientRect().bottom, inspBottom: document.getElementById("inspector").getBoundingClientRect().bottom })');
   console.log('Inspector dimensions:', inspMetrics);
   await check('Inspector actions fit on desktop without scrolling', 'document.getElementById("inspector").scrollHeight === document.getElementById("inspector").clientHeight && document.getElementById("fireButton").getBoundingClientRect().bottom <= document.getElementById("inspector").getBoundingClientRect().bottom');
 
-  // 3. 检查全部 26 个 UI-ID 标记唯一性与红色伪元素
+  // 3. 检查全部 26 个 UI-ID 标记唯一性与红色伪元素 (SPEC V4.0 规范清单)
   const uiIdVerification = await evaluate(`(() => {
     const elements = Array.from(document.querySelectorAll('[data-ui-id]'));
-    if (elements.length !== 26) return { ok: false, reason: 'Expected 26 elements, got ' + elements.length };
+    if (elements.length !== 26) return { ok: false, reason: 'Expected 26 elements, got ' + elements.length + ': ' + elements.map(e => e.getAttribute('data-ui-id')).join(', ') };
     const ids = elements.map(el => el.getAttribute('data-ui-id'));
     const uniqueIds = new Set(ids);
     if (uniqueIds.size !== 26) return { ok: false, reason: 'Duplicate IDs: ' + ids };
     
     const requiredIds = [
       'UI-01', 'UI-02', 'UI-03', 'UI-03A', 'UI-03B', 'UI-03C', 'UI-03D', 'UI-03E',
-      'UI-04', 'UI-05', 'UI-05A', 'UI-06', 'UI-07', 'UI-08', 'UI-09', 'UI-10',
-      'UI-11', 'UI-12', 'UI-13', 'UI-14', 'UI-14A', 'UI-14B', 'UI-15', 'UI-16', 'UI-17', 'UI-18'
+      'UI-03M', 'UI-03M1', 'UI-03M2', 'UI-03M3', 'UI-03M4',
+      'UI-04', 'UI-05', 'UI-05A', 'UI-07', 'UI-08', 'UI-09', 'UI-09A', 'UI-10',
+      'UI-11', 'UI-14', 'UI-14A', 'UI-14B', 'UI-18'
     ];
     for (const req of requiredIds) {
       if (!uniqueIds.has(req)) return { ok: false, reason: 'Missing required ' + req };
@@ -168,38 +170,52 @@ try {
   await settle(200);
   await check('ORBAT drawer closes on close click', '!document.getElementById("orbatDrawer").classList.contains("open")');
 
-  // 8B. 检查第一类修改计划行动队列抽屉 (UI-15)
-  await evaluate('document.getElementById("actionQueueToggle").click()');
+  // 8B. 检查 UI-03M 综合指令选项框唤起与关闭
+  await evaluate('document.getElementById("btnOpenCmdBox").click()');
   await settle(200);
-  await check('Action queue drawer opens on toggle click', 'document.getElementById("actionQueuePanel").classList.contains("open")');
-  await evaluate('document.getElementById("btnActionMove").click()');
-  await settle(100);
-  await check('Action button increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 2")');
-  await evaluate('document.getElementById("closeActionQueue").click()');
-  await settle(200);
-  await check('Action queue drawer closes on close click', '!document.getElementById("actionQueuePanel").classList.contains("open")');
+  await check('UI-03M opens on button click', 'document.getElementById("integratedCmdBox").classList.contains("open")');
 
-  // 8C. 检查第二类修改计划事件队列抽屉 (UI-16)
-  await evaluate('document.getElementById("eventQueueToggle").click()');
-  await settle(200);
-  await check('Event queue drawer opens on toggle click', 'document.getElementById("eventQueuePanel").classList.contains("open")');
-  await evaluate('document.getElementById("btnEventMine").click()');
+  // 8C. 检查 UI-03M1 任务级联与退路逻辑 (撤退直接跑路隐藏第三行)
+  await evaluate('document.getElementById("btnTaskRetreat").click()');
   await settle(100);
-  await check('Event button increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 3")');
-  await evaluate('document.getElementById("closeEventQueue").click()');
-  await settle(200);
-  await check('Event queue drawer closes on close click', '!document.getElementById("eventQueuePanel").classList.contains("open")');
+  await evaluate('document.querySelector("#taskModeGroup button[data-mode=\\"flee\\"]").click()');
+  await settle(100);
+  await check('UI-03M1 retreat flee hides row 3 completely', 'document.getElementById("taskRow3").style.display === "none"');
+  // 恢复移动并排入任务队列
+  await evaluate('document.getElementById("btnTaskMove").click()');
+  await settle(100);
+  await evaluate('document.getElementById("btnConfirmTask").click()');
+  await settle(100);
+  await check('UI-03M1 adds task to unified queue and increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 2") && document.getElementById("unifiedQueueList").textContent.includes("#1 移动")');
 
-  // 8D. 检查第四类修改指挥安排抽屉 (UI-17)
-  await evaluate('document.getElementById("commandFieldToggle").click()');
-  await settle(200);
-  await check('Command field drawer opens on toggle click', 'document.getElementById("commandFieldPanel").classList.contains("open")');
-  await evaluate('document.getElementById("toggleGravField").click()');
+  // 8D. 检查 UI-03M2 宏事件与装备门控
+  await evaluate('document.getElementById("tabEvent").click()');
   await settle(100);
-  await check('Grav field toggles active', 'document.getElementById("toggleGravField").classList.contains("active")');
-  await evaluate('document.getElementById("closeCommandField").click()');
+  await check('UI-03M2 panel becomes visible', '!document.getElementById("panelEvent").classList.contains("hidden")');
+  await evaluate('document.getElementById("btnConfirmEvent").click()');
+  await settle(100);
+  await check('UI-03M2 adds event to queue and renders virtual instance', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 3") && document.querySelectorAll(".virtual-instance").length > 0');
+
+  // 8E. 检查 UI-03M3 六行指挥面板与 6/7 严格互斥逻辑
+  await evaluate('document.getElementById("tabCmd").click()');
+  await settle(100);
+  await evaluate('document.getElementById("btnModeOrder").click()');
+  await settle(100);
+  await check('UI-03M3 Order mode enables 6 items and disables 7 items', '!document.getElementById("itemAtk").disabled && document.getElementById("itemRecce").disabled');
+  await evaluate('document.getElementById("btnModeAo").click()');
+  await settle(100);
+  await check('UI-03M3 AO mode enables 7 items and disables 6 items', 'document.getElementById("itemAtk").disabled && !document.getElementById("itemRecce").disabled');
+  await evaluate('document.getElementById("btnConfirmCmd").click()');
+  await settle(100);
+  await check('UI-03M3 command generates field and increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 4")');
+
+  // 8F. 检查 UI-03M4 军用通信设备调谐并关闭
+  await evaluate('document.getElementById("tabComms").click()');
+  await settle(100);
+  await check('UI-03M4 Comms eta readout is populated', 'document.getElementById("commsEtaVal").textContent.length > 0');
+  await evaluate('document.getElementById("closeCmdBox").click()');
   await settle(200);
-  await check('Command field drawer closes on close click', '!document.getElementById("commandFieldPanel").classList.contains("open")');
+  await check('UI-03M closes on close button', 'document.getElementById("integratedCmdBox").classList.contains("hidden") || !document.getElementById("integratedCmdBox").classList.contains("open")');
 
   // 9. 检查二进制倍速循环 (2× -> 4× -> 8× -> 16× -> 1×)
   const speedCycle = [];
@@ -253,6 +269,12 @@ try {
   assert.equal(errors.length, 0, `Console errors: ${errors.join('; ')}`);
   console.log('\nALL PASS! 生产版前端与后端无缝挂接，100% 达成验收标准！');
 
+} catch(err) {
+  console.error('\n*** TEST FAILED WITH EXCEPTION ***', err);
+  if (errors.length > 0) {
+    console.error('*** BROWSER CONSOLE ERRORS ***:', errors);
+  }
+  process.exitCode = 1;
 } finally {
   if (ws) ws.close();
   chrome.kill();
