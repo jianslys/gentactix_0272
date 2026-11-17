@@ -1,489 +1,182 @@
-下面这条路线以**每一步都可编译、可测试、可回退**为原则；不要先拆完所有结构体，也不要一开始做 SIMD。前面的步骤未通过验收，不进入下一步。
+# GENTACTIX 专职施工计划 (Step-by-Step Execution Plan for `gentactix-builder`)
 
-## 施工总顺序
+> **最高施工准则**：
+> 1. 本计划与 `docs/SPEC/SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md` 严格绑定，**严禁跳过阶段、严禁自己寻思乱改顺序**！
+> 2. 每一阶段（Phase）施工完毕后，必须立即执行该阶段的【验收命令】，全部 PASS 后方可进入下一阶段。
+> 3. 严禁删除既有编制、操炮、火控、事件或图层能力，严禁破坏印刷地图视觉基准。
+
+---
+
+## 施工总路线图
 
 ```text
-00 冻结行为基线
-→ 01 建立 8 m 几何
-→ 02 建立状态三分边界
-→ 03 建立 TickClock 与事务骨架
-→ 04 统一运动意图与位置提交
-→ 05 建立即时事件缓冲与唯一终态
-→ 06 打通一条火力竖切
-→ 07 建立地形修订与缓存失效
-→ 08 完整权威指纹与存档回放
-→ 09 最小压力回归
-→ 10 清理临时兼容路径
+Phase 01: 权威 16s 整数时钟与三态容器（WorldState / DerivedState / TickScratch）对齐
+  ──► Phase 02: 2³ = 8m 网格杀伤寄存与场结算（P2G → Grid-to-Field → G2P）实装
+  ──► Phase 03: 服务端 16s 脉冲单步 API（subticks: 1）与整数时钟状态导出
+  ──► Phase 04: 前端全窗口红字 UI-ID（UI-01 ~ UI-18）与四类回合内修改面板实装
+  ──► Phase 05: 前端 1s 走表 + 16s 脉冲双频计时器与 2ⁿ 倍速（1×/2×/4×/8×/16×）闭环
+  ──► Phase 06: 全量单元测试与无头 Chrome E2E 像素级回归验收
 ```
 
 ---
 
-## 00. 冻结行为基线
+## Phase 01 · 权威 16s 整数时钟与三态容器对齐
 
-### 施工
+### 1.1 修改文件
+- `crates/gentactix-core/src/state/mod.rs`
+- `crates/gentactix-core/src/sim_loop.rs`
 
-选一个足够小、但覆盖核心交互的固定场景：
+### 1.2 具体施工步骤
+1. **扶正 16s 无损整数时钟（铲除 `clock_hours: f32` 浮点累加）**：
+   - 在 `SimWorld` 中新增字段：
+     ```rust
+     pub epoch_seconds: u64, // 默认 23400 (即 06:30:00)
+     pub clock_seconds: u64, // 始终满足 epoch_seconds + (self.subtick as u64 * 16)
+     ```
+   - 在 `SimWorld::step_subtick_5m`（保留原函数名兼容调用，并新增别名函数 `pub fn step_subtick_16s(&mut self, driver: &mut dyn CommanderDriver) -> SubtickReport`）中：
+     - 将 `self.subtick += 1;` 后的时间更新改为：
+       ```rust
+       self.clock_seconds = self.epoch_seconds + ((self.subtick as u64) << 4);
+       self.clock_hours = (self.clock_seconds as f64 / 3600.0) as f32;
+       ```
+     - **严禁**再使用 `self.clock_hours += dt` 进行浮点累加！
+   - 提供辅助格式化方法 `pub fn clock_hms_string(&self) -> String`，由 `self.clock_seconds % 86400` 精确格式化出 `"HH:MM:SS"`。
+2. **在 `state/mod.rs` 中补齐四类修改的 `DerivedState` 结构定义**：
+   - 在 `DerivedState` 中显式纳入四大缓存槽：
+     - `planned_actions`: 存放班组/指挥班/重武器班组的移动、射击、隐蔽、停止、撤退任务队列与路径/LOS 预览缓存；
+     - `planned_events`: 存放布雷、挖坑、建造、爆破、拆除、无线电、测距的读秒事件队列预览；
+     - `immediate_staging`: 存放不走队列的拆分/整编编制、调整士兵装备、使用物品、架设/收拢重武器草案；
+     - `command_fields`: 存放指挥 AO、进攻线、移动线、部署线及派生的欧拉连续场（$I, G$, SDF）。
+3. **在 `TickScratch` 中补齐 $8\text{m}$ 网格杀伤寄存与事件变异槽**：
+   - 确保 `TickScratch::reset_scratch()` 在每步结束时调用 `.clear()` 清空全部临时向量与哈希表，保持零堆内存重分配。
 
-- 两个兵种不同的实体；
-- 一个直控实体、一个自主实体；
-- 一处不可穿越障碍；
-- 一次精确射击；
-- 一次范围爆炸；
-- 一次弹药消耗；
-- 一次地形破坏；
-- 一个跨 Tick 持久效果，例如烟雾或装填。
-
-保存：
-
-- 初始场景；
-- 输入命令序列；
-- 固定随机种子；
-- 当前关键输出：位置、健康、弹药、地形和事件记录。
-
-暂时不要追求所有输出完全一致；先区分：
-
-- 重构中**不得变化**的语义；
-- 已明确允许变化、需要更新期望值的语义。
-
-### 验收
-
-- 同一场景连续运行两次，现有系统结果能够复现。
-- 测试能明确观察每次位置变化、伤害、弹药消耗和地形修改。
-- 后续每一步都能重新运行这个场景。
-
-**禁止：**没有基线就直接改主循环。
+### 1.3 阶段验收命令
+```powershell
+cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core
+```
+- **必过断言**：编写单元测试验证连续运行 225 个 16s 步长后，`clock_seconds` 精确增加 `3600` 秒，`clock_hms_string()` 从 `"06:30:00"` 精确变为 `"07:30:00"`，无任何 1 秒跳变误差。
 
 ---
 
-## 01. 建立唯一的 `2³ = 8 m` 几何
+## Phase 02 · $2^3 = 8\text{m}$ 网格杀伤寄存与场结算实装 (P2G $\rightarrow$ Field $\rightarrow$ G2P)
 
-### 施工
+### 2.1 修改文件
+- `crates/gentactix-core/src/combat_logistics.rs`
+- `crates/gentactix-core/src/world_grid.rs`
 
-在核心几何模块建立唯一 Doctrine 常量：
+### 2.2 具体施工步骤
+1. **消除“假寄存、真遍历直接扣血”漏洞**：
+   - 在 `combat_logistics.rs` 的 `resolve_cell_strike_ex` 中，**严禁绕过 `WorldGrid::pixel_containers`**！
+   - 将伤害结算严格改为三拍流水线：
+     - **第一拍（P2G 射弹注入 $8\text{m}$ 网格）**：构造 `ShotPacket`（含 `target_px`、`origin_px`、`ammo_spec_id`、`shots`、`incoming_dir_deg`、`remaining_radius_m`），调用 `grid.inject_shot_packet(packet)` 寄存进目标 $8\text{m}$ 网格的 `PixelCellContainer`；
+     - **第二拍（Grid-to-Field 场展开与压制传递）**：从 `grid.pixel_containers` 读取寄存的 `ShotPacket`，计算目标格及高爆（HE）破片半径内邻近 $8\text{m}$ 网格的杀伤强度与压制密度 `suppression_density`，并写入网格压制状态与 `FireFields` 欧拉威胁场；
+     - **第三拍（G2P 从受击 $8\text{m}$ 网格向驻留单位结算）**：仅针对受击 $8\text{m}$ 网格内的驻留单位，结合该格 `effective_cover_at(r, c)`、入射角夹角余弦 $\cos(\theta_i)$ 与步坦协同遮蔽结算人员伤亡、载具战损与组织度损失，结算完毕后消费并清空该网格已处理的 `incoming_packets`。
 
-```rust
-pub const TACTICAL_CELL_SIZE_M: f32 = 8.0;
-pub const TACTICAL_CELL_SHIFT: u32 = 3;
+### 2.3 阶段验收命令
+```powershell
+cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core
 ```
-
-建立 `GridGeometry`，至少包含：
-
-- 原点；
-- 行数、列数；
-- 世界范围；
-- 米制坐标到 `(r, c)` 的转换；
-- `(r, c)` 到单元中心或边界的转换；
-- 单元面积；
-- 越界检查；
-- 两点米制距离及核半径到单元支撑范围的换算。
-
-如果采用定点坐标，再增加带 `F` 个小数位的移位实现；不要同时维护另一套隐式格边长。
-
-这一阶段只让新代码依赖 `GridGeometry`，不要顺手重写所有地形算法。
-
-### 验收
-
-1. `1024 × 1024` 单元对应 `8192 m × 8192 m`。
-2. 单元内点、单元边界、世界边界和越界点都有测试。
-3. 负坐标不会通过无符号转换变成巨大索引。
-4. 连续坐标 → 单元 → 单元坐标符合明确的舍入规则。
-5. 距离、面积和核半径没有在其他模块再次写死 `8`。
-6. 搜索核心代码，不存在另一个可替代它的权威 `cell_size`。
-
-**停止条件：**不同模块仍可能对同一坐标得出不同单元。
+- **必过断言**：全部既有战斗测试通过，且验证射弹包经过 `pixel_containers` 寄存、更新 `suppression_density` 并在结算后清空。
 
 ---
 
-## 02. 建立状态三分边界
+## Phase 03 · 服务端 16s 脉冲单步 API 与状态导出
 
-### 施工
+### 3.1 修改文件
+- `crates/gentactix-server/src/main.rs`
 
-先建立三个逻辑容器，不要求立刻把所有字段完美拆完：
+### 3.2 具体施工步骤
+1. **扩展 `/api/state` (`serialize_state`) 输出字段**：
+   - 在返回的 JSON 根对象中显式加入：
+     ```rust
+     "tick": w.subtick,
+     "clock_seconds": w.clock_seconds,
+     "clock_str": w.clock_hms_string(),
+     "step_seconds": 16,
+     ```
+2. **改造 `post_commit_turn` 支持整数单步 16s 脉冲**：
+   - 在 `post_commit_turn` 中，优先读取请求体中的整数 `"subticks"`（或 `"step_count"`）：
+     ```rust
+     let subticks = body.get("subticks")
+         .or_else(|| body.get("step_count"))
+         .and_then(|v| v.as_u64())
+         .map(|n| n.clamp(1, 225) as u32);
+     ```
+   - 若前端传入 `"subticks": 1`（或未传 `hours` / `turn_hours` 时默认按 `1` 个 16s 步长执行），直接精确运行 `subticks` 次 `step_subtick_16s`（先落盘本步附带的非队列编制/装备/无线电/战线调整，再执行 16s 步长推进），彻底避免用浮点 `hours` 折算步长！
+   - 若旧测试显式传入 `"hours"` 或 `"turn_hours"` 且未传 `"subticks"`，则兼容按 `(hours * 225.0).round()` 执行，确保旧有 Server 契约测试不挂。
 
-```text
-WorldState
-DerivedState
-TickScratch
+### 3.3 阶段验收命令
+```powershell
+cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-server
 ```
-
-### `WorldState` 首先纳入
-
-- 时钟；
-- 地形；
-- 实体；
-- 弹药与装备账本；
-- 命令与长期计划；
-- 持久环境场；
-- 随机状态。
-
-### `DerivedState` 首先纳入
-
-- 空间桶；
-- SDF 与法向；
-- AO、前线和门户缓存；
-- 威胁场与任务场缓存；
-- 渲染与网络缓存。
-
-### `TickScratch` 首先纳入
-
-- 意图候选；
-- 运动提案；
-- 即时事件；
-- 瞬态杀伤场；
-- 本 Tick 诊断。
-
-每个派生缓存至少增加：
-
-```text
-dependencies
-builder_version
-validity
-```
-
-### 验收
-
-- 任意字段都能回答：权威、派生，还是瞬态。
-- 派生缓存销毁后，可以从权威状态重建。
-- 瞬态工作区销毁后，没有应当跨 Tick 的信息随之消失。
-- 烟雾、装填、长期事件和持久小数没有被当作垃圾清零。
-- `WorldGrid` 不再被新代码当作“什么都能放”的默认位置。
-
-**停止条件：**同一事实仍有两个可独立修改的权威副本。
+- **必过断言**：`test_v33_server_contracts_auth_and_estimate` 及新增的 `subticks: 1` 脉冲步进测试 100% PASS。
 
 ---
 
-## 03. 建立 `TickClock` 与事务骨架
+## Phase 04 · 前端全窗口红字 `data-ui-id`（`UI-01` ~ `UI-18`）与四类修改面板实装
 
-### 施工
+### 4.1 修改文件
+- `web/index.html`
 
-建立唯一 `TickClock`：
-
-- 当前 Tick；
-- 当前逻辑时间；
-- 原子 Subtick 为 16 秒；
-- 到期计划提取；
-- 不允许其他模块自行推进时间。
-
-把当前主循环包进十三个阶段骨架：
-
-```text
-BeginTick
-ClockAndSchedule
-PersistentFieldEvolve
-DerivedRefresh
-SenseAndArbitrate
-ProposeMotion
-ConstrainMotion
-CommitMotion
-EmitEvents
-ResolveEvents
-CommitPersistent
-Validate
-PublishAndDrop
-```
-
-最初允许阶段内部暂时调用旧函数，但每个旧函数必须归属唯一阶段。不要在这一步同时改变物理公式。
-
-增加调试阶段轨迹：
-
-```text
-tick_id
-phase
-input_revision
-event_count
-diagnostic_count
-```
-
-### 验收
-
-- 一个 Tick 内阶段顺序固定，不能跳过或重复执行。
-- 所有速率只从 `TickClock` 获取步长。
-- 没有第二个模块修改逻辑时间。
-- 外部快照不会观察到半个 Tick 的中间状态。
-- 基线场景在仅改变编排、不改变模型时保持预期行为。
-
-**停止条件：**仍存在绕过事务骨架、由接口或定时器直接推进世界的路径。
+### 4.2 具体施工步骤（严禁自由发挥，严格按 ID 挂载）
+1. **保持既有 19 个 `data-ui-id` 完好无损**：
+   - `UI-01` (`.topbar`), `UI-02` (`.subbar`), `UI-03` (`#inspector`), `UI-03A` ~ `UI-03E` (检视器五大子块), `UI-04` (`#mapTitle`), `UI-05` (`#layerCard`), `UI-05A` (`#layerToggle`), `UI-06` (`.map-tools`), `UI-07` (`#meterGrid`), `UI-08` (`.footer`), `UI-09` (`.compass-wrap`), `UI-10` (`#designDialog`), `UI-11` (`#toast`), `UI-12` (`.map-stamp`), `UI-13` (`.map-notice`)。
+2. **补齐并实装新增窗口与四类修改面板的红字 `data-ui-id`（`UI-14` ~ `UI-18`）**：
+   - **`UI-14`**：在 `<aside class="orbat-drawer" id="orbatDrawer">` 上显式添加 `data-ui-id="UI-14"`；
+   - **`UI-14A`**：在 `<div class="orbat-body" id="orbatTreeList">` 上显式添加 `data-ui-id="UI-14A"`（确保 `position: relative`）；
+   - **`UI-14B`**：在 `#orbatDrawer` 下半部分新增 `<div class="reorg-equip-panel" id="reorgEquipPanel" data-ui-id="UI-14B">`，承载**【第三类修改 · 非队列直接调整】**（提供：拆分/整编编制、调整士兵装备、使用物品、架设/收拢重武器快捷操作按钮，点击即记入本步 `ImmediateStagingCache` 并调用 `/api/unit_op`）；
+   - **`UI-15`**：新增滑出式/切换式面板 `<section class="cmd-drawer" id="actionQueuePanel" data-ui-id="UI-15" aria-label="计划行动任务队列">`，承载**【第一类修改 · 计划行动】**（为选中班组/指挥班/重武器班组排入 移动、射击、隐蔽、停止、撤退 任务队列，选择行军模式 `normal/fast/slow` 与射击模式）；
+   - **`UI-16`**：新增面板 `<section class="cmd-drawer" id="eventQueuePanel" data-ui-id="UI-16" aria-label="计划事件队列">`，承载**【第二类修改 · 计划事件】**（排入 布雷、挖坑、建造、爆破、拆除、无线电静默/诱饵、炮兵测距 读秒事件）；
+   - **`UI-17`**：新增面板 `<section class="cmd-drawer" id="commandFieldPanel" data-ui-id="UI-17" aria-label="指挥安排与场绘制">`，承载**【第四类修改 · 指挥安排】**（在地图上绘制 指挥 AO、进攻线、移动线、部署线，切换显示欧拉任务引力场 $G$ 与信息斥力场 $I$）；
+   - **`UI-18`**：在 `.subbar .right` 中新增步长脉冲读秒与暂存指示器 `<div class="pulse-staging" id="pulseStagingBar" data-ui-id="UI-18">`，显示 `STEP 00/16S · 暂存 0`。
+3. **CSS 红字显示与布局保护**：
+   - 确保所有新增 `[data-ui-id]` 容器均具备 `position: relative`（或 `fixed`/`absolute`），其 `::after` 伪元素字号为 `8px ~ 9px`、颜色为红色（`#ee9286` 或 `#b34135`），绝不被裁切或重叠；
+   - `.workspace` 的直接子元素严格保持只有 `#inspector` 和 `main.map-area` 两个（所有抽屉面板 `UI-14` ~ `UI-17` 放在 `.workspace` 外部，与 `#orbatDrawer` 同级，采用 `position: fixed; top: 101px; left: 286px` 浮层抽屉形式，默认隐藏，通过顶部视图 Tab 或按钮互斥呼出）；
+   - 严禁改变 `#inspector` 内部高度，确保桌面端 1600×900 下 `#inspector.scrollHeight === #inspector.clientHeight`（无垂直滚动条）。
 
 ---
 
-## 04. 统一运动意图与唯一位置提交
+## Phase 05 · 前端 16s 双频计时器与 $2^n$ 倍速闭环
 
-这是第一处真正的语义改造。
+### 5.1 修改文件
+- `web/index.html`
 
-### 施工顺序
-
-1. 定义 `IntentCandidate`。
-2. 定义仲裁后的 `MotionIntent`。
-3. 定义 `MotionProposal`。
-4. 定义 `ConstrainedMotion`。
-5. 定义唯一 `MotionCommit`。
-6. 直控只产生候选意图。
-7. 自主系统只产生候选意图。
-8. 仲裁器每实体最多保留一个意图。
-9. 约束器只修改提案，不写实体位置。
-10. `CommitMotion` 统一写位置。
-
-删除当前“保存直控位置 → 运行自主 → 恢复位置 → 再执行直控”的竞争补丁。
-
-约束按顺序接入：
-
-```text
-世界边界
-→ 整段路径地形检查
-→ SDF 修正
-→ 容量预约
-→ 实体接触约束
-→ 最终合法性检查
-```
-
-先实现标量版本；遇到不可行就安全停止并返回原因，不要为了继续移动而穿透。
-
-### 验收
-
-- 每实体每 Tick 最多一个仲裁意图。
-- 每实体每 Tick 最多一次位置提交。
-- 同时存在直控和自主候选时，选择结果稳定且可解释。
-- 自主系统单独运行时不能写位置。
-- 高速提案不能只检查终点而越过薄障碍。
-- 非法初态、负间隙、零梯度和无效法向不会触发假成功。
-- 多实体竞争同一容量时，结果不依赖线程完成顺序。
-- 基线中允许保持的运动结果保持一致；允许变化的结果有明确原因。
-
-**停止条件：**任何战斗、动画或自主函数仍能直接修改实体坐标。
+### 5.2 具体施工步骤
+1. **$2^n$ 纯二进制倍速档位**：
+   - 将 `#speed` 的点击切换逻辑从 `1 -> 5 -> 15 -> 1` 改为纯二进制序列：
+     ```javascript
+     const SPEED_STEPS = [1, 2, 4, 8, 16];
+     ```
+     点击 `#speed` 依次在 `1×`、`2×`、`4×`、`8×`、`16×` 之间循环切换。
+2. **1s 现实时钟走表 + 16s 步长脉冲结算**：
+   - 初始状态 `running = false`（暂停），`stepAccumulator = 0`（0 ~ 16 秒计数器）；
+   - 删除底部原有的 `setInterval(fetchBackendState, 2500)` 无脑轮询（只在页面初始加载时调用一次 `fetchBackendState()`）；
+   - 使用高精度计时循环（如 `250ms` 或基于 `performance.now()` 的 `requestAnimationFrame` / `setInterval`）：
+     - 当 `running === true` 时，按当前倍速 `speed`（1, 2, 4, 8, 16）推进逻辑秒：每过 `1000 / speed` 毫秒，逻辑时间前进 `1` 秒：
+       - `clockSeconds = (clockSeconds + 1) % 86400`，实时刷新右上角 `#clock`；
+       - `stepAccumulator += 1`，实时刷新 `UI-18`（`#pulseStagingBar`）显示 `STEP ${String(stepAccumulator).padStart(2,'0')}/16S`；
+     - **一旦 `stepAccumulator >= 16`**：
+       - `stepAccumulator = 0`；
+       - 立即触发一次异步步长结算 `await window.commitSimulationTurn()`（向 `POST /api/commit_turn` 发送 `{ subticks: 1, ...stagedPayloads }`）；
+       - 用后端返回的最新权威 `state` 同步更新 `clockSeconds`、地图兵牌位置、接触线与左侧 `#inspector` 数据！
 
 ---
 
-## 05. 建立即时事件缓冲与唯一终态
-
-### 施工
-
-在 `TickScratch` 建立统一 `EventBuffer`，事件至少包含：
-
-```text
-event_id
-kind
-resolve_phase
-source_entity_id
-target_key
-model_revision
-payload
-stable_sequence
-```
-
-实现稳定排序：
-
-```text
-(resolve_phase, target_key, source_entity_id, source_event_id, sequence)
-```
-
-实现四个终态：
-
-```text
-Resolved
-Rejected
-DiscardedByRule
-ConsumedByField
-```
-
-先迁移一种简单事件，例如装备移交或直接命中；不要一天内把所有事件类型塞进去。
-
-`ShotPacket` 若继续存在，只能是即时事件载荷，不再是 `WorldGrid` 的长期字段。
-
-### 验收
-
-- 每个进入结算的事件恰好有一个终态。
-- 每个终态都有原因代码。
-- 相同事件集合无论并行生成顺序如何，最终排序一致。
--  Tick 末不存在未处理即时事件。
-- 长期事件已转入权威调度，不依赖 `TickScratch` 存活。
-- 被拒绝事件不会部分扣弹药、部分扣血或部分修改地形。
-
-**停止条件：**队列清空仍被当作“事件已经正确处理”的证明。
-
----
-
-## 06. 打通一条火力竖切
-
-只选择**一种弹药、一次爆炸、一种地形效果**。
-
-### 施工
-
-打通：
-
-```text
-武器意图
-→ 检查权限与库存
-→ 生成射击事件
-→ 消耗弹药
-→ 构建瞬态超压/破片工作区
-→ 实体采样并产生伤害
-→ 产生地形修改
-→ 提交账本、伤害与地形
-→ 清理瞬态工作区
-```
-
-明确这条弹药的唯一结算方式：
-
-- 若走精确事件，不重复采样场伤害；
-- 若走聚合场，不重复执行旧直接伤害；
-- 需要来源身份时，在场采样结算中保留来源事件 ID。
-
-所有累加使用检查溢出的实现，禁止 `saturating_add` 隐藏问题。
-
-### 验收
-
-- 一发弹药只消耗一次。
-- 一个爆炸只产生一次权威伤害结算。
-- 同一目标不会因旧路径和事件路径受到两次伤害。
-- 拒绝对零库存继续射击。
-- 伤害来源能够追溯到射击者和事件。
-- 瞬态场全部活动区域均被清理，不只检查首尾。
-- 烟雾等持久效果不会被一起清理。
-- 并行执行与标量串行执行结果一致。
-
-**停止条件：**同一弹药仍有两条可能生效的权威结算路径。
-
----
-
-## 07. 建立地形修订与缓存失效
-
-### 施工
-
-地形修改统一经过：
-
-```text
-TerrainMutation
-→ TerrainState Commit
-→ terrain_revision += 1
-→ 标记受影响区域
-→ 失效相关派生缓存
-```
-
-给 SDF、任务场、威胁场、空间桶及发布缓存记录依赖修订。局部重建必须包含受影响区域和必要 Halo。
-
-### 验收
-
-- 一次地形事务只产生规定的修订变化。
-- 地形改变后，旧 SDF 不再参与运动约束。
-- 地形改变后，旧任务场和威胁场不会被误认为有效。
-- 未受影响缓存可以保留，受影响缓存没有漏标。
-- 网络发布的地形与物理使用同一修订。
-- 存档加载后能重建相同有效缓存，且权威结果不变。
-
-**停止条件：**缓存只能靠“下次也许重建”保证正确。
-
----
-
-## 08. 完整权威指纹与存档回放
-
-### 施工
-
-指纹覆盖：
-
-- 时钟和调度；
-- 地形及修订；
-- 全部实体和关系；
-- 健康、姿态和位置；
-- 人员、弹药、装备和补给；
-- 命令与知识；
-- 长期事件和装填；
-- 持久环境场；
-- 随机状态；
-- 持久小数账本。
-
-明确序列化规则：
-
-- 字段顺序；
-- 整数编码；
-- 浮点位模式或确定性数值规范；
-- 集合排序；
-- 规则集和模型版本。
-
-派生缓存默认不进入指纹。
-
-### 验收
-
-1. 同状态重复计算指纹一致。
-2. 修改任意权威字段，指纹都会变化。
-3. 只重建派生缓存，指纹不变。
-4. 存档 → 加载 → 继续运行，与未存档分支指纹一致。
-5. 完整命令序列回放后，逐 Tick 指纹一致。
-6. 并行配置不会改变指纹。
-7. 网络快照的指纹与核心提交状态一致。
-
-**停止条件：**仍存在“会影响未来世界、却不进入存档或指纹”的状态。
-
----
-
-## 09. 最小压力回归
-
-先保证正确，再测性能。
-
-### 场景
-
-- 多实体同时提出运动意图；
-- 狭窄区域容量竞争；
-- 高速跨格运动；
-- 密集事件同时指向同一目标；
-- 多次爆炸写入同一工作区；
-- 连续地形破坏；
-- 持久场与瞬态场同时存在；
-- 多次存档、加载和回放。
-
-### 验收
-
-每次报告：
-
-- 输入规模；
-- 硬件与编译配置；
-- 线程数；
-- 峰值内存；
-- 各 Tick 阶段耗时；
-- 失败与拒绝事件数量；
-- 最终指纹。
-
-此步不设未经验证的毫秒或 FPS 红线，只建立后续优化基线。
-
-**停止条件：**性能提升依赖跳过事件、放松约束或改变逻辑步长。
-
----
-
-## 10. 清理临时兼容路径
-
-只有前九步全部通过后才做。
-
-### 施工
-
-- 删除旧直接位置写入入口。
-- 删除旧火力重复结算入口。
-- 删除长期驻留在网格中的即时事件队列。
-- 删除重复步长和重复格边长常量。
-- 删除不再使用的保存/恢复位置补丁。
-- 删除临时双指纹和双账本。
-- 将含义不清的时间函数名统一为真实单位或 `subtick`。
-- 最后再选择热点做 SIMD，不要求一开始 AVX2 化。
-
-### 最终验收
-
-- 全量测试通过。
-- 基线场景通过。
-- 逐 Tick 回放一致。
-- 守恒账本平衡。
-- 即时事件无残留。
-- 持久状态无误清。
-- 核心不存在第二条权威写入路径。
-- 文档中的目标契约与代码实际行为一致。
-
----
-
-## 你实际施工时的最小提交粒度
-
-建议每一步再拆成三个独立提交：
-
-```text
-A. 新增类型与测试，不改变旧行为
-B. 把一条调用链切换到新契约
-C. 验收通过后删除旧路径
-```
-
-最重要的纪律是：**不要先建一大堆新结构体，却长期让旧系统继续写同一份状态。每迁移一条链，就关闭对应的旧写入口。**
+## Phase 06 · 自动化 E2E 像素级回归与全量验收
+
+### 6.1 修改与执行文件
+- `tests/e2e/verify_production_ui.mjs`
+
+### 6.2 具体施工步骤
+1. 在 `tests/e2e/verify_production_ui.mjs` 中更新并校验以下硬性断言：
+   - `.workspace` 直接子元素数量严格为 `2`（`#inspector` 在最左，`#viewport` 紧随其右且 `bottom === innerHeight`）；
+   - 桌面端 1600×900 下 `#inspector` 无垂直滚动条（`scrollHeight === clientHeight`）；
+   - 全部 `[data-ui-id]` 元素（包含原有的 19 个与新增的 `UI-14`, `UI-14A`, `UI-14B`, `UI-15`, `UI-16`, `UI-17`, `UI-18`，共计 26 个）ID 唯一，且每个元素的 `::after` 伪元素 `content` 包含其 `data-ui-id`、字号 `<= 9px`、颜色为红色（`R > G && R > B`）；
+   - `#speed` 按钮连续点击依次显示 `2×`, `4×`, `8×`, `16×`, `1×`；
+   - 切换至 `16×` 倍速并点击 `#play` 启动 1.2 秒后，验证触发了至少 1 次 16s 步长结算且控制台零报错（`errors.length === 0`）。
+2. 运行完整验收命令：
+   ```powershell
+   cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace
+   node "D:\tools\gentactix\tests\e2e/verify_production_ui.mjs"
+   ```
+3. 全部 `PASS` 后，执行 `git add -A && git commit && git push origin main` 完成交付！
