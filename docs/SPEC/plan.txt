@@ -99,13 +99,15 @@ PHASE 03 · 后端 HTTP 服务契约严密对齐
 - crates/gentactix-server/src/main.rs
 
 核心交付清单：
-1. `POST /api/commit_turn` 全载荷真消费：
-   - 补齐对前端 `planned_actions`、`planned_events`、`staging_ops`、`field_directives`
-     （含多边形顶点列表、分割边索引、电台频段/方位调谐、引爆指令、压制炮火坐标）的
-     完整反序列化与入核调度，禁止静默丢弃字段。
-2. `POST /api/unit_op` 标准操作枚举收口：
-   - 严格对齐规范指令名（如 `split_squad` 替代误写的 `btnSplitSquad`，补齐 `merge_squad`、
-     `trigger_detonator` 等），强制校验 `piece_id` 与 `player_commander_id`。
+1. `POST /api/commit_turn` 全载荷兼容与真消费：
+   - 接收 `{"subticks": 1}`，同时兼容并真实反序列化处理前端若批量附带的 `planned_actions`、
+     `planned_events`、`staging_ops`、`field_directives`（含多边形顶点列表、分割边索引、
+     电台频段/方位调谐、引爆指令、压制炮火坐标），统一入核调度，严禁静默丢弃字段。
+2. `POST /api/unit_op` 标准操作枚举收口（主交互写通道）：
+   - 严格对齐 `SPEC_V5` 规范 `op` 枚举：`enqueue_task`、`enqueue_event`、`issue_command_field`、
+     `tune_comms`、`detonate_switch`、`split_squad`（替代误写的 `btnSplitSquad`）、
+     `merge_squads`、`equip_adjust`、`deploy_heavy_unit`，强制校验 `piece_id` 与
+     `player_commander_id`。
 3. `POST /api/preview_plan`（新增或加固）：
    - 无副作用只读推演接口，基于当前 `DerivedState` 计算增广弧长施工耗时、G/I 幽灵场预测梯度、
      Wendland C2 K_reg 火控包络线与电台覆盖预期。

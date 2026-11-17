@@ -2,7 +2,7 @@
 
 - **文档编号**：`GTX-SPEC-V5-FULL-CLOSURE`
 - **基准对齐**：`Δx = 2³ m = 8.0 m`（整数右移 `>> 3`，浮点 `* 0.125`）；`Δt = 2⁴ s = 16.0 s`；全图拉格朗日粒子 **100% 实算（严禁懒计算）**；跨平台位级确定性（Bitwise Determinism）
-- **理论底座**：严格采纳 `docs/RESEARCH_THEORY_SYNTHESIS_AND_ARCHITECTURAL_VERDICT.md` 审定裁剪后的四大闭式数学算子
+- **理论底座**：严格采纳 `docs/research-theory/RESEARCH_THEORY_SYNTHESIS_AND_ARCHITECTURAL_VERDICT.md` 审定裁剪后的四大闭式数学算子
 
 ---
 
@@ -115,7 +115,7 @@
      - `detonate_switch`（触发地图上某“起爆开关”实例，按电缆连接瞬时引爆炸药）；
      - `split_squad` / `merge_squads` / `equip_adjust` / `deploy_heavy_unit`（对齐 `UI-14B`）。
 4. **`POST /api/commit_turn`**：
-   - 接收 `{"subticks": 1}`，推进一次完整的 16s 原子步长，返回最新 `state`；前端严格同步真实步进坐标与施工实体转正状态。
+   - 接收 `{"subticks": 1}`（及可选兼容批处理字段 `planned_actions` / `planned_events` / `staging_ops` / `field_directives`，严禁静默丢弃），推进一次完整的 16s 原子步长并返回最新 `state`；前端严格同步真实步进坐标与施工实体转正状态。
 
 ---
 

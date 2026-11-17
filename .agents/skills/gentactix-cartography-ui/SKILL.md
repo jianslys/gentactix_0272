@@ -68,7 +68,7 @@ description: >-
 
 ## 三 · HTTP 契约严密化与无欺骗 E2E 门禁 (`verify_production_ui.mjs`)
 
-- **`UI-14B` 与交互动作协议对齐**：禁止发送错误操作名（如 `btnSplitSquad`），必须发标准 `op: "split_squad"` 携带 `piece_id` 与 `player_commander_id` 至 `/api/unit_op`；`/api/commit_turn` 必须核验 `planned_actions`、`planned_events`、`staging_ops`、`field_directives` 真实入核；
+- **`UI-14B` 与交互动作协议对齐**：禁止发送错误操作名（如 `btnSplitSquad`），所有交互动作一律发标准 `/api/unit_op`（`enqueue_task`, `enqueue_event`, `issue_command_field`, `tune_comms`, `detonate_switch`, `split_squad`, `merge_squads`, `equip_adjust`, `deploy_heavy_unit`）并携带 `piece_id` 与 `player_commander_id`；`/api/commit_turn` 推进 `{"subticks": 1}`（若附带批处理字段 `planned_actions` / `planned_events` / `staging_ops` / `field_directives` 须保证前后端全真入核不丢弃）；
 - **E2E 红灯一票否决项**：
   1. 用 `getBoundingClientRect()` 遍历全图可见 `data-ui-id` 及文字/徽章，AABB 非法交叠直接 FAIL；
   2. 命中 `"示意"` / `"示例范围"` / `"200m / 格"` 字符串直接 FAIL；

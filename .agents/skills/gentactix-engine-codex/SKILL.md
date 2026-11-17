@@ -93,8 +93,8 @@ description: >-
 ## 五 · Server HTTP 契约闭环与验证命令
 
 - **`crates/gentactix-server` 契约严密化**：
-  - `POST /api/commit_turn` 必须全量消费前端下发的 `planned_actions`、`planned_events`、`staging_ops`、`field_directives`（含多边形与电台参数），绝不静默丢弃；
-  - `POST /api/unit_op` 严格收口规范操作枚举（`split_squad`、`merge_squad`、`trigger_detonator` 等）及 `piece_id` / `player_commander_id` 校验；
+  - `POST /api/unit_op` 作为主交互写通道，严格收口规范 `op` 枚举（`enqueue_task`、`enqueue_event`、`issue_command_field`、`tune_comms`、`detonate_switch`、`split_squad`、`merge_squads`、`equip_adjust`、`deploy_heavy_unit`）及 `piece_id` / `player_commander_id` 校验；
+  - `POST /api/commit_turn` 除接收 `{"subticks": 1}` 外，若附带 `planned_actions` / `planned_events` / `staging_ops` / `field_directives` 必须全量入核消费，绝不静默丢弃；
   - `POST /api/preview_plan` 基于 `DerivedReadModel` 输出无副作用规划预览；`GET /api/state` 严格执行 `is_direct_subordinate` 与 `vis_tier` 迷雾裁剪。
 - **严禁无序归约**：任何多线程并行阶段只能写线程本地缓冲，合并时必须按键稳定排序后再归约；严禁遍历 `HashMap` 直接修改权威状态。
 - **必跑验证命令**：
