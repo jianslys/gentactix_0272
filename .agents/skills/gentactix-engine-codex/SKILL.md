@@ -98,7 +98,7 @@ description: >-
   - `POST /api/commit_turn` 除接收 `{"subticks": 1}` 外，若附带 `planned_actions` / `planned_events` / `staging_ops` / `field_directives` 必须全量入核消费，绝不静默丢弃；
   - `POST /api/preview_plan` 基于 `DerivedReadModel` 输出无副作用规划预览；`GET /api/state` 严格执行 `is_direct_subordinate` 与 `vis_tier` 迷雾裁剪。
 - **严禁无序归约**：任何多线程并行阶段只能写线程本地缓冲，合并时必须按键稳定排序后再归约；严禁遍历 `HashMap` 直接修改权威状态。
-- **必跑验证命令**：
+- **必跑验证命令（在仓库根目录执行）**：
   ```powershell
-  cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace
+  cargo test --workspace
   ```

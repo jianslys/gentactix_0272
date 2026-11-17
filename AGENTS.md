@@ -21,7 +21,7 @@
 ## 二 · 五大施工铁律（违反任意一条直接打回重造）
 
 1. **SPEC 法典绝对服从律（Zero Hallucination）**：
-   - 任何施工前，优先查阅当前权威规格：[SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md)、[SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md)、[SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md) 及 [plan.txt](file:///D:/tools/gentactix/docs/SPEC/plan.txt)（禁止回读已退役的 `SPEC_FINAL_GENTACTIX_CORE_ENGINE.md`）；
+   - 任何施工前，优先查阅当前仓库内的权威规格：`docs/SPEC/SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md`、`docs/SPEC/SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md`、`docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md` 及 `docs/SPEC/plan.txt`（禁止回读已退役的 `SPEC_FINAL_GENTACTIX_CORE_ENGINE.md`）；
    - **绝对禁止任何“懒计算 / 连级阉割代理”或单元测试孤岛**！所有数学算子必须真实接入 `sim_loop.rs::step_subtick_16s` 主循环；
    - **绝对禁止引入十进制 `5m` 或 `200m` 假网格污染**！全系统空间最小步进元永久锁死为纯二进制 $\Delta x = 2^3\text{m} = 8.0\text{m}$（位移 `>> 3`、掩码 `& 7`、浮点 `0.125`）；
    - **外置时间机零污染红线**：绝不篡改或二次切分原生物理伤害数值，只通过 `(abs_sec_hash, unit_name_const_hash) -> 品类时间 LUT` 调度 `#0` 拦单、跨回合窗口喂数、`visibility=0` 预渲染环与 `exact_ms` 放片。
@@ -33,7 +33,7 @@
 
 3. **单 Phase 内全权自办 · 跨 Phase 强制硬阻断律（No Phase-Skipping / No Script-Dumping）**：
    - 在**当前单个授权 Phase 内部**，必须全权自主完成代码编写 $\rightarrow$ `cargo test` 编译与该阶段专属验证 $\rightarrow$ 报错自修（严禁把未过编译或报错的代码甩锅给大王）；
-   - **绝对禁止一次性连跑多个 Phase 或把前几个 Phase 当成草稿略过！** 多阶段任务每执行完当前 Phase，必须立刻**物理停机**、汇报本阶段改动文件与真实测试出力，等待大王回复“确认”或手动输入下一条斜杠 Workflow 后再动下一步；涉及多阶段任务时应先输出当前 Phase 的实施计划 Artifact 供审阅。
+   - **绝对禁止一次性连跑多个 Phase 或把前几个 Phase 当成草稿略过！** 哪怕你当前所在设备的全局默认规则里存在“尽量一次完成”或“减少打断”倾向，在本仓库内一律被本条**强制覆写**：每执行完当前 Phase，必须立刻**物理停机**、汇报本阶段改动文件与真实测试输出，等待大王回复“确认”或手动输入下一条斜杠 Workflow 后再动下一步；涉及多阶段任务时应先输出当前 Phase 的实施计划 Artifact 供审阅。
 
 4. **前端视觉零降级与真多开闭环铁律（Zero Overlap & True Multi-Card）**：
    - 修改 `web/index.html` 时，必须彻底消灭静态单例 `#inspector` 与残留假文本（如 `"ROUTE / 1.8km"`、`"~ 24 min"`、`"0友军"`），实现点击地图 `.map-unit` 兵牌真实弹出多张独立可拖拽带 `×` 的浮动 `.inspector.unit-card`（`UI-03`）；

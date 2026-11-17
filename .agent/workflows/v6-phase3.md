@@ -17,9 +17,9 @@ description: V6 Phase 3 · 消灭 0 友军前后端脱节 Bug 与 UI-14B 操作�
    - 更新 `web/index.html` 的 `fetchBackendState()`：用真实 `/api/state` 的 `own_pieces` 完全覆盖静态演示 `units` 数组，确保顶部副栏显示非零友军计数，且发出的指令全部采用后端真实 `piece_id`（严禁混用无主 `u3` 导致 `piece_not_found`）。
 2. 修复 `UI-14B` 按钮协议名：
    - 将 `btnSplitSquad` 等按钮从发送 DOM ID 改为后端标准枚举：`"split_squad"`、`"merge_squads"`、`"equip_adjust"`、`"use_item"`、`"deploy_heavy_unit"`、`"pack_heavy_unit"`，携带合法 `piece_id` 发往 `/api/unit_op` 验证返回 `200 OK`。
-3. 运行验证：
+3. 运行验证（在仓库根目录执行）：
    ```powershell
-   cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace
+   cargo test --workspace
    ```
    并起一个临时的 server 实测 `GET /api/state` 确认 `own_pieces.length > 0`、`POST /api/unit_op` 对 `split_squad` 返回 `200 OK`（测完清理临时进程）。
 

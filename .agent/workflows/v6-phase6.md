@@ -17,10 +17,10 @@ description: V6 Phase 6 · 重写无作弊 E2E 门禁（真点击多卡 + AABB�
      * 模拟鼠标在地图真实点选路径或工程目标下令并调用 `commit_turn` 推进回合；
      * 对比 `/api/state` 中目标单位推进前后真实坐标 `p0` 与 `p1`，强制断言 `Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 0.01`；
      * 断言返回体中包含 `time_machine_frame`（校验 `particle_tracks` 含 `is_prerender_skirt` 及 `playback_events` 含 `exact_ms`）。
-2. 全栈实测与截图核验：
-   - 运行 `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace` 确保 100% 全绿；
-   - 构建并拉起 `gentactix-server.exe --demo`，跑通新版 `node "D:\tools\gentactix\tests\e2e\verify_production_ui.mjs"`（zero console errors, exit code 0）；
-   - **亲自调用图片读取工具查看** `D:\tools\gentactix\scratch\production_desktop_screenshot.png`，确认页面干净无叠字、多卡正常、0 console error。
+2. 全栈实测与截图核验（在仓库根目录执行）：
+   - 运行 `cargo test --workspace` 确保 100% 全绿；
+   - 构建并拉起 `gentactix-server --demo`，跑通新版 `node tests/e2e/verify_production_ui.mjs`（zero console errors, exit code 0）；
+   - **亲自调用图片读取工具查看** `scratch/production_desktop_screenshot.png`，确认页面干净无叠字、多卡正常、0 console error。
 3. 执行 `git add`、`git commit` 与 `git push origin main` 推回远端。
 
 【硬阻断 · 强制停机等待确认】：

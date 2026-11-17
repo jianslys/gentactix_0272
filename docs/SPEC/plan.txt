@@ -35,8 +35,8 @@ PHASE 01 · 根治算子孤岛：将 V5 四大数学算子真实接入 sim_loop.
    - `geometry::tactical_instance::AugmentedArcIntegrator` 与 `DetonatorSwitchEntity`
      （驱动工兵在 16s 步长内按增广弧长 s_tilde 边走边把虚拟实例转正写入 WorldGrid，
      半截撤退持久化保留进度）。
-2. 本 Phase 专属验收命令：
-   `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core`
+2. 本 Phase 专属验收命令（在仓库根目录执行）：
+   `cargo test -p gentactix-core`
 
 【硬阻断 · 强制停机等待确认】：
 执行完当前 PHASE 01 的代码改动与专属单测后，必须立刻停止，汇报改动点与测试结果，
@@ -69,8 +69,8 @@ PHASE 02 · 实装外置伪装异步“时间机 (Time Machine)”与五张品�
        `initial_visibility: 0`）的分段轨迹 `particle_tracks`；
      * 将步长引擎算完的既定命中/爆炸/完工/G场生效结果原封不动封装为 `playback_events`，
        每项附带唯一 `exact_ms` 与原装 `exact_hp_loss` / `exact_supp_add`（严禁二次切分伤害）。
-4. 本 Phase 专属验收命令：
-   `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace`
+4. 本 Phase 专属验收命令（在仓库根目录执行）：
+   `cargo test --workspace`
 
 【硬阻断 · 强制停机等待确认】：
 执行完当前 PHASE 02 的代码改动与专属测试后，必须立刻停止，汇报时间机单测（含 `#0` 冻结、
@@ -95,8 +95,8 @@ PHASE 03 · 修复前后端单位脱节（消灭“0友军”）与 HTTP 契约�
    - 前端 `btnSplitSquad` 等按钮必须映射为规范枚举 `"split_squad"`、`"merge_squads"`、
      `"equip_adjust"`、`"deploy_heavy_unit"`、`"pack_heavy_unit"`，后端 `/api/unit_op` 全部
      走通返回 `200 OK`（交由时间机挂起进入下一回合生效）。
-3. 本 Phase 专属验收命令：
-   `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace` + HTTP 联调实测 `/api/state`
+3. 本 Phase 专属验收命令（在仓库根目录执行）：
+   `cargo test --workspace` + HTTP 联调实测 `/api/state`
    返回非空 `own_pieces` 及 `/api/unit_op` 返回 200 OK。
 
 【硬阻断 · 强制停机等待确认】：
@@ -170,10 +170,10 @@ PHASE 06 · 无作弊 E2E 严格验收与截图复核 (/v6-phase6)
    - 下达指令并推进回合后，对比 `/api/state` 中单位推进前后的真实坐标 `p0` 与 `p1`，
      强制断言 `Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 0.01`，同时校验 `time_machine_frame`
      包含 `particle_tracks`（含预渲染环字段）与 `playback_events`（含 `exact_ms`）。
-4. 全盘总验收与推送：
-   - 运行 `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace`；
-   - 编译启动服务端跑通 `node "D:\tools\gentactix\tests\e2e\verify_production_ui.mjs"`，读取
-     `D:\tools\gentactix\scratch\production_desktop_screenshot.png` 确认视觉完美后提交并推回 `origin/main`。
+4. 全盘总验收与推送（在仓库根目录执行）：
+   - 运行 `cargo test --workspace`；
+   - 编译启动服务端跑通 `node tests/e2e/verify_production_ui.mjs`，读取
+     `scratch/production_desktop_screenshot.png` 确认视觉完美后提交并推回 `origin/main`。
 
 【硬阻断 · 强制停机等待确认】：
 完成全量验证并推送回 `origin/main` 后立刻停手，提交详细真实验证报告等待大王验收！

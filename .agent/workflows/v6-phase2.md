@@ -23,9 +23,9 @@ description: V6 Phase 2 · 实装外置伪装异步时间机 (time_machine.rs) �
 3. 时间机对外导出（`TimeMachineFramePayload`）：
    - 输出 `particle_tracks`（己方、可见敌军 `initial_visibility: 1`、以及我方 `I_intel` 外围 16s 最大机动半径缓冲环 `is_prerender_skirt: true, initial_visibility: 0`）；
    - 将步长引擎算完的结果原封不动封装为带 `exact_ms` 的 `playback_events`（携带原装 `exact_hp_loss` / `exact_supp_add`）。
-4. 运行全量 Rust 测试并补齐时间机单测（`#0` 冻结、伤害原装一致、双哈希分表零误差复盘）：
+4. 运行全量 Rust 测试并补齐时间机单测（`#0` 冻结、伤害原装一致、双哈希分表零误差复盘，在仓库根目录执行）：
    ```powershell
-   cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace
+   cargo test --workspace
    ```
 
 【硬阻断 · 强制停机等待确认】：

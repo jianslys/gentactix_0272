@@ -19,9 +19,9 @@ description: V6 Phase 1 · 根治算子孤岛：将 V5 四大数学算子真实�
    - 调用 `fields::SchmidtPostureState` 与 `ALPHA_BLAST / ALPHA_SUPP` 驱动受击格双时间尺度衰减与敌军源项坍塌；
    - 调用 `fields::DeygoutRadioOperator` 与 `UnitZohDirectiveFilter` 驱动单单位 `<=128B` 稀疏 ZOH 滤波与施密特迟滞重寻思；
    - 调用 `geometry::tactical_instance::AugmentedArcIntegrator` 与 `DetonatorSwitchEntity` 驱动工兵 16s 步长边走边干转正写入 `WorldGrid`（半截退避持久化保留进度）。
-3. 跑通专属验收测试：
+3. 跑通专属验收测试（在仓库根目录执行）：
    ```powershell
-   cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core
+   cargo test -p gentactix-core
    ```
    确认全部通过并补充验证“主循环调用真实触发算子变化”的测试断言。
 
