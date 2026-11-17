@@ -1,21 +1,20 @@
-# GENTACTIX 专职施工计划 (Step-by-Step Execution Plan for `gentactix-builder`)
+# GENTACTIX 专职施工计划 V3.0 (Step-by-Step Execution Plan for `gentactix-builder`)
 
-> **最高施工准则**：
-> 1. 本计划与 `docs/SPEC/SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md` 严格绑定，**严禁跳过阶段、严禁自己寻思乱改顺序**！
-> 2. 每一阶段（Phase）施工完毕后，必须立即执行该阶段的【验收命令】，全部 PASS 后方可进入下一阶段。
-> 3. 严禁删除既有编制、操炮、火控、事件或图层能力，严禁破坏印刷地图视觉基准。
+> **最高施工铁律**：
+> 1. 本计划与 `docs/SPEC/SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md` (V3.0) 严格绑定，**严禁自己瞎寻思、严禁跳过阶段、严禁篡改 UI-ID 或美术色板**！
+> 2. 每完成一个 Phase，必须立即执行对应的验收测试命令，100% 通过后方可进入下一 Phase。
 
 ---
 
 ## 施工总路线图
 
 ```text
-Phase 01: 权威 16s 整数时钟与三态容器（WorldState / DerivedState / TickScratch）对齐
+Phase 01: 权威 16s 整数时钟与三态边界（WorldState / DerivedState / TickScratch）对齐
   ──► Phase 02: 2³ = 8m 网格杀伤寄存与场结算（P2G → Grid-to-Field → G2P）实装
-  ──► Phase 03: 服务端 16s 脉冲单步 API（subticks: 1）与整数时钟状态导出
-  ──► Phase 04: 前端全窗口红字 UI-ID（UI-01 ~ UI-18）与四类回合内修改面板实装
-  ──► Phase 05: 前端 1s 走表 + 16s 脉冲双频计时器与 2ⁿ 倍速（1×/2×/4×/8×/16×）闭环
-  ──► Phase 06: 全量单元测试与无头 Chrome E2E 像素级回归验收
+  ──► Phase 03: 服务端 16s 脉冲单步 API（subticks: 1）与信息场 I 视野裁剪状态导出
+  ──► Phase 04: 前端布局重构（压窄 UI-01/02、删 UI-06/12/13、改造 UI-09 工具包与 UI-08 日志占位、多开自由拖拽 UI-03 卡片）
+  ──► Phase 05: 前端 Shift+A / 右键呼出 UI-03M 集成框、UI-03M1 四行任务队列矩阵、预测流线与链式虚拟实例 (@#1) 实装
+  ──► Phase 06: 16s 双频计时器 + 2ⁿ 倍速闭环 & 无头 Chrome E2E 全项回归验收
 ```
 
 ---
@@ -27,34 +26,23 @@ Phase 01: 权威 16s 整数时钟与三态容器（WorldState / DerivedState / T
 - `crates/gentactix-core/src/sim_loop.rs`
 
 ### 1.2 具体施工步骤
-1. **扶正 16s 无损整数时钟（铲除 `clock_hours: f32` 浮点累加）**：
-   - 在 `SimWorld` 中新增字段：
+1. **无损整数时钟替换浮点累加**：
+   - 在 `SimWorld` 中新增 `pub epoch_seconds: u64`（默认 `23400` 即 `06:30:00`）与 `pub clock_seconds: u64`；
+   - 每次 16s 步长推进（`step_subtick_5m` / `step_subtick_16s`）：
      ```rust
-     pub epoch_seconds: u64, // 默认 23400 (即 06:30:00)
-     pub clock_seconds: u64, // 始终满足 epoch_seconds + (self.subtick as u64 * 16)
+     self.subtick += 1;
+     self.clock_seconds = self.epoch_seconds + ((self.subtick as u64) << 4);
+     self.clock_hours = (self.clock_seconds as f64 / 3600.0) as f32;
      ```
-   - 在 `SimWorld::step_subtick_5m`（保留原函数名兼容调用，并新增别名函数 `pub fn step_subtick_16s(&mut self, driver: &mut dyn CommanderDriver) -> SubtickReport`）中：
-     - 将 `self.subtick += 1;` 后的时间更新改为：
-       ```rust
-       self.clock_seconds = self.epoch_seconds + ((self.subtick as u64) << 4);
-       self.clock_hours = (self.clock_seconds as f64 / 3600.0) as f32;
-       ```
-     - **严禁**再使用 `self.clock_hours += dt` 进行浮点累加！
-   - 提供辅助格式化方法 `pub fn clock_hms_string(&self) -> String`，由 `self.clock_seconds % 86400` 精确格式化出 `"HH:MM:SS"`。
-2. **在 `state/mod.rs` 中补齐四类修改的 `DerivedState` 结构定义**：
-   - 在 `DerivedState` 中显式纳入四大缓存槽：
-     - `planned_actions`: 存放班组/指挥班/重武器班组的移动、射击、隐蔽、停止、撤退任务队列与路径/LOS 预览缓存；
-     - `planned_events`: 存放布雷、挖坑、建造、爆破、拆除、无线电、测距的读秒事件队列预览；
-     - `immediate_staging`: 存放不走队列的拆分/整编编制、调整士兵装备、使用物品、架设/收拢重武器草案；
-     - `command_fields`: 存放指挥 AO、进攻线、移动线、部署线及派生的欧拉连续场（$I, G$, SDF）。
-3. **在 `TickScratch` 中补齐 $8\text{m}$ 网格杀伤寄存与事件变异槽**：
-   - 确保 `TickScratch::reset_scratch()` 在每步结束时调用 `.clear()` 清空全部临时向量与哈希表，保持零堆内存重分配。
+   - 新增 `pub fn clock_hms_string(&self) -> String`，格式化 `"HH:MM:SS"`。
+2. **三态容器完善**：
+   - 在 `DerivedState` 中补齐四类修改缓存槽与虚拟实例预览缓存；
+   - 在 `TickScratch` 中补齐 $8\text{m}$ 网格杀伤寄存槽，确保 `reset_scratch()` 在每步结束时 `.clear()` 零分配复用。
 
-### 1.3 阶段验收命令
+### 1.3 验收命令
 ```powershell
 cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core
 ```
-- **必过断言**：编写单元测试验证连续运行 225 个 16s 步长后，`clock_seconds` 精确增加 `3600` 秒，`clock_hms_string()` 从 `"06:30:00"` 精确变为 `"07:30:00"`，无任何 1 秒跳变误差。
 
 ---
 
@@ -65,118 +53,120 @@ cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core
 - `crates/gentactix-core/src/world_grid.rs`
 
 ### 2.2 具体施工步骤
-1. **消除“假寄存、真遍历直接扣血”漏洞**：
-   - 在 `combat_logistics.rs` 的 `resolve_cell_strike_ex` 中，**严禁绕过 `WorldGrid::pixel_containers`**！
-   - 将伤害结算严格改为三拍流水线：
-     - **第一拍（P2G 射弹注入 $8\text{m}$ 网格）**：构造 `ShotPacket`（含 `target_px`、`origin_px`、`ammo_spec_id`、`shots`、`incoming_dir_deg`、`remaining_radius_m`），调用 `grid.inject_shot_packet(packet)` 寄存进目标 $8\text{m}$ 网格的 `PixelCellContainer`；
-     - **第二拍（Grid-to-Field 场展开与压制传递）**：从 `grid.pixel_containers` 读取寄存的 `ShotPacket`，计算目标格及高爆（HE）破片半径内邻近 $8\text{m}$ 网格的杀伤强度与压制密度 `suppression_density`，并写入网格压制状态与 `FireFields` 欧拉威胁场；
-     - **第三拍（G2P 从受击 $8\text{m}$ 网格向驻留单位结算）**：仅针对受击 $8\text{m}$ 网格内的驻留单位，结合该格 `effective_cover_at(r, c)`、入射角夹角余弦 $\cos(\theta_i)$ 与步坦协同遮蔽结算人员伤亡、载具战损与组织度损失，结算完毕后消费并清空该网格已处理的 `incoming_packets`。
+1. **铲除直接遍历单位扣血的旧逻辑**：
+   - 在 `resolve_cell_strike_ex` 中，先将 `ShotPacket` 通过 `grid.inject_shot_packet(packet)` 注入目标 $8\text{m}$ 网格的 `pixel_containers`；
+   - 由网格容器展开破片/射弹强度并累加该 $8\text{m}$ 格的 `suppression_density` 与 `FireFields` 威胁值；
+   - 从受击 $8\text{m}$ 网格中提取驻留单位，结合地形掩体、入射角 $\cos(\theta_i)$ 与步坦协同遮蔽结算伤亡与组织度损失，结算后消费清空该格已处理的 `incoming_packets`。
 
-### 2.3 阶段验收命令
+### 2.3 验收命令
 ```powershell
 cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core
 ```
-- **必过断言**：全部既有战斗测试通过，且验证射弹包经过 `pixel_containers` 寄存、更新 `suppression_density` 并在结算后清空。
 
 ---
 
-## Phase 03 · 服务端 16s 脉冲单步 API 与状态导出
+## Phase 03 · 服务端 16s 脉冲单步 API 与信息场 $I$ 状态导出
 
 ### 3.1 修改文件
 - `crates/gentactix-server/src/main.rs`
 
 ### 3.2 具体施工步骤
-1. **扩展 `/api/state` (`serialize_state`) 输出字段**：
-   - 在返回的 JSON 根对象中显式加入：
-     ```rust
-     "tick": w.subtick,
-     "clock_seconds": w.clock_seconds,
-     "clock_str": w.clock_hms_string(),
-     "step_seconds": 16,
-     ```
-2. **改造 `post_commit_turn` 支持整数单步 16s 脉冲**：
-   - 在 `post_commit_turn` 中，优先读取请求体中的整数 `"subticks"`（或 `"step_count"`）：
-     ```rust
-     let subticks = body.get("subticks")
-         .or_else(|| body.get("step_count"))
-         .and_then(|v| v.as_u64())
-         .map(|n| n.clamp(1, 225) as u32);
-     ```
-   - 若前端传入 `"subticks": 1`（或未传 `hours` / `turn_hours` 时默认按 `1` 个 16s 步长执行），直接精确运行 `subticks` 次 `step_subtick_16s`（先落盘本步附带的非队列编制/装备/无线电/战线调整，再执行 16s 步长推进），彻底避免用浮点 `hours` 折算步长！
-   - 若旧测试显式传入 `"hours"` 或 `"turn_hours"` 且未传 `"subticks"`，则兼容按 `(hours * 225.0).round()` 执行，确保旧有 Server 契约测试不挂。
+1. 在 `serialize_state` 返回 JSON 中输出 `"tick": w.subtick`、`"clock_seconds": w.clock_seconds`、`"clock_str": w.clock_hms_string()`、`"step_seconds": 16`，并为每个单位标注其与当前指挥官的编制关系（`"is_direct_subordinate": bool`）及信息场感知置信度（`"info_confidence": f32`）；
+2. 在 `post_commit_turn` 中优先支持整数 `"subticks"`（默认 `1`），当传入 `{"subticks": 1}` 时精确执行 1 次 16s 步长结算（兼容旧测试传入 `"hours"` 的情况）。
 
-### 3.3 阶段验收命令
+### 3.3 验收命令
 ```powershell
 cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-server
 ```
-- **必过断言**：`test_v33_server_contracts_auth_and_estimate` 及新增的 `subticks: 1` 脉冲步进测试 100% PASS。
 
 ---
 
-## Phase 04 · 前端全窗口红字 `data-ui-id`（`UI-01` ~ `UI-18`）与四类修改面板实装
+## Phase 04 · 前端全屏图台布局重构、删减与多开拖拽卡片 (`UI-01~03`, `UI-08~09`)
 
 ### 4.1 修改文件
 - `web/index.html`
 
-### 4.2 具体施工步骤（严禁自由发挥，严格按 ID 挂载）
-1. **保持既有 19 个 `data-ui-id` 完好无损**：
-   - `UI-01` (`.topbar`), `UI-02` (`.subbar`), `UI-03` (`#inspector`), `UI-03A` ~ `UI-03E` (检视器五大子块), `UI-04` (`#mapTitle`), `UI-05` (`#layerCard`), `UI-05A` (`#layerToggle`), `UI-06` (`.map-tools`), `UI-07` (`#meterGrid`), `UI-08` (`.footer`), `UI-09` (`.compass-wrap`), `UI-10` (`#designDialog`), `UI-11` (`#toast`), `UI-12` (`.map-stamp`), `UI-13` (`.map-notice`)。
-2. **补齐并实装新增窗口与四类修改面板的红字 `data-ui-id`（`UI-14` ~ `UI-18`）**：
-   - **`UI-14`**：在 `<aside class="orbat-drawer" id="orbatDrawer">` 上显式添加 `data-ui-id="UI-14"`；
-   - **`UI-14A`**：在 `<div class="orbat-body" id="orbatTreeList">` 上显式添加 `data-ui-id="UI-14A"`（确保 `position: relative`）；
-   - **`UI-14B`**：在 `#orbatDrawer` 下半部分新增 `<div class="reorg-equip-panel" id="reorgEquipPanel" data-ui-id="UI-14B">`，承载**【第三类修改 · 非队列直接调整】**（提供：拆分/整编编制、调整士兵装备、使用物品、架设/收拢重武器快捷操作按钮，点击即记入本步 `ImmediateStagingCache` 并调用 `/api/unit_op`）；
-   - **`UI-15`**：新增滑出式/切换式面板 `<section class="cmd-drawer" id="actionQueuePanel" data-ui-id="UI-15" aria-label="计划行动任务队列">`，承载**【第一类修改 · 计划行动】**（为选中班组/指挥班/重武器班组排入 移动、射击、隐蔽、停止、撤退 任务队列，选择行军模式 `normal/fast/slow` 与射击模式）；
-   - **`UI-16`**：新增面板 `<section class="cmd-drawer" id="eventQueuePanel" data-ui-id="UI-16" aria-label="计划事件队列">`，承载**【第二类修改 · 计划事件】**（排入 布雷、挖坑、建造、爆破、拆除、无线电静默/诱饵、炮兵测距 读秒事件）；
-   - **`UI-17`**：新增面板 `<section class="cmd-drawer" id="commandFieldPanel" data-ui-id="UI-17" aria-label="指挥安排与场绘制">`，承载**【第四类修改 · 指挥安排】**（在地图上绘制 指挥 AO、进攻线、移动线、部署线，切换显示欧拉任务引力场 $G$ 与信息斥力场 $I$）；
-   - **`UI-18`**：在 `.subbar .right` 中新增步长脉冲读秒与暂存指示器 `<div class="pulse-staging" id="pulseStagingBar" data-ui-id="UI-18">`，显示 `STEP 00/16S · 暂存 0`。
-3. **CSS 红字显示与布局保护**：
-   - 确保所有新增 `[data-ui-id]` 容器均具备 `position: relative`（或 `fixed`/`absolute`），其 `::after` 伪元素字号为 `8px ~ 9px`、颜色为红色（`#ee9286` 或 `#b34135`），绝不被裁切或重叠；
-   - `.workspace` 的直接子元素严格保持只有 `#inspector` 和 `main.map-area` 两个（所有抽屉面板 `UI-14` ~ `UI-17` 放在 `.workspace` 外部，与 `#orbatDrawer` 同级，采用 `position: fixed; top: 101px; left: 286px` 浮层抽屉形式，默认隐藏，通过顶部视图 Tab 或按钮互斥呼出）；
-   - 严禁改变 `#inspector` 内部高度，确保桌面端 1600×900 下 `#inspector.scrollHeight === #inspector.clientHeight`（无垂直滚动条）。
+### 4.2 具体施工步骤（严格遵循 SD2/CMO 印刷美术风格与红字 `data-ui-id`）
+1. **`UI-01` 与 `UI-02` 直接变窄**：
+   - `.app` 设为 `grid-template-rows: 36px 26px minmax(0, 1fr)`；调整内边距与字号使其紧凑精悍。
+2. **彻底物理删除 `UI-06`、`UI-12`、`UI-13`**：
+   - 从 HTML DOM 中完全删除 `.map-tools` (`UI-06`)、`.map-stamp` (`UI-12`)、`.map-notice` (`UI-13`)。
+3. **取消固定左侧栏，`UI-03` 改造为多开自由拖拽实例卡片**：
+   - `.workspace` 设为单列全屏 `grid-template-columns: minmax(0, 1fr)`，`main.map-area` (`#viewport`) 100% 铺满下方屏幕；
+   - 建立浮动卡片层 `#cardsContainer`；左键点击地图实例兵牌时，弹出或激活该实例的浮动卡片 `.unit-card.inspector`（挂 `data-ui-id="UI-03"`，子块 `UI-03A` 头部带拖拽与 `×` 关闭、`UI-03B` 作战实力、`UI-03C` 位置、`UI-03D` 当前意图）；
+   - 支持同时点开多个实例的卡片，按住 `UI-03A` 头部可自由拖拽到屏幕任意位置；点击卡片将其设为当前手动选中态（`.active-card`）；
+   - 卡片内容根据【编制关系 + 信息场 $I$】裁剪：直属己方显示全量精确数据；非直属友军仅显示番号与通报状态；敌方接触点按信息场置信度隐藏组织度与弹药（显示“未知”）。
+4. **`UI-09` 改造为右上角参谋地图工具包（内含 `UI-05` 图层项）**：
+   - 位于地图右上角（挂 `data-ui-id="UI-09"`），顶部包含指北针（点击复位视图）；
+   - 内含草稿工具条（挂 `data-ui-id="UI-09A"`）：`[ 测距 ]`、`[ 画笔 ]`、`[ 橡皮擦 ]`，支持在地图 SVG 草稿层 `#draftLayer` 上拉线测距、手绘战术草稿与擦除；
+   - 内嵌图层开关区（挂 `data-ui-id="UI-05"`，展开钮 `UI-05A`）：控制地形、地名、接触线、命令路线、火控图层显隐。
+5. **`UI-08` 改造为左下角日志窗口占位**：
+   - 位于地图左下角（挂 `data-ui-id="UI-08"`），深色铬合金紧凑窗口外观，显示 `作战日志 / COMMAND LOG (暂未开放)`。
 
 ---
 
-## Phase 05 · 前端 16s 双频计时器与 $2^n$ 倍速闭环
+## Phase 05 · `Shift+A` / 右键呼出 `UI-03M`、`UI-03M1` 四行任务矩阵与虚拟实例 (`@#1`)
 
 ### 5.1 修改文件
 - `web/index.html`
 
 ### 5.2 具体施工步骤
-1. **$2^n$ 纯二进制倍速档位**：
-   - 将 `#speed` 的点击切换逻辑从 `1 -> 5 -> 15 -> 1` 改为纯二进制序列：
-     ```javascript
-     const SPEED_STEPS = [1, 2, 4, 8, 16];
-     ```
-     点击 `#speed` 依次在 `1×`、`2×`、`4×`、`8×`、`16×` 之间循环切换。
-2. **1s 现实时钟走表 + 16s 步长脉冲结算**：
-   - 初始状态 `running = false`（暂停），`stepAccumulator = 0`（0 ~ 16 秒计数器）；
-   - 删除底部原有的 `setInterval(fetchBackendState, 2500)` 无脑轮询（只在页面初始加载时调用一次 `fetchBackendState()`）；
-   - 使用高精度计时循环（如 `250ms` 或基于 `performance.now()` 的 `requestAnimationFrame` / `setInterval`）：
-     - 当 `running === true` 时，按当前倍速 `speed`（1, 2, 4, 8, 16）推进逻辑秒：每过 `1000 / speed` 毫秒，逻辑时间前进 `1` 秒：
-       - `clockSeconds = (clockSeconds + 1) % 86400`，实时刷新右上角 `#clock`；
-       - `stepAccumulator += 1`，实时刷新 `UI-18`（`#pulseStagingBar`）显示 `STEP ${String(stepAccumulator).padStart(2,'0')}/16S`；
-     - **一旦 `stepAccumulator >= 16`**：
-       - `stepAccumulator = 0`；
-       - 立即触发一次异步步长结算 `await window.commitSimulationTurn()`（向 `POST /api/commit_turn` 发送 `{ subticks: 1, ...stagedPayloads }`）；
-       - 用后端返回的最新权威 `state` 同步更新 `clockSeconds`、地图兵牌位置、接触线与左侧 `#inspector` 数据！
+1. **`UI-03M` 集成指令选项框（双入口触发）**：
+   - 当手动选中某张 `UI-03` 卡片（或地图实例）并按下键盘 **`Shift + A`**，或在地图上**右键点击实例兵牌**时，在该实例/卡片旁弹出 `#integratedCommandMenu`（挂 `data-ui-id="UI-03M"`）；
+   - 内部提供 **`[ 任务 ]`**、**`[ 事件 ]`**、**`[ 指挥 ]`**、**`[ 整编 ]`** 选项及当前已排任务队列列表（如 `#1 移动`, `#2 射击`）。
+2. **`UI-03M1` 任务队列四行级联配置窗口（点击 `UI-03M` 的“任务”弹出，挂 `data-ui-id="UI-03M1"`）**：
+   - **铁律：必须先选好前三行选项，才允许在地图上画点追加任务！**
+   - **第一行（4 选 1）**：`[ 移动 ]` | `[ 射击 ]` | `[ 停止 ]` | `[ 撤退 ]`
+   - **当第一行选 `[ 移动 ]`**：
+     - 第二行：`[ 快速 ]` | `[ 正常 ]` | `[ 隐蔽 ]`
+     - 第三行：场强约束路径乘数滑块（`input[type="range"]`，最大值端显示 `不受约束 · 尽可能走直线`）
+     - 第四行：显示 `速度 | 预估时间 (ETA) | 体能/组织度消耗`
+   - **当第一行选 `[ 射击 ]`**：
+     - 第二行：`[ 快速 ]` | `[ 正常 ]` | `[ 精准 ]`
+     - 第三行：射击轮数滑块（`input[type="range"]`，最大值端显示 `持续压制 · 直到弹药打光`）
+     - 第四行：显示 `预估每轮射击时间 & 总射击时间 | 预估弹药消耗`
+   - **当第一行选 `[ 停止 ]`**：
+     - 第二行：`[ 趴下 ]` | `[ 掩体 ]` | `[ 原地不动 ]`
+     - 第三行：停止时间滑块（以 16s 为步进单位）
+     - 第四行：显示 `掩体减伤率 | 隐蔽加成 | 预估组织度恢复`
+   - **当第一行选 `[ 撤退 ]`**：
+     - 第二行：`[ 有序撤退 ]` | `[ 直接跑路 ]`
+     - 第三行：选 `有序撤退` 时显示 `抛弃物资选择（不抛弃 / 抛弃重武器 / 抛弃补给）`；**选 `直接跑路` 时必须隐藏第三行（`display: none`），单位收到任务时直接启动 $I/G$ 场自治逃逸，无需也不可在地图指定方向**！
+     - 第四行：显示撤退速度预估与控制权状态说明。
+3. **`UI-03M2` 事件队列占位窗口（点击 `UI-03M` 的“事件”弹出，挂 `data-ui-id="UI-03M2"`）**：
+   - 保持深色铬合金印刷风格统一，列出布雷、挖坑、建造、爆破、拆除、无线电、测距基础事件项。
+4. **预测流线与链式虚拟实例（Ghost Instance `@#1`）**：
+   - 当为某单位排入 `#1 移动` 并在地图点选终点 $P_1$ 后：
+     - 根据第三行场强约束滑块乘数绘制从起点到 $P_1$ 的预测路径流线（滑块最大时为直线，较小时受场弯曲）；
+     - 在终点 $P_1$ 处渲染一个带虚线框、半透明的同兵种虚拟实例 SVG 节点（`.ghost-unit`，标注 `@#1`）；
+   - 当继续排入 `#2 射击`（或 `#2 移动`）时：**`#2` 的起点坐标、射程圈圆心与火控视线（`#fireLive` / `#fireBlocked`）必须从 `#1 移动` 终点的 `@#1 虚拟实例` 位置 $P_1$ 出发绘制！**
 
 ---
 
-## Phase 06 · 自动化 E2E 像素级回归与全量验收
+## Phase 06 · 16s 双频计时器 + $2^n$ 倍速闭环与 E2E 自动化验收
 
-### 6.1 修改与执行文件
+### 6.1 修改文件
+- `web/index.html`
 - `tests/e2e/verify_production_ui.mjs`
 
 ### 6.2 具体施工步骤
-1. 在 `tests/e2e/verify_production_ui.mjs` 中更新并校验以下硬性断言：
-   - `.workspace` 直接子元素数量严格为 `2`（`#inspector` 在最左，`#viewport` 紧随其右且 `bottom === innerHeight`）；
-   - 桌面端 1600×900 下 `#inspector` 无垂直滚动条（`scrollHeight === clientHeight`）；
-   - 全部 `[data-ui-id]` 元素（包含原有的 19 个与新增的 `UI-14`, `UI-14A`, `UI-14B`, `UI-15`, `UI-16`, `UI-17`, `UI-18`，共计 26 个）ID 唯一，且每个元素的 `::after` 伪元素 `content` 包含其 `data-ui-id`、字号 `<= 9px`、颜色为红色（`R > G && R > B`）；
-   - `#speed` 按钮连续点击依次显示 `2×`, `4×`, `8×`, `16×`, `1×`；
-   - 切换至 `16×` 倍速并点击 `#play` 启动 1.2 秒后，验证触发了至少 1 次 16s 步长结算且控制台零报错（`errors.length === 0`）。
-2. 运行完整验收命令：
+1. **16s 计时器与 $2^n$ 倍速**：
+   - 默认 `running = false`（暂停）；
+   - `#speed` 点击严格按 `1× -> 2× -> 4× -> 8× -> 16× -> 1×` 切换；
+   - 运行态下按倍速每秒推进 `#clock`，每满 16s 逻辑秒调用一次 `/api/commit_turn`（传 `{"subticks": 1}`）结算并刷新状态；删除旧的 2.5s 无脑轮询。
+2. **更新并运行 `tests/e2e/verify_production_ui.mjs` 全面校验**：
+   - 校验 `UI-01`、`UI-02` 已压窄，地图 `#viewport` 全屏铺满且直抵屏幕底边；
+   - 校验 `UI-06`、`UI-12`、`UI-13` 已彻底移除（`document.querySelector('[data-ui-id="UI-06"],[data-ui-id="UI-12"],[data-ui-id="UI-13"]') === null`）；
+   - 校验点击多个地图兵牌可同时弹出多张 `UI-03` 卡片，且支持拖拽位置；
+   - 校验选中卡片按 `Shift + A` 或右键点击兵牌可弹出 `UI-03M` 集成指令框；
+   - 校验点击“任务”弹出 `UI-03M1`，切换 `移动 / 射击 / 停止 / 撤退` 四行结构完整，且 `撤退 -> 直接跑路` 时第三行自动隐藏；
+   - 校验排入 `#1 移动` + `#2 射击` 时，地图上存在 `@#1` 虚拟实例且 `#2 射击` 起点源自该虚拟实例；
+   - 校验 `UI-09` 工具包（含 `UI-09A` 测距/画笔/橡皮擦与 `UI-05` 图层项）、`UI-08` 左下角日志窗口占位、`UI-07` 居中四段比例尺、以及所有可见窗口的红字 `::after` 全部合规且控制台零报错。
+3. 执行验收与推送：
    ```powershell
    cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace
    node "D:\tools\gentactix\tests\e2e/verify_production_ui.mjs"
+   git -C "D:\tools\gentactix" add -A
+   git -C "D:\tools\gentactix" commit -m "feat(ui-v3): full-screen cartography map, multi-card UI-03, Shift+A UI-03M/M1 4-row matrix, ghost instances, and 16s pulse engine"
+   git -C "D:\tools\gentactix" push origin main
    ```
-3. 全部 `PASS` 后，执行 `git add -A && git commit && git push origin main` 完成交付！

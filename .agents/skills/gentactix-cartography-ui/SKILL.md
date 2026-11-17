@@ -1,72 +1,59 @@
 ---
 name: gentactix-cartography-ui
 description: >-
-  Gentactix 印刷地图战术指挥前端、全窗口红字 UI-ID 强制规范与无头浏览器像素级验真法典 (Gentactix Cartography UI & Red UI-ID Codex). ACTIVATE this skill whenever reading, modifying, or testing frontend code in web/index.html, art-direction/, or tests/e2e/.
+  Gentactix 全屏印刷地图前端、多开自由拖拽 UI-03 实例卡片、Shift+A/右键 UI-03M 集成指令框、UI-03M1 四行任务队列与虚拟实例、红字 UI-ID 强制规范及 E2E 验真法典。ACTIVATE this skill whenever reading, modifying, or testing frontend code in web/index.html, art-direction/, or tests/e2e/.
 ---
 
-# Gentactix 印刷地图战术指挥前端施工法典 (Cartography UI Codex)
+# Gentactix 全屏印刷地图与战术卡片前端施工法典 (Cartography UI Codex V3.0)
 
-本技能定义 `web/index.html` 的视觉美学、**全窗口红字 `data-ui-id` 强制挂载制度**、16s 双频计时器、四类回合内修改面板以及无头 Chrome 自动化像素验真标准。一切前端实现必须严格服从 [SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md) 第三章。
-
----
-
-## 一 · 视觉与布局绝对红线 (SD2 / CMO Printed Map Aesthetics)
-
-1. **色彩与材质变量锁死**：
-   - 保持 `:root` 军用印刷色板：`--ink:#d6d9d4; --dim:#8f9b9b; --chrome:#242e32; --deep:#1b2428; --line:#3d484c; --paper:#ded8be; --blue:#436779; --red:#a94f43; --gold:#c5aa70; --green:#91a58c;`；
-   - 保持 SVG `#paperGrain` 噪点滤镜、`#grid` 格网与 `#fieldHatch` / `#frontHatch` 印刷斜线填充。
-2. **Workspace 双顶级容器铁律**：
-   - `.workspace` 下**只允许存在两个直接子元素**：左侧 `#inspector.inspector`（深色检视面板）与右侧 `main.map-area`（内含 `#viewport.map-viewport`）；
-   - **绝对禁止**引入旧版笨重的 `.sidebar`、`#rosterPane`、`#eventsPane` 或底部滚动日志条 `.map-log`；
-   - 地图 `#viewport` 必须延伸至屏幕最底端（`bottom === innerHeight`）；桌面端（1600×900）下 `#inspector` 严禁出现垂直滚动条。
+本技能定义 `web/index.html` 的全屏图台架构、美术风格统一铁律、红字 `data-ui-id` 强制制度与无头 Chrome E2E 验真标准。一切实现必须 100% 服从 [SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_PULSE_16S_AND_TRIPARTITE_STATE_CODEX.md) 第三章。
 
 ---
 
-## 二 · 全窗口与子区块“红字 UI-ID”强制显示铁律 (Red UI-ID Overlay Rule)
+## 一 · 美术风格统一与全屏图台布局铁律
 
-> [!IMPORTANT]
-> **【最高前端铁律】**：界面上**每一个窗口、顶栏、侧栏、抽屉、浮动面板、模态弹窗（Dialog）以及内部独立功能子区块**，都必须显式挂载唯一的 `data-ui-id="UI-XX"` 属性，并通过 CSS `::after` 伪元素在容器角部渲染可见的红色小字编号（`font: 8px~9px var(--mono); color: #b34135 / #ee9286`），以便大王直接点名任意窗口修改！
-
-### 法定 `data-ui-id` 编号表（严禁遗漏或私自乱编）
-- **既有 19 个核心基准锚点**：
-  - `UI-01`：`header.topbar`（顶部导航栏）
-  - `UI-02`：`div.subbar`（次级战役与计时器控制栏）
-  - `UI-03`：`aside#inspector`（左侧单位检视主窗口）
-  - `UI-03A`：`.inspector-top`（单位头部标识区）
-  - `UI-03B`：`.inspector-section`（作战实力与三维进度条区）
-  - `UI-03C`：`.inspector-section`（位置与 8m 军用格网区）
-  - `UI-03D`：`.inspector-section`（当前命令意图卡片区）
-  - `UI-03E`：`.inspector-actions`（检视器底部主操作按钮区）
-  - `UI-04`：`div#mapTitle`（地图左上角战区标题折页）
-  - `UI-05`：`section#layerCard`（地图右下角图层控制抽屉）
-  - `UI-05A`：`button#layerToggle`（图层抽屉开关按钮）
-  - `UI-06`：`div.map-tools`（地图右上侧缩放与复位工具条）
-  - `UI-07`：`div#meterGrid.scale`（地图正下方居中四段印刷比例尺）
-  - `UI-08`：`footer.footer`（地图左下角状态灯与光标格网栏）
-  - `UI-09`：`div.compass-wrap`（地图右上侧指北针）
-  - `UI-10`：`dialog#designDialog`（美术设计说明弹窗）
-  - `UI-11`：`div#toast`（底部居中悬浮通知条）
-  - `UI-12`：`div.map-stamp`（地图右上角“作战用图”印章）
-  - `UI-13`：`div.map-notice`（地图左下侧操作提示语）
-- **新增业务窗口与四类修改面板法定编号**：
-  - `UI-14`：`aside#orbatDrawer`（战术编制母树与整编主抽屉）
-  - `UI-14A`：`div#orbatTreeList`（编制层级树列表子区）
-  - `UI-14B`：`div#reorgEquipPanel`（【第三类修改】非队列直接调整窗口：拆分/整编、调整士兵装备、使用物品、架设/收拢重武器）
-  - `UI-15`：`section#actionQueuePanel`（【第一类修改】计划行动任务队列窗口：移动、射击、隐蔽、停止、撤退）
-  - `UI-16`：`section#eventQueuePanel`（【第二类修改】计划事件读秒队列窗口：布雷、挖坑、建造、爆破、拆除、无线电、测距）
-  - `UI-17`：`section#commandFieldPanel`（【第四类修改】指挥安排与场绘制窗口：绘制指挥 AO、进攻线、移动线、部署线）
-  - `UI-18`：`div#pulseStagingBar`（16s 步长读秒 `00/16s` 与本步暂存操作概览区）
+1. **SD2 / CMO 印刷地图色板与材质锁死**：
+   - 严格沿用 `:root` 变量：`--ink:#d6d9d4; --dim:#8f9b9b; --chrome:#242e32; --deep:#1b2428; --line:#3d484c; --paper:#ded8be; --blue:#436779; --red:#a94f43; --gold:#c5aa70; --green:#91a58c;`；
+   - 所有弹出卡片（`UI-03`）、集成菜单（`UI-03M`）、四行任务窗口（`UI-03M1`）、事件窗口（`UI-03M2`）、日志占位框（`UI-08`）一律采用深色铬合金背景（`#242e32` / `#1b2428`）、细金属边框（`1px solid #48565a` / `--gold`）与等宽数值排版，保持视觉高度统一。
+2. **极窄顶栏 + 100% 全屏印刷地图**：
+   - `UI-01`（`.topbar`）高 `36px`，`UI-02`（`.subbar`）高 `26px`（总高 `62px`）；
+   - 取消固定左侧边栏！`main.map-area`（`#viewport`）100% 铺满下方全部屏幕空间（`left: 0; right: 0; bottom: 0`）。
+3. **三大冗余件彻底物理删除**：
+   - **严禁存在 `UI-06`（右侧缩放加减条 `.map-tools`）**；
+   - **严禁存在 `UI-12`（右上角“作战用图”印章 `.map-stamp`）**；
+   - **严禁存在 `UI-13`（左下角操作提示语 `.map-notice`）**。
 
 ---
 
-## 三 · 16s 双频计时器与后端真实状态对接
+## 二 · 核心窗口交互规范 (`UI-03` / `UI-03M` / `UI-03M1` / `UI-09` / `UI-08`)
 
-1. **1s 走表 + 16s 脉冲结算 + $2^n$ 倍速**：
-   - 初始状态 `running = false`（暂停）；
-   - `#speed` 倍速按钮严格按 `1× -> 2× -> 4× -> 8× -> 16×` 循环切换；
-   - 运行态下，每秒更新 `#clock` 与 `UI-18` 步长读秒；每满 16s 逻辑秒调用一次 `POST /api/commit_turn`（传 `{ "subticks": 1 }`），结算并同步最新权威状态。
-2. **必跑 E2E 自动化验证流程**：
-   ```powershell
-   node "D:\tools\gentactix\tests\e2e\verify_production_ui.mjs"
-   ```
-   确保控制台零报错，所有 `[data-ui-id]` 红字伪元素可见且唯一，布局与交互断言 100% `PASS`。
+1. **`UI-03` 多开自由拖拽实例卡片（受编制关系与 $I$ 场裁剪）**：
+   - 左键点击地图实例兵牌弹出对应的 `UI-03` 浮动卡片，支持同时点开多个不同实例的卡片，按住卡片头部可自由拖拽摆放到画面任意位置；
+   - 点击卡片将其设为当前手动选中态（`.active-card`）；
+   - 显示内容根据编制关系与信息场 $I$ 裁剪（直属己方显示全量人数/组织度/弹药/补给；非直属友军显示番号与通报状态；敌军接触点根据 `fog_level` 隐藏未知的组织度与弹药）。
+2. **`UI-03M` 集成指令选项框（`Shift + A` 或地图右键触发）**：
+   - 当手动选中某张 `UI-03` 卡片/实例并按下 **`Shift + A`**，或在地图上**右键点击实例**时，弹出 `UI-03M`；
+   - 内部集成 **`[ 任务 ]`**（打开 `UI-03M1`）、**`[ 事件 ]`**（打开 `UI-03M2`）、**`[ 指挥 ]`**、**`[ 整编 ]`** 选项。
+3. **`UI-03M1` 任务队列四行级联窗口 + 链式虚拟实例 (`@#1`)**：
+   - **必须先选好前三行，才能在地图上画点！**
+   - **第一行**：`[ 移动 ]` | `[ 射击 ]` | `[ 停止 ]` | `[ 撤退 ]`
+   - **选 `[ 移动 ]`**：第二行 `快速 | 正常 | 隐蔽`；第三行 `场强约束路径乘数滑块`（最大 = `不受约束，尽可能走直线`）；第四行 `速度 | 预估时间 | 体能/组织度消耗`。
+   - **选 `[ 射击 ]`**：第二行 `快速 | 正常 | 精准`；第三行 `射击轮数滑块`（最大 = `持续压制，直到弹药打光`）；第四行 `每轮时间 & 总射击时间 | 预估弹药消耗`。
+   - **选 `[ 停止 ]`**：第二行 `趴下 | 掩体 | 原地不动`；第三行 `停止时间滑块`；第四行 `掩体减伤率 | 隐蔽加成 | 组织度恢复`。
+   - **选 `[ 撤退 ]`**：第二行 `有序撤退 | 直接跑路`；第三行仅在 `有序撤退` 时显示 `抛弃什么物资跑`（**选 `直接跑路` 时隐藏第三行，单位收到任务直接启动 $I/G$ 场自治逃逸，不可控方向**）；第四行显示移速与控制代价。
+   - **链式虚拟实例**：当队列中有 `#1 移动` 且后接 `#2 射击`（或后续动作）时，地图在 `#1 移动` 终点必须渲染半透明虚线框的 **`@#1 虚拟实例`**，`#2 射击` 的起始点与 DDA 视线从该虚拟实例发出！
+4. **`UI-09` 右上角参谋地图工具包（内含 `UI-05` 图层项）**：
+   - 包含指北针、测距尺、草稿画笔、橡皮擦（`UI-09A`），并内嵌图层开关（`UI-05`：地形、地名、接触线、命令、火控）。
+5. **`UI-08` 左下角日志窗口占位**：
+   - 位于左下角，挂 `data-ui-id="UI-08"`，显示紧凑日志窗口标题框（暂不开放具体内容）。
+
+---
+
+## 三 · 红字 `data-ui-id` 强制清单与 E2E 验真
+
+所有窗口与子区块必须挂载唯一 `data-ui-id`（`UI-01`, `UI-02`, `UI-03`, `UI-03A~D`, `UI-03M`, `UI-03M1`, `UI-03M2`, `UI-04`, `UI-05`, `UI-05A`, `UI-07`, `UI-08`, `UI-09`, `UI-09A`, `UI-10`, `UI-11`, `UI-14`）并渲染左上角红字 `::after`。
+每次修改后必须运行：
+```powershell
+node "D:\tools\gentactix\tests\e2e\verify_production_ui.mjs"
+```
+确保全项 `PASS` 且控制台零报错。
