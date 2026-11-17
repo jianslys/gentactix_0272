@@ -1,0 +1,1415 @@
+{
+  "checks": [
+    "PASS Roster, intelligence-record sidebar and bottom action log are removed",
+    "PASS Only inspector and map remain in workspace, inspector is first at far left",
+    "PASS Map extends to screen bottom, without log or footer band",
+    "PASS Scale is centered at map screen bottom",
+    "PASS Scale uses alternating four printed segments",
+    "PASS Desktop inspector primary actions fit without scrolling",
+    "PASS No horizontal overflow at desktop size",
+    "PASS Upper-right stamp, compass and zoom controls do not overlap",
+    "PASS Every UI panel has unique red small ID, including subsections",
+    "PASS Self-contained concept does not reference external scripts or APIs",
+    "PASS 10 APP-6 inspired symbols and initial friendly selection remain",
+    "PASS Layers start collapsed and cannot receive focus",
+    "PASS Layer opening has real intermediate opacity frames",
+    "PASS Layer card is bottom-right and open state is accessible",
+    "PASS terrain layer hides",
+    "PASS terrain layer restores",
+    "PASS labels layer hides",
+    "PASS labels layer restores",
+    "PASS front layer hides",
+    "PASS front layer restores",
+    "PASS routes layer hides",
+    "PASS routes layer restores",
+    "PASS Layer closing animates and returns keyboard focus to toggle",
+    "PASS Layer selection survives closing and reopening",
+    "PASS Rapid toggle settles closed with correct pointer state",
+    "PASS Early animation timestamps cannot reverse zoom or overshoot limits",
+    "PASS Camera smoothly interpolates instead of jumping",
+    "PASS Ruler continuously scales with camera animation",
+    "PASS Map title details fade in with zoom",
+    "PASS Title starts significantly smaller than original 31px",
+    "PASS Click animates title shrink to single compact region name",
+    "PASS Repeated zoom out obeys lower bound and preserves compact title",
+    "PASS Wide view hides title detail annotations",
+    "PASS Repeated zoom in obeys upper bound and fades details fully in",
+    "PASS Ruler stays in 1/2/5 nice-number series",
+    "PASS Reset restores original zoom and pan",
+    "PASS Actual wheel zoom-in never moves backward on any sampled frame",
+    "PASS Actual wheel zoom-out never moves forward on any sampled frame",
+    "PASS Pointer pan works and releases capture",
+    "PASS Map selection updates relocated inspector",
+    "PASS Enemy selection keeps strength unknown and friendly analysis hidden",
+    "PASS Keyboard selection still updates inspector",
+    "PASS Fire analysis retains ellipse and split line",
+    "PASS Toast ID survives dynamic text updates",
+    "PASS Intelligence uncertainty works without removed records panel",
+    "PASS Situation mode hides uncertainty overlay",
+    "PASS Planning remains explicitly nonpersistent",
+    "PASS Clock preview still runs without altering unit data",
+    "PASS Clock pauses correctly",
+    "PASS Design modal has visible red ID and correct new layout description",
+    "PASS Escape closes design dialog",
+    "PASS Compact desktop keeps left inspector and wide map",
+    "PASS Tablet hidden inspector is inaccessible and map uses full width",
+    "PASS Tablet inspector animates in from the left",
+    "PASS Escape closes drawer and returns focus",
+    "PASS Phone map fills width with no overflow",
+    "PASS Phone bottom ruler does not overlap layer toggle or status",
+    "PASS Phone layers stay within viewport, above ruler",
+    "PASS Phone inspector opens left and all actions remain reachable",
+    "PASS Small phone has no horizontal overflow and separate bottom controls",
+    "PASS Reduced motion disables camera interpolation",
+    "PASS Reduced motion disables layer transition",
+    "PASS Resize back to desktop restores interactive inspector",
+    "PASS Escape dismisses layers"
+  ],
+  "failures": [],
+  "errors": [],
+  "animations": {
+    "layer-open": [
+      {
+        "time": -0.8999999970197905,
+        "value": 0
+      },
+      {
+        "time": 15.900000002980278,
+        "value": 0
+      },
+      {
+        "time": 32.50000000298019,
+        "value": 0
+      },
+      {
+        "time": 49.20000000298023,
+        "value": 0.0612473
+      },
+      {
+        "time": 65.80000000298014,
+        "value": 0.188329
+      },
+      {
+        "time": 82.50000000298019,
+        "value": 0.357602
+      },
+      {
+        "time": 99.20000000298023,
+        "value": 0.519615
+      },
+      {
+        "time": 115.80000000298014,
+        "value": 0.650985
+      },
+      {
+        "time": 132.5000000029802,
+        "value": 0.75327
+      },
+      {
+        "time": 149.20000000298023,
+        "value": 0.831058
+      },
+      {
+        "time": 165.80000000298014,
+        "value": 0.889213
+      },
+      {
+        "time": 182.5000000029802,
+        "value": 0.932381
+      },
+      {
+        "time": 199.20000000298023,
+        "value": 0.963095
+      },
+      {
+        "time": 215.80000000298014,
+        "value": 0.983449
+      },
+      {
+        "time": 232.5000000029802,
+        "value": 0.995334
+      },
+      {
+        "time": 249.20000000298023,
+        "value": 0.999879
+      },
+      {
+        "time": 265.80000000298014,
+        "value": 1
+      },
+      {
+        "time": 282.5000000029802,
+        "value": 1
+      },
+      {
+        "time": 299.20000000298023,
+        "value": 1
+      },
+      {
+        "time": 315.80000000298014,
+        "value": 1
+      },
+      {
+        "time": 332.4000000029803,
+        "value": 1
+      },
+      {
+        "time": 349.1000000029803,
+        "value": 1
+      },
+      {
+        "time": 365.80000000298014,
+        "value": 1
+      },
+      {
+        "time": 382.5000000029802,
+        "value": 1
+      },
+      {
+        "time": 399.20000000298023,
+        "value": 1
+      },
+      {
+        "time": 415.80000000298014,
+        "value": 1
+      },
+      {
+        "time": 432.5000000029802,
+        "value": 1
+      },
+      {
+        "time": 449.1000000029803,
+        "value": 1
+      },
+      {
+        "time": 465.80000000298014,
+        "value": 1
+      },
+      {
+        "time": 482.5000000029802,
+        "value": 1
+      },
+      {
+        "time": 499.20000000298023,
+        "value": 1
+      },
+      {
+        "time": 515.8000000029801,
+        "value": 1
+      },
+      {
+        "time": 532.5000000029802,
+        "value": 1
+      },
+      {
+        "time": 549.1000000029803,
+        "value": 1
+      },
+      {
+        "time": 565.8000000029801,
+        "value": 1
+      },
+      {
+        "time": 582.5000000029802,
+        "value": 1
+      },
+      {
+        "time": 599.1000000029803,
+        "value": 1
+      },
+      {
+        "time": 615.9000000029803,
+        "value": 1
+      },
+      {
+        "time": 632.4000000029803,
+        "value": 1
+      },
+      {
+        "time": 649.1000000029803,
+        "value": 1
+      },
+      {
+        "time": 665.8000000029801,
+        "value": 1
+      }
+    ],
+    "layer-close": [
+      {
+        "time": 5.700000005960419,
+        "value": 1
+      },
+      {
+        "time": 22.300000005960555,
+        "value": 1
+      },
+      {
+        "time": 39.00000000596037,
+        "value": 0.938968
+      },
+      {
+        "time": 55.70000000596042,
+        "value": 0.811089
+      },
+      {
+        "time": 72.30000000596056,
+        "value": 0.64279
+      },
+      {
+        "time": 89.00000000596037,
+        "value": 0.480722
+      },
+      {
+        "time": 105.70000000596042,
+        "value": 0.348583
+      },
+      {
+        "time": 122.30000000596056,
+        "value": 0.246933
+      },
+      {
+        "time": 139.00000000596037,
+        "value": 0.169095
+      },
+      {
+        "time": 155.70000000596042,
+        "value": 0.1106
+      },
+      {
+        "time": 172.30000000596056,
+        "value": 0.0677026
+      },
+      {
+        "time": 189.00000000596037,
+        "value": 0.036962
+      },
+      {
+        "time": 205.70000000596042,
+        "value": 0.0164918
+      },
+      {
+        "time": 222.40000000596046,
+        "value": 0.00463584
+      },
+      {
+        "time": 239.00000000596037,
+        "value": 0.000123405
+      },
+      {
+        "time": 255.70000000596042,
+        "value": 0
+      },
+      {
+        "time": 272.30000000596056,
+        "value": 0
+      },
+      {
+        "time": 289.0000000059604,
+        "value": 0
+      },
+      {
+        "time": 305.6000000059605,
+        "value": 0
+      },
+      {
+        "time": 322.30000000596056,
+        "value": 0
+      },
+      {
+        "time": 339.0000000059604,
+        "value": 0
+      },
+      {
+        "time": 355.70000000596065,
+        "value": 0
+      },
+      {
+        "time": 372.30000000596056,
+        "value": 0
+      },
+      {
+        "time": 388.90000000596046,
+        "value": 0
+      },
+      {
+        "time": 405.70000000596065,
+        "value": 0
+      },
+      {
+        "time": 422.40000000596046,
+        "value": 0
+      },
+      {
+        "time": 439.0000000059604,
+        "value": 0
+      },
+      {
+        "time": 455.70000000596065,
+        "value": 0
+      },
+      {
+        "time": 472.30000000596056,
+        "value": 0
+      },
+      {
+        "time": 489.0000000059604,
+        "value": 0
+      },
+      {
+        "time": 505.70000000596065,
+        "value": 0
+      },
+      {
+        "time": 522.3000000059606,
+        "value": 0
+      },
+      {
+        "time": 539.0000000059604,
+        "value": 0
+      },
+      {
+        "time": 555.7000000059606,
+        "value": 0
+      },
+      {
+        "time": 572.3000000059606,
+        "value": 0
+      },
+      {
+        "time": 589.0000000059604,
+        "value": 0
+      },
+      {
+        "time": 605.6000000059603,
+        "value": 0
+      },
+      {
+        "time": 622.3000000059606,
+        "value": 0
+      },
+      {
+        "time": 638.9000000059605,
+        "value": 0
+      },
+      {
+        "time": 655.6000000059603,
+        "value": 0
+      }
+    ],
+    "early-frame-timestamps": [
+      {
+        "start": 1,
+        "target": 1.09,
+        "frames": [
+          1,
+          1,
+          1,
+          1.0168266666666668,
+          1.0379166666666666,
+          1.0633333333333335,
+          1.0866666666666667,
+          1.09
+        ]
+      },
+      {
+        "start": 1,
+        "target": 0.9174311926605504,
+        "frames": [
+          1,
+          1,
+          1,
+          0.9845626911314984,
+          0.9652140672782874,
+          0.9418960244648318,
+          0.9204892966360856,
+          0.9174311926605504
+        ]
+      },
+      {
+        "start": 0.7,
+        "target": 0.763,
+        "frames": [
+          0.7,
+          0.7,
+          0.7,
+          0.7117786666666667,
+          0.7265416666666666,
+          0.7443333333333333,
+          0.7606666666666667,
+          0.763
+        ]
+      },
+      {
+        "start": 2.5,
+        "target": 2.293577981651376,
+        "frames": [
+          2.5,
+          2.5,
+          2.5,
+          2.4614067278287464,
+          2.4130351681957185,
+          2.3547400611620795,
+          2.3012232415902143,
+          2.293577981651376
+        ]
+      }
+    ],
+    "zoom-ruler-title": [
+      {
+        "time": -1.7000000029802322,
+        "value": {
+          "zoom": 1,
+          "width": 109.5,
+          "alpha": 0.333333,
+          "meters": 200
+        }
+      },
+      {
+        "time": 14.899999997019677,
+        "value": {
+          "zoom": 1,
+          "width": 109.5,
+          "alpha": 0.333333,
+          "meters": 200
+        }
+      },
+      {
+        "time": 31.59999999701995,
+        "value": {
+          "zoom": 1.0321097259259258,
+          "width": 113.015625,
+          "alpha": 0.333333,
+          "meters": 200
+        }
+      },
+      {
+        "time": 64.99999999701959,
+        "value": {
+          "zoom": 1.0665890238281253,
+          "width": 116.78125,
+          "alpha": 0.358045,
+          "meters": 200
+        }
+      },
+      {
+        "time": 98.39999999701968,
+        "value": {
+          "zoom": 1.1207219047019674,
+          "width": 122.71875,
+          "alpha": 0.394593,
+          "meters": 200
+        }
+      },
+      {
+        "time": 114.99999999701959,
+        "value": {
+          "zoom": 1.1577824567563657,
+          "width": 126.765625,
+          "alpha": 0.413526,
+          "meters": 200
+        }
+      },
+      {
+        "time": 164.9999999970196,
+        "value": {
+          "zoom": 1.1708521636718747,
+          "width": 128.203125,
+          "alpha": 0.468347,
+          "meters": 200
+        }
+      },
+      {
+        "time": 181.69999999701986,
+        "value": {
+          "zoom": 1.1935735684751156,
+          "width": 130.6875,
+          "alpha": 0.481719,
+          "meters": 200
+        }
+      },
+      {
+        "time": 198.29999999701977,
+        "value": {
+          "zoom": 1.1969370842592593,
+          "width": 131.0625,
+          "alpha": 0.493411,
+          "meters": 200
+        }
+      },
+      {
+        "time": 231.69999999701986,
+        "value": {
+          "zoom": 1.1988497251157406,
+          "width": 131.265625,
+          "alpha": 0.51374,
+          "meters": 200
+        }
+      },
+      {
+        "time": 264.8999999970197,
+        "value": {
+          "zoom": 1.1999872,
+          "width": 131.390625,
+          "alpha": 0.527618,
+          "meters": 200
+        }
+      },
+      {
+        "time": 281.59999999701995,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.532284,
+          "meters": 200
+        }
+      },
+      {
+        "time": 298.29999999701977,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.536949,
+          "meters": 200
+        }
+      },
+      {
+        "time": 314.8999999970197,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.541587,
+          "meters": 200
+        }
+      },
+      {
+        "time": 331.59999999701995,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.546252,
+          "meters": 200
+        }
+      },
+      {
+        "time": 348.29999999701977,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.550918,
+          "meters": 200
+        }
+      },
+      {
+        "time": 364.89999999702013,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 381.6999999970194,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 398.29999999701977,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 414.9999999970196,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 431.59999999701995,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 448.29999999701977,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 464.9999999970196,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 481.59999999701995,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 498.29999999701977,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 514.9999999970196,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 531.6999999970194,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 548.2999999970198,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 564.8999999970201,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 581.6999999970194,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 598.2999999970198,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 614.8999999970201,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 631.59999999702,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 648.2999999970198,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      },
+      {
+        "time": 664.9999999970196,
+        "value": {
+          "zoom": 1.2,
+          "width": 131.390625,
+          "alpha": 0.555556,
+          "meters": 200
+        }
+      }
+    ],
+    "title-compact": [
+      {
+        "time": 12.966000008940682,
+        "value": 21
+      },
+      {
+        "time": 29.600000008940697,
+        "value": 20.621
+      },
+      {
+        "time": 46.20000000894106,
+        "value": 19.861
+      },
+      {
+        "time": 63.00000000894033,
+        "value": 18.7727
+      },
+      {
+        "time": 79.6000000089407,
+        "value": 17.6186
+      },
+      {
+        "time": 96.20000000894106,
+        "value": 16.5829
+      },
+      {
+        "time": 112.90000000894088,
+        "value": 15.7209
+      },
+      {
+        "time": 129.6000000089407,
+        "value": 15.0291
+      },
+      {
+        "time": 146.20000000894106,
+        "value": 14.4828
+      },
+      {
+        "time": 162.90000000894088,
+        "value": 14.0498
+      },
+      {
+        "time": 179.6000000089407,
+        "value": 13.7128
+      },
+      {
+        "time": 196.30000000894051,
+        "value": 13.4553
+      },
+      {
+        "time": 212.90000000894088,
+        "value": 13.2658
+      },
+      {
+        "time": 229.6000000089407,
+        "value": 13.1321
+      },
+      {
+        "time": 246.20000000894106,
+        "value": 13.0481
+      },
+      {
+        "time": 263.00000000894033,
+        "value": 13.0064
+      },
+      {
+        "time": 279.6000000089407,
+        "value": 13
+      },
+      {
+        "time": 296.3000000089405,
+        "value": 13
+      },
+      {
+        "time": 312.9000000089409,
+        "value": 13
+      },
+      {
+        "time": 329.6000000089407,
+        "value": 13
+      },
+      {
+        "time": 346.3000000089405,
+        "value": 13
+      },
+      {
+        "time": 362.9000000089409,
+        "value": 13
+      },
+      {
+        "time": 379.6000000089407,
+        "value": 13
+      },
+      {
+        "time": 396.3000000089405,
+        "value": 13
+      },
+      {
+        "time": 412.9000000089409,
+        "value": 13
+      },
+      {
+        "time": 429.6000000089407,
+        "value": 13
+      },
+      {
+        "time": 446.20000000894106,
+        "value": 13
+      },
+      {
+        "time": 462.9000000089409,
+        "value": 13
+      },
+      {
+        "time": 479.6000000089407,
+        "value": 13
+      },
+      {
+        "time": 496.3000000089405,
+        "value": 13
+      },
+      {
+        "time": 512.9000000089409,
+        "value": 13
+      },
+      {
+        "time": 529.5000000089403,
+        "value": 13
+      },
+      {
+        "time": 546.2000000089411,
+        "value": 13
+      },
+      {
+        "time": 562.9000000089409,
+        "value": 13
+      },
+      {
+        "time": 579.5000000089403,
+        "value": 13
+      },
+      {
+        "time": 596.3000000089405,
+        "value": 13
+      },
+      {
+        "time": 612.9000000089409,
+        "value": 13
+      },
+      {
+        "time": 629.6000000089407,
+        "value": 13
+      },
+      {
+        "time": 646.2000000089411,
+        "value": 13
+      },
+      {
+        "time": 662.9000000089409,
+        "value": 13
+      }
+    ],
+    "wheel-in-no-reversal": [
+      {
+        "time": -7.199999991059485,
+        "value": 1
+      },
+      {
+        "time": 9.500000008940333,
+        "value": 1
+      },
+      {
+        "time": 26.20000000894106,
+        "value": 1
+      },
+      {
+        "time": 42.800000008940515,
+        "value": 1
+      },
+      {
+        "time": 59.50000000894033,
+        "value": 1.0163355720999308
+      },
+      {
+        "time": 92.80000000894051,
+        "value": 1.031582170882903
+      },
+      {
+        "time": 109.50000000894033,
+        "value": 1.0554064542625503
+      },
+      {
+        "time": 126.20000000894106,
+        "value": 1.0644182776548003
+      },
+      {
+        "time": 142.80000000894051,
+        "value": 1.0717110056563934
+      },
+      {
+        "time": 159.50000000894033,
+        "value": 1.077436320799879
+      },
+      {
+        "time": 176.1000000089407,
+        "value": 1.081844228176407
+      },
+      {
+        "time": 192.80000000894051,
+        "value": 1.085061519999516
+      },
+      {
+        "time": 226.20000000894106,
+        "value": 1.0873079842119167
+      },
+      {
+        "time": 242.80000000894051,
+        "value": 1.0895480043553705
+      },
+      {
+        "time": 259.50000000894033,
+        "value": 1.089904256998663
+      },
+      {
+        "time": 276.1000000089407,
+        "value": 1.0899969104687466
+      },
+      {
+        "time": 292.8000000089405,
+        "value": 1.09
+      },
+      {
+        "time": 309.50000000894033,
+        "value": 1.09
+      },
+      {
+        "time": 326.20000000894106,
+        "value": 1.09
+      },
+      {
+        "time": 342.9000000089409,
+        "value": 1.09
+      },
+      {
+        "time": 359.50000000894033,
+        "value": 1.09
+      },
+      {
+        "time": 376.20000000894106,
+        "value": 1.09
+      },
+      {
+        "time": 392.8000000089405,
+        "value": 1.09
+      },
+      {
+        "time": 409.50000000894033,
+        "value": 1.09
+      },
+      {
+        "time": 426.20000000894106,
+        "value": 1.09
+      },
+      {
+        "time": 442.8000000089405,
+        "value": 1.09
+      },
+      {
+        "time": 459.50000000894033,
+        "value": 1.09
+      },
+      {
+        "time": 476.1000000089407,
+        "value": 1.09
+      },
+      {
+        "time": 492.8000000089405,
+        "value": 1.09
+      },
+      {
+        "time": 509.50000000894033,
+        "value": 1.09
+      },
+      {
+        "time": 526.1000000089407,
+        "value": 1.09
+      },
+      {
+        "time": 542.8000000089405,
+        "value": 1.09
+      },
+      {
+        "time": 559.5000000089403,
+        "value": 1.09
+      },
+      {
+        "time": 576.2000000089411,
+        "value": 1.09
+      },
+      {
+        "time": 592.9000000089409,
+        "value": 1.09
+      },
+      {
+        "time": 609.4000000089409,
+        "value": 1.09
+      },
+      {
+        "time": 626.2000000089411,
+        "value": 1.09
+      },
+      {
+        "time": 642.8000000089405,
+        "value": 1.09
+      },
+      {
+        "time": 659.4000000089409,
+        "value": 1.09
+      }
+    ],
+    "wheel-out-no-reversal": [
+      {
+        "time": 14.20000000894106,
+        "value": 1.09
+      },
+      {
+        "time": 30.800000008940515,
+        "value": 1.09
+      },
+      {
+        "time": 47.50000000894033,
+        "value": 1.09
+      },
+      {
+        "time": 64.1000000089407,
+        "value": 1.073271377089844
+      },
+      {
+        "time": 80.80000000894051,
+        "value": 1.0581651814778645
+      },
+      {
+        "time": 114.20000000894106,
+        "value": 1.0452213887500001
+      },
+      {
+        "time": 130.80000000894051,
+        "value": 1.0253876772395831
+      },
+      {
+        "time": 147.40000000894088,
+        "value": 1.0181725866666667
+      },
+      {
+        "time": 164.1000000089407,
+        "value": 1.01247307609375
+      },
+      {
+        "time": 197.50000000894033,
+        "value": 1.0080878702799478
+      },
+      {
+        "time": 214.20000000894106,
+        "value": 1.0026488868554688
+      },
+      {
+        "time": 230.80000000894051,
+        "value": 1.0012312449479166
+      },
+      {
+        "time": 247.40000000894088,
+        "value": 1.00044217
+      },
+      {
+        "time": 264.1000000089407,
+        "value": 1.0000922688020832
+      },
+      {
+        "time": 280.8000000089405,
+        "value": 1.0000027465820311
+      },
+      {
+        "time": 297.50000000894033,
+        "value": 1
+      },
+      {
+        "time": 314.20000000894106,
+        "value": 1
+      },
+      {
+        "time": 330.8000000089405,
+        "value": 1
+      },
+      {
+        "time": 347.50000000894033,
+        "value": 1
+      },
+      {
+        "time": 364.1000000089407,
+        "value": 1
+      },
+      {
+        "time": 380.8000000089405,
+        "value": 1
+      },
+      {
+        "time": 397.50000000894033,
+        "value": 1
+      },
+      {
+        "time": 414.1000000089407,
+        "value": 1
+      },
+      {
+        "time": 430.8000000089405,
+        "value": 1
+      },
+      {
+        "time": 447.4000000089409,
+        "value": 1
+      },
+      {
+        "time": 464.1000000089407,
+        "value": 1
+      },
+      {
+        "time": 480.8000000089405,
+        "value": 1
+      },
+      {
+        "time": 497.50000000894033,
+        "value": 1
+      },
+      {
+        "time": 514.1000000089407,
+        "value": 1
+      },
+      {
+        "time": 530.8000000089405,
+        "value": 1
+      },
+      {
+        "time": 547.5000000089403,
+        "value": 1
+      },
+      {
+        "time": 564.1000000089407,
+        "value": 1
+      },
+      {
+        "time": 580.8000000089405,
+        "value": 1
+      },
+      {
+        "time": 597.5000000089403,
+        "value": 1
+      },
+      {
+        "time": 614.1000000089407,
+        "value": 1
+      },
+      {
+        "time": 630.8000000089405,
+        "value": 1
+      },
+      {
+        "time": 647.5000000089403,
+        "value": 1
+      },
+      {
+        "time": 664.2000000089411,
+        "value": 1
+      }
+    ],
+    "inspector-left-drawer": [
+      {
+        "time": -14.300000002980596,
+        "value": -286
+      },
+      {
+        "time": 2.2999999970197678,
+        "value": -286
+      },
+      {
+        "time": 18.999999997020495,
+        "value": -270.681640625
+      },
+      {
+        "time": 35.699999997019404,
+        "value": -239.1810302734375
+      },
+      {
+        "time": 52.29999999701977,
+        "value": -196.11256408691406
+      },
+      {
+        "time": 68.9999999970205,
+        "value": -152.00218200683594
+      },
+      {
+        "time": 85.59999999701904,
+        "value": -114.44475555419922
+      },
+      {
+        "time": 102.29999999701977,
+        "value": -84.1952133178711
+      },
+      {
+        "time": 118.89999999702013,
+        "value": -60.647552490234375
+      },
+      {
+        "time": 135.59999999701904,
+        "value": -42.27919387817383
+      },
+      {
+        "time": 152.29999999701977,
+        "value": -28.208816528320312
+      },
+      {
+        "time": 168.9999999970205,
+        "value": -17.63628578186035
+      },
+      {
+        "time": 185.59999999701904,
+        "value": -9.993412017822266
+      },
+      {
+        "time": 202.1999999970194,
+        "value": -4.751455783843994
+      },
+      {
+        "time": 218.9999999970205,
+        "value": -1.5290876626968384
+      },
+      {
+        "time": 235.59999999701904,
+        "value": -0.12093812972307205
+      },
+      {
+        "time": 252.29999999701977,
+        "value": 0
+      },
+      {
+        "time": 268.89999999702013,
+        "value": 0
+      },
+      {
+        "time": 285.59999999701904,
+        "value": 0
+      },
+      {
+        "time": 302.29999999701977,
+        "value": 0
+      },
+      {
+        "time": 318.9999999970205,
+        "value": 0
+      },
+      {
+        "time": 335.59999999701904,
+        "value": 0
+      },
+      {
+        "time": 352.1999999970194,
+        "value": 0
+      },
+      {
+        "time": 368.89999999702013,
+        "value": 0
+      },
+      {
+        "time": 385.59999999701904,
+        "value": 0
+      },
+      {
+        "time": 402.1999999970194,
+        "value": 0
+      },
+      {
+        "time": 418.89999999702013,
+        "value": 0
+      },
+      {
+        "time": 435.59999999701904,
+        "value": 0
+      },
+      {
+        "time": 452.29999999701977,
+        "value": 0
+      },
+      {
+        "time": 468.89999999702013,
+        "value": 0
+      },
+      {
+        "time": 485.59999999701904,
+        "value": 0
+      },
+      {
+        "time": 502.29999999701977,
+        "value": 0
+      },
+      {
+        "time": 518.8999999970201,
+        "value": 0
+      },
+      {
+        "time": 535.599999997019,
+        "value": 0
+      },
+      {
+        "time": 552.1999999970194,
+        "value": 0
+      },
+      {
+        "time": 568.9999999970205,
+        "value": 0
+      },
+      {
+        "time": 585.599999997019,
+        "value": 0
+      },
+      {
+        "time": 602.2999999970198,
+        "value": 0
+      },
+      {
+        "time": 618.8999999970201,
+        "value": 0
+      },
+      {
+        "time": 635.599999997019,
+        "value": 0
+      },
+      {
+        "time": 652.1999999970194,
+        "value": 0
+      }
+    ]
+  }
+}

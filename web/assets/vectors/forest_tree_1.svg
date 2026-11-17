@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 192" width="128" height="192">
+  <g fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Broad mature pine -->
+    <path d="M64 16 C64.8 60 63.6 118 64 178" stroke-width="3.0"/>
+    <path d="M53 178 Q64 180 75 178" stroke-width="1.7" opacity="0.65"/>
+    <path d="M64 30 Q56 40 49 56" stroke-width="2.1"/>
+    <path d="M64 32 Q72 42 79 58" stroke-width="2.1"/>
+    <path d="M64 58 Q49 71 37 91" stroke-width="2.3"/>
+    <path d="M64 61 Q79 73 91 93" stroke-width="2.3"/>
+    <path d="M46 76 L39 81" stroke-width="1.5"/>
+    <path d="M64 89 Q46 104 31 124" stroke-width="2.4"/>
+    <path d="M64 91 Q82 106 96 125" stroke-width="2.4"/>
+    <path d="M84 109 L91 114" stroke-width="1.5"/>
+    <path d="M64 118 Q48 131 35 147" stroke-width="2.1"/>
+    <path d="M64 120 Q80 132 93 146" stroke-width="2.1"/>
+  </g>
+</svg>

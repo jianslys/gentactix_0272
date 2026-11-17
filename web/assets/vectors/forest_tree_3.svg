@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 192" width="128" height="192">
+  <g fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Slightly wind-leaning asymmetric pine -->
+    <path d="M66 14 C65 58 63 116 62 177" stroke-width="2.7"/>
+    <path d="M54 178 Q62 179 71 177" stroke-width="1.6" opacity="0.6"/>
+    <path d="M65.5 28 Q58 39 51 54" stroke-width="2.1"/>
+    <path d="M65.5 31 Q73 41 79 55" stroke-width="2.0"/>
+    <path d="M64.8 58 Q51 70 39 90" stroke-width="2.2"/>
+    <path d="M64.8 62 Q77 73 86 89" stroke-width="2.1"/>
+    <path d="M63.8 90 Q47 104 33 125" stroke-width="2.3"/>
+    <path d="M63.8 94 Q78 106 89 123" stroke-width="2.2"/>
+  </g>
+</svg>
