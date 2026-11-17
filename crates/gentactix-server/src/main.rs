@@ -519,8 +519,11 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
         "ground_bodies": &g.ground_bodies,
         "turn": w.turn,
         "subtick": w.subtick,
+        "tick": w.subtick,
+        "clock_seconds": w.clock_seconds,
+        "clock_str": w.clock_hms_string(),
         "clock_hours": w.clock_hours,
-        "step_seconds": gentactix_core::sim_loop::SUBTICK_SECONDS,
+        "step_seconds": 16,
         "pre_game_editable": w.pre_game_editable && w.turn == 0,
         "active_commander_id": cid_opt.map(|c| w.commanders.str_id[c.0].clone()),
         "team": team.as_str(),
@@ -2213,8 +2216,49 @@ async fn post_commit_turn(State(st): State<AppState>, Json(body): Json<Value>) -
         }
     }
 
-    let hours = body.get("hours").and_then(|v| v.as_f64()).unwrap_or(0.25) as f32;
-    let rep = w.run_turn_default(hours);
+    let opt_subticks = body
+        .get("subticks")
+        .or_else(|| body.get("step_count"))
+        .and_then(|v| v.as_u64())
+        .map(|n| n.clamp(1, 225) as u32);
+
+    let rep = if let Some(n_ticks) = opt_subticks {
+        w.pre_game_editable = false;
+        w.turn += 1;
+        let mut last_fp = String::new();
+        let mut drv = gentactix_core::command_log::MathRecursiveDriver;
+        for _ in 0..n_ticks {
+            let sr = w.step_subtick_16s(&mut drv);
+            last_fp = sr.fingerprint;
+        }
+        gentactix_core::sim_loop::TurnReport {
+            turn: w.turn,
+            clock_hours: w.clock_hours,
+            subtick_count: n_ticks,
+            total_hours: n_ticks as f32 * gentactix_core::sim_loop::SUBTICK_HOURS,
+            last_fingerprint: last_fp,
+        }
+    } else if body.get("hours").is_some() || body.get("turn_hours").is_some() {
+        let hours = body
+            .get("hours")
+            .or_else(|| body.get("turn_hours"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.25) as f32;
+        w.run_turn_default(hours)
+    } else {
+        w.pre_game_editable = false;
+        w.turn += 1;
+        let mut drv = gentactix_core::command_log::MathRecursiveDriver;
+        let sr = w.step_subtick_16s(&mut drv);
+        let last_fp = sr.fingerprint;
+        gentactix_core::sim_loop::TurnReport {
+            turn: w.turn,
+            clock_hours: w.clock_hours,
+            subtick_count: 1,
+            total_hours: gentactix_core::sim_loop::SUBTICK_HOURS,
+            last_fingerprint: last_fp,
+        }
+    };
     let mp_snap = {
         let mut mp = st.mp.lock().unwrap();
         mp.state_revision += 1;
@@ -2460,5 +2504,37 @@ mod tests {
                 .iter()
                 .all(|e| e.get("active_events").is_none()));
         }
+    }
+
+    #[tokio::test]
+    async fn test_phase_03_server_16s_pulse_and_state_export() {
+        let st = test_state();
+
+        // 1. 验证 /api/state 导出的字段中包含 tick, clock_seconds, clock_str, step_seconds
+        let q = StateQuery { commander_id: None, team: None, seat_token: None };
+        let (sc_state, Json(state_val)) = get_state(State(st.clone()), axum::extract::Query(q)).await;
+        assert_eq!(sc_state, StatusCode::OK);
+        assert_eq!(state_val["ok"], json!(true));
+        assert!(state_val.get("tick").is_some(), "state must export tick");
+        assert!(state_val.get("clock_seconds").is_some(), "state must export clock_seconds");
+        assert!(state_val.get("clock_str").is_some(), "state must export clock_str");
+        assert_eq!(state_val["step_seconds"], json!(16));
+        assert_eq!(state_val["clock_str"], json!("06:30:00"));
+
+        // 2. 验证 post_commit_turn 支持 subticks: 1 整数脉冲单步推进
+        let (sc_commit, Json(commit_res)) = post_commit_turn(
+            State(st.clone()),
+            Json(json!({
+                "subticks": 1
+            })),
+        ).await;
+        assert_eq!(sc_commit, StatusCode::OK);
+        assert_eq!(commit_res["ok"], json!(true));
+        let rep = &commit_res["report"];
+        assert_eq!(rep["subtick_count"], json!(1));
+        let state = &commit_res["state"];
+        assert_eq!(state["tick"], json!(1));
+        assert_eq!(state["clock_seconds"], json!(23416));
+        assert_eq!(state["clock_str"], json!("06:30:16"));
     }
 }

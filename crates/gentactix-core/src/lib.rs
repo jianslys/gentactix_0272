@@ -1273,4 +1273,74 @@ mod tests {
         let live_cd2 = w.weapon_cooldowns.get(cd_key).copied().unwrap_or(0.0);
         assert!((live_cd2 - 60.0).abs() < 1e-4, "cooldown after 32s should be 60s, got {live_cd2}");
     }
+
+    #[test]
+    fn test_phase_01_clock_16s_lossless_integer_progression() {
+        use crate::command_log::MathRecursiveDriver;
+        use crate::sim_loop::build_demo_world;
+
+        let mut w = build_demo_world();
+        assert_eq!(w.epoch_seconds, 23400);
+        assert_eq!(w.clock_seconds, 23400);
+        assert_eq!(w.clock_hms_string(), "06:30:00");
+
+        let mut drv = MathRecursiveDriver;
+        // 连续运行 225 个 16s 步长
+        for _ in 0..225 {
+            w.step_subtick_16s(&mut drv);
+        }
+
+        assert_eq!(w.subtick, 225);
+        assert_eq!(w.clock_seconds, 23400 + 225 * 16);
+        assert_eq!(w.clock_seconds, 27000);
+        assert_eq!(w.clock_hms_string(), "07:30:00");
+        assert!((w.clock_hours - 7.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_phase_02_p2g_field_g2p_registration_and_consumption() {
+        use crate::combat_logistics::resolve_cell_strike_ex;
+        use crate::sim_loop::build_demo_world;
+        use crate::world_grid::TeamId;
+
+        let mut w = build_demo_world();
+        let target_px = (24, 30); // 蓝方警戒班所在坐标
+        let target_gi = w.grid.idx(target_px.0, target_px.1) as u32;
+
+        // 验证初始状态：该格没有未处理射弹包，压制密度为 0
+        assert_eq!(
+            w.grid.pixel_containers.get(&target_gi).map_or(0, |c| c.incoming_packets.len()),
+            0
+        );
+        let init_suppr = w.grid.pixel_containers.get(&target_gi).map_or(0.0, |c| c.suppression_density);
+        assert_eq!(init_suppr, 0.0);
+
+        // 执行一发 105mm 榴弹炮打击
+        let rep = resolve_cell_strike_ex(
+            &mut w.grid,
+            &mut w.units,
+            &w.commanders,
+            &mut w.events,
+            target_px,
+            TeamId::Red,
+            [12.0, 8.0, 5.0, 2.0, 0.0, 0.0],
+            "howitzer_105",
+            [24.0, 20.0],
+            false,
+            "seed-test-p2g",
+            false,
+            None,
+        );
+
+        assert!(rep.person_losses > 0 || rep.org_loss > 0.0);
+
+        // 验证第二拍与第三拍契约：
+        // 1. suppression_density 成功更新
+        let post_suppr = w.grid.pixel_containers.get(&target_gi).expect("container should exist").suppression_density;
+        assert!(post_suppr > 0.0, "suppression_density must be updated by strike, got {post_suppr}");
+
+        // 2. incoming_packets 已在第三拍完成消费并清空
+        let remaining_packets = w.grid.pixel_containers.get(&target_gi).unwrap().incoming_packets.len();
+        assert_eq!(remaining_packets, 0, "incoming_packets must be consumed and cleared after G2P settlement");
+    }
 }

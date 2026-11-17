@@ -270,11 +270,76 @@ pub struct SdfCache {
     pub normal_vec: Vec<[f32; 2]>,
 }
 
+/// 第一类修改派生缓存：班组/指挥班/重武器任务队列与路径/LOS预览缓存
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlannedActionItem {
+    pub unit_id: String,
+    pub action_kind: String, // "move" | "fire" | "conceal" | "stop" | "retreat"
+    pub waypoints: Vec<[f32; 2]>,
+    pub eta_sec: f32,
+    pub fire_live_segments: Vec<[f32; 4]>,
+    pub fire_blocked_segments: Vec<[f32; 4]>,
+    pub dispersion_m: f32,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct PlannedActionCache {
+    pub actions: FxHashMap<String, Vec<PlannedActionItem>>,
+    pub revision: u64,
+}
+
+/// 第二类修改派生缓存：布雷、挖坑、建造、爆破、拆除、无线电、测距读秒事件队列预览
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlannedEventItem {
+    pub event_id: u64,
+    pub unit_id: String,
+    pub kind: String, // "mine" | "trench" | "build" | "demolish" | "clear" | "radio" | "rangefind"
+    pub remaining_sec: f32,
+    pub target_cell: Option<CellCoord>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct PlannedEventCache {
+    pub events: Vec<PlannedEventItem>,
+    pub revision: u64,
+}
+
+/// 第三类修改派生缓存：非队列直接调整草案（拆分/整编编制、士兵装备、使用物品、架设/收拢重武器）
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ImmediateStagingOp {
+    pub op_id: u64,
+    pub op_type: String, // "reorg" | "equip" | "use_item" | "deploy_weapon" | "pack_weapon"
+    pub unit_id: String,
+    pub payload_json: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ImmediateStagingCache {
+    pub pending_ops: Vec<ImmediateStagingOp>,
+    pub revision: u64,
+}
+
+/// 第四类修改派生缓存：指挥AO、进攻线、移动线、部署线及欧拉连续场（I, G, SDF）
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CommandFieldCache {
+    pub ao_zones: Vec<String>,
+    pub attack_lines: Vec<Vec<[f32; 2]>>,
+    pub move_lines: Vec<Vec<[f32; 2]>>,
+    pub deploy_lines: Vec<Vec<[f32; 2]>>,
+    pub gravity_field_g: Vec<f32>,
+    pub repulse_field_i: Vec<f32>,
+    pub revision: u64,
+}
+
 /// 容器二：DerivedState 派生状态容器 (可随时销毁并由 WorldState 重建)
 #[derive(Debug, Clone, Default)]
 pub struct DerivedState {
     pub sdf: SdfCache,
     pub threat_field_revision: u64,
+    pub planned_actions: PlannedActionCache,
+    pub planned_events: PlannedEventCache,
+    pub immediate_staging: ImmediateStagingCache,
+    pub command_fields: CommandFieldCache,
 }
 
 impl DerivedState {
@@ -300,6 +365,26 @@ impl DerivedState {
     }
 }
 
+/// 8m 网格杀伤寄存桶瞬态草稿条目
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GridFireRecord {
+    pub cell_idx: usize,
+    pub packets: Vec<crate::world_grid::ShotPacket>,
+    pub total_shrapnel_flux: f32,
+    pub max_overpressure_kpa: f32,
+    pub suppression_density: f32,
+}
+
+/// 计划事件到期变异提案
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EventMutation {
+    pub event_id: u64,
+    pub unit_id: String,
+    pub target_cell: Option<CellCoord>,
+    pub mutation_kind: String,
+    pub description: String,
+}
+
 /// 容器三：TickScratch 单 Tick 瞬态工作区
 #[derive(Debug, Clone, Default)]
 pub struct TickScratch {
@@ -307,6 +392,8 @@ pub struct TickScratch {
     pub intent_candidates: Vec<u32>,
     pub motion_proposals: Vec<(u32, WorldPos)>,
     pub transient_blast_cell_indices: Vec<usize>,
+    pub grid_fire_scratch: Vec<GridFireRecord>,
+    pub completed_event_mutations: Vec<EventMutation>,
     pub diagnostics: Vec<String>,
 }
 
@@ -316,6 +403,8 @@ impl TickScratch {
         self.intent_candidates.clear();
         self.motion_proposals.clear();
         self.transient_blast_cell_indices.clear();
+        self.grid_fire_scratch.clear();
+        self.completed_event_mutations.clear();
         self.diagnostics.clear();
     }
 
@@ -323,6 +412,8 @@ impl TickScratch {
         self.intent_candidates.clear();
         self.motion_proposals.clear();
         self.transient_blast_cell_indices.clear();
+        self.grid_fire_scratch.clear();
+        self.completed_event_mutations.clear();
         self.diagnostics.clear();
     }
 }

@@ -400,7 +400,9 @@ pub fn resolve_cell_strike_ex(
     let (base_cov, _) = grid.effective_cover_at(target_px.0, target_px.1);
     let dist_m = grid.distance_km(aspect_attacker_pos, [target_px.0 as f32, target_px.1 as f32]) * 1000.0;
 
-    // Register incoming shot packet in destination pixel container (unified entrance)
+    // =========================================================================
+    // 第一拍 (P2G 射弹注入 8m 网格)
+    // =========================================================================
     let incoming_dir = (aspect_attacker_pos[1] - target_px.1 as f32)
         .atan2(aspect_attacker_pos[0] - target_px.0 as f32)
         .to_degrees()
@@ -417,8 +419,59 @@ pub fn resolve_cell_strike_ex(
     };
     grid.inject_shot_packet(packet);
 
-    // Collect candidate units in target cell (or within HE frag Gaussian radius)
+    // =========================================================================
+    // 第二拍 (Grid-to-Field 场展开与压制传递)
+    // =========================================================================
+    let target_gi = grid.idx(target_px.0, target_px.1) as u32;
+    let registered_shots = grid
+        .pixel_containers
+        .get(&target_gi)
+        .map_or(1, |c| c.incoming_packets.iter().map(|p| p.shots).sum::<u32>());
+    let base_suppr = (registered_shots as f32 * 0.1).max(0.5) * (if is_he { 1.5 } else { 1.0 });
+
+    if let Some(c) = grid.pixel_containers.get_mut(&target_gi) {
+        c.suppression_density = (c.suppression_density + base_suppr).min(100.0);
+    }
+    if (target_gi as usize) < grid.exposure.len() {
+        grid.exposure[target_gi as usize] = (grid.exposure[target_gi as usize] + 0.25).min(1.0);
+        if !grid.exposure_active.contains(&target_gi) {
+            grid.exposure_active.push(target_gi);
+        }
+    }
+
     let frag_px = (spec.frag_radius_m / grid.cell_m).max(0.5);
+    if is_he && frag_px > 0.5 {
+        let rad_cells = frag_px.ceil() as i32;
+        let r_min = (target_px.0 - rad_cells).max(0);
+        let r_max = (target_px.0 + rad_cells).min(grid.rows as i32 - 1);
+        let c_min = (target_px.1 - rad_cells).max(0);
+        let c_max = (target_px.1 + rad_cells).min(grid.cols as i32 - 1);
+        for r in r_min..=r_max {
+            for c in c_min..=c_max {
+                if r == target_px.0 && c == target_px.1 {
+                    continue;
+                }
+                let d_px = ((r - target_px.0) as f32).hypot((c - target_px.1) as f32);
+                if d_px <= frag_px {
+                    let falloff = (-0.5 * (d_px / frag_px.max(0.5)).powi(2)).exp();
+                    let ngi = grid.idx(r, c) as u32;
+                    let n_c = grid.pixel_containers.entry(ngi).or_default();
+                    n_c.suppression_density = (n_c.suppression_density + base_suppr * 0.5 * falloff).min(100.0);
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // 第三拍 (G2P 从受击 8m 网格向驻留单位结算，消费并清空 incoming_packets)
+    // =========================================================================
+    let _consumed_packets = if let Some(c) = grid.pixel_containers.get_mut(&target_gi) {
+        std::mem::take(&mut c.incoming_packets)
+    } else {
+        Vec::new()
+    };
+
+    // Collect candidate units in target cell (or within HE frag Gaussian radius)
     let max_cell_dist = if is_he { frag_px.ceil().max(1.0) } else { 0.5 };
 
     let mut targets: Vec<(UnitId, f32)> = Vec::new();
@@ -464,10 +517,11 @@ pub fn resolve_cell_strike_ex(
             events.notify_unit_attacked(units, commanders, Some(uid), attacker_team, Some(target_px));
         }
 
+        let cos_theta = ((incoming_dir - units.facing_deg[i]).to_radians().cos()).abs().clamp(0.2, 1.0);
         let (cov_eff, flank_mult, _) = if units.is_directional_hull(uid) {
             compute_directional_cover_eff(units.pos[i], units.facing_deg[i], aspect_attacker_pos, base_cov)
         } else {
-            (base_cov * 0.65, 1.0, 0.5)
+            (base_cov * 0.65 * (1.0 - 0.15 * (1.0 - cos_theta)), 1.0, 0.5)
         };
 
         // Combined arms tank screening: check friendly infantry within <= 1px

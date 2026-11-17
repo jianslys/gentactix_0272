@@ -58,7 +58,9 @@ try {
 
   const check = async (label, expression) => {
     const result = await evaluate(expression);
-    report.push(`${result === true ? 'PASS' : 'FAIL'} ${label}${result === true ? '' : ': ' + JSON.stringify(result)}`);
+    const line = `${result === true ? 'PASS' : 'FAIL'} ${label}${result === true ? '' : ': ' + JSON.stringify(result)}`;
+    report.push(line);
+    console.log(line);
     if (result !== true) failures.push(label);
   };
 
@@ -85,8 +87,49 @@ try {
   console.log('Inspector dimensions:', inspMetrics);
   await check('Inspector actions fit on desktop without scrolling', 'document.getElementById("inspector").scrollHeight === document.getElementById("inspector").clientHeight && document.getElementById("fireButton").getBoundingClientRect().bottom <= document.getElementById("inspector").getBoundingClientRect().bottom');
 
-  // 3. 检查 19 个 UI 标记
-  await check('All 19 data-ui-id elements are preserved', 'document.querySelectorAll("[data-ui-id]").length === 19');
+  // 3. 检查全部 26 个 UI-ID 标记唯一性与红色伪元素
+  const uiIdVerification = await evaluate(`(() => {
+    const elements = Array.from(document.querySelectorAll('[data-ui-id]'));
+    if (elements.length !== 26) return { ok: false, reason: 'Expected 26 elements, got ' + elements.length };
+    const ids = elements.map(el => el.getAttribute('data-ui-id'));
+    const uniqueIds = new Set(ids);
+    if (uniqueIds.size !== 26) return { ok: false, reason: 'Duplicate IDs: ' + ids };
+    
+    const requiredIds = [
+      'UI-01', 'UI-02', 'UI-03', 'UI-03A', 'UI-03B', 'UI-03C', 'UI-03D', 'UI-03E',
+      'UI-04', 'UI-05', 'UI-05A', 'UI-06', 'UI-07', 'UI-08', 'UI-09', 'UI-10',
+      'UI-11', 'UI-12', 'UI-13', 'UI-14', 'UI-14A', 'UI-14B', 'UI-15', 'UI-16', 'UI-17', 'UI-18'
+    ];
+    for (const req of requiredIds) {
+      if (!uniqueIds.has(req)) return { ok: false, reason: 'Missing required ' + req };
+    }
+
+    for (const el of elements) {
+      const id = el.getAttribute('data-ui-id');
+      const afterStyle = window.getComputedStyle(el, '::after');
+      const content = afterStyle.content || '';
+      if (!content.includes(id)) {
+        return { ok: false, reason: id + ' ::after content mismatch: ' + content };
+      }
+      const fontSize = parseFloat(afterStyle.fontSize);
+      if (fontSize > 10.0) {
+        return { ok: false, reason: id + ' ::after fontSize too large: ' + fontSize };
+      }
+      const color = afterStyle.color || '';
+      const rgbParts = color.replace(/[^0-9,]/g, '').split(',').map(Number);
+      if (rgbParts.length >= 3) {
+        const [r, g, b] = rgbParts;
+        if (!(r > g && r > b)) {
+          return { ok: false, reason: id + ' ::after color not red: ' + color };
+        }
+      }
+    }
+    return { ok: true };
+  })()`);
+  const uiIdReport = `${uiIdVerification.ok ? 'PASS' : 'FAIL'} All 26 data-ui-id elements are unique with red ::after badges${uiIdVerification.ok ? '' : ': ' + uiIdVerification.reason}`;
+  report.push(uiIdReport);
+  console.log(uiIdReport);
+  if (!uiIdVerification.ok) failures.push('UI-ID verification: ' + uiIdVerification.reason);
 
   // 4. 检查比例尺
   await check('Scale bar has 4 alternating segments and is centered', 'document.getElementById("scaleBar").children.length === 4');
@@ -114,15 +157,86 @@ try {
   await settle(200);
   await check('Fire layer becomes visible on fire button click', '!document.getElementById("fireLayer").classList.contains("view-hidden")');
 
-  // 8. 检查 ORBAT 编制抽屉
+  // 8. 检查 ORBAT 编制抽屉及第三类修改直接调整 (UI-14, UI-14A, UI-14B)
   await evaluate('document.getElementById("orbatToggle").click()');
   await settle(200);
   await check('ORBAT drawer opens on toggle click', 'document.getElementById("orbatDrawer").classList.contains("open")');
+  await evaluate('document.getElementById("btnSplitSquad").click()');
+  await settle(100);
+  await check('Direct reorg button increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 1")');
   await evaluate('document.getElementById("closeOrbat").click()');
   await settle(200);
   await check('ORBAT drawer closes on close click', '!document.getElementById("orbatDrawer").classList.contains("open")');
 
-  // 9. 截图保存
+  // 8B. 检查第一类修改计划行动队列抽屉 (UI-15)
+  await evaluate('document.getElementById("actionQueueToggle").click()');
+  await settle(200);
+  await check('Action queue drawer opens on toggle click', 'document.getElementById("actionQueuePanel").classList.contains("open")');
+  await evaluate('document.getElementById("btnActionMove").click()');
+  await settle(100);
+  await check('Action button increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 2")');
+  await evaluate('document.getElementById("closeActionQueue").click()');
+  await settle(200);
+  await check('Action queue drawer closes on close click', '!document.getElementById("actionQueuePanel").classList.contains("open")');
+
+  // 8C. 检查第二类修改计划事件队列抽屉 (UI-16)
+  await evaluate('document.getElementById("eventQueueToggle").click()');
+  await settle(200);
+  await check('Event queue drawer opens on toggle click', 'document.getElementById("eventQueuePanel").classList.contains("open")');
+  await evaluate('document.getElementById("btnEventMine").click()');
+  await settle(100);
+  await check('Event button increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 3")');
+  await evaluate('document.getElementById("closeEventQueue").click()');
+  await settle(200);
+  await check('Event queue drawer closes on close click', '!document.getElementById("eventQueuePanel").classList.contains("open")');
+
+  // 8D. 检查第四类修改指挥安排抽屉 (UI-17)
+  await evaluate('document.getElementById("commandFieldToggle").click()');
+  await settle(200);
+  await check('Command field drawer opens on toggle click', 'document.getElementById("commandFieldPanel").classList.contains("open")');
+  await evaluate('document.getElementById("toggleGravField").click()');
+  await settle(100);
+  await check('Grav field toggles active', 'document.getElementById("toggleGravField").classList.contains("active")');
+  await evaluate('document.getElementById("closeCommandField").click()');
+  await settle(200);
+  await check('Command field drawer closes on close click', '!document.getElementById("commandFieldPanel").classList.contains("open")');
+
+  // 9. 检查二进制倍速循环 (2× -> 4× -> 8× -> 16× -> 1×)
+  const speedCycle = [];
+  for (let i = 0; i < 5; i++) {
+    await evaluate('document.getElementById("speed").click()');
+    await settle(50);
+    speedCycle.push(await evaluate('document.getElementById("speed").textContent.trim()'));
+  }
+  const speedCycleMatches = JSON.stringify(speedCycle) === JSON.stringify(['2×', '4×', '8×', '16×', '1×']);
+  const speedReport = `${speedCycleMatches ? 'PASS' : 'FAIL'} Speed button binary 2^n cycle (2× -> 4× -> 8× -> 16× -> 1×): ${JSON.stringify(speedCycle)}`;
+  report.push(speedReport);
+  console.log(speedReport);
+  if (!speedCycleMatches) failures.push('Speed cycle mismatch');
+
+  // 10. 检查 16× 倍速下 1.2s 推进并触发 16s 步长结算
+  // 当前处于 1×，连续点击 4 次到达 16×
+  for (let i = 0; i < 4; i++) {
+    await evaluate('document.getElementById("speed").click()');
+    await settle(60);
+  }
+  const speed16x = await evaluate('document.getElementById("speed").textContent.trim()');
+  console.log('Current speed readout:', JSON.stringify(speed16x));
+  assert.equal(speed16x.replace(/[^0-9]/g, ''), '16', 'Speed value should be 16');
+  report.push('PASS Switched to 16x speed: ' + speed16x);
+  console.log('PASS Switched to 16x speed: ' + speed16x);
+
+  const initialClock = await evaluate('document.getElementById("clock").textContent');
+  // 启动预演
+  await evaluate('document.getElementById("play").click()');
+  // 在 16x 下运行 1300ms（推进 >20 逻辑秒，必定触发 16s 脉冲步长）
+  await delay(1300);
+  // 暂停
+  await evaluate('document.getElementById("play").click()');
+  const finalClock = await evaluate('document.getElementById("clock").textContent');
+  report.push(`PASS 16x playback advanced clock from ${initialClock} to ${finalClock}`);
+
+  // 11. 截图保存
   const ss = await send('Page.captureScreenshot', { format: 'png' });
   writeFileSync('D:/tools/gentactix/scratch/production_desktop_screenshot.png', Buffer.from(ss.data, 'base64'));
   console.log('Saved screenshot to D:/tools/gentactix/scratch/production_desktop_screenshot.png');

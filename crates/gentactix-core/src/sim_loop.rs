@@ -263,6 +263,8 @@ pub struct SimWorld {
     pub weapon_cooldowns: FxHashMap<String, f32>,
     pub turn: u32,
     pub subtick: u32,
+    pub epoch_seconds: u64, // 默认 23400 (即 06:30:00)
+    pub clock_seconds: u64, // 始终满足 epoch_seconds + (self.subtick as u64 * 16)
     pub clock_hours: f32,
     pub role_echelon: Echelon,
     pub night: bool,
@@ -273,6 +275,7 @@ pub struct SimWorld {
 impl SimWorld {
     pub fn new(grid: WorldGrid) -> Self {
         let buckets = SpatialBucketGrid::new(grid.rows, grid.cols);
+        let epoch = 23400u64;
         Self {
             grid,
             units: UnitSoA::new(),
@@ -293,7 +296,9 @@ impl SimWorld {
             weapon_cooldowns: FxHashMap::default(),
             turn: 0,
             subtick: 0,
-            clock_hours: 0.0,
+            epoch_seconds: epoch,
+            clock_seconds: epoch,
+            clock_hours: (epoch as f64 / 3600.0) as f32,
             role_echelon: Echelon::Division,
             night: false,
             pre_game_editable: true,
@@ -1915,10 +1920,24 @@ impl SimWorld {
         s
     }
 
+    pub fn clock_hms_string(&self) -> String {
+        let s = self.clock_seconds % 86400;
+        let h = s / 3600;
+        let m = (s % 3600) / 60;
+        let sec = s % 60;
+        format!("{:02}:{:02}:{:02}", h, m, sec)
+    }
+
+    #[inline]
+    pub fn step_subtick_16s(&mut self, driver: &mut dyn CommanderDriver) -> SubtickReport {
+        self.step_subtick_5m(driver)
+    }
+
     pub fn step_subtick_5m(&mut self, driver: &mut dyn CommanderDriver) -> SubtickReport {
         let dt = SUBTICK_HOURS;
         self.subtick += 1;
-        self.clock_hours += dt;
+        self.clock_seconds = self.epoch_seconds + ((self.subtick as u64) << 4);
+        self.clock_hours = (self.clock_seconds as f64 / 3600.0) as f32;
         // Activate due AO zones scheduled for this turn
         for z in &self.zones {
             if z.active && z.activate_turn == self.turn {

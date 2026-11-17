@@ -493,7 +493,7 @@ impl Default for PriorityTarget {
 }
 
 /// 注入像素容器的射弹流包
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShotPacket {
     /// 目标像素格坐标
     pub target_px: (i32, i32),

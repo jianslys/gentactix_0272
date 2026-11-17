@@ -12,21 +12,36 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .inspector{position:relative;background:var(--chrome);border-right:1px solid #151e22;min-height:0;display:flex;flex-direction:column;z-index:4;overflow:auto;scrollbar-width:thin;scrollbar-color:#596365 transparent}.inspector-top,.inspector-section,.inspector-actions{position:relative;flex-shrink:0}.inspector-top{padding:24px 22px 19px;border-bottom:1px solid var(--line)}.inspector-heading{display:flex;justify-content:space-between;align-items:center}.inspector-heading .eyebrow{margin:0}.unit-display{display:flex;align-items:center;gap:15px;margin:24px 0 17px}.unit-display .big-symbol{width:58px;height:51px;flex:none;overflow:visible}.unit-display h2{font-size:18px;margin:0 0 7px;letter-spacing:1px;font-weight:500}.unit-display p{font:9px var(--mono);color:#91a5aa;margin:0;letter-spacing:1.2px}.status-tag{font:10px var(--sans);color:#b7c8ad;border:1px solid #56695e;padding:4px 7px;display:inline-flex;align-items:center;gap:6px}.status-tag:before{content:"";width:4px;height:4px;background:#a2b89b}.inspector-section{padding:19px 22px;border-bottom:1px solid var(--line)}.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;color:#b3bfba;font-size:10px;letter-spacing:2px}.section-title small{font:8px var(--mono);letter-spacing:1px;color:#778e91}.strength{display:flex;align-items:baseline;gap:6px;margin-bottom:19px}.strength b{font:32px var(--mono);color:#e0e3d8;letter-spacing:-1px}.strength span{font:12px var(--mono);color:#879896}.strength label{margin-left:auto;font-size:10px;color:#95a39e}.metric{margin:13px 0 0}.metric-head{display:flex;justify-content:space-between;font-size:10px;color:#a3b0ab;margin-bottom:7px}.metric-head b{font:10px var(--mono);color:#c2cbbd}.metric-track{height:4px;background:repeating-linear-gradient(90deg,#42524f 0,#42524f calc(10% - 3px),transparent calc(10% - 3px),transparent 10%)}.metric-fill{height:100%;background:repeating-linear-gradient(90deg,#a8b3a0 0,#a8b3a0 20px,transparent 20px,transparent 23px)}.metric.amber .metric-fill{background:repeating-linear-gradient(90deg,#bea574 0,#bea574 20px,transparent 20px,transparent 23px)}.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 16px}.datum label{font-size:9px;color:#8b9c98;display:block;margin-bottom:7px}.datum b{font-size:11px;font-weight:400;color:#d1d7cb}.order-card{position:relative;padding:0 0 0 18px;border-left:1px solid #667b7d}.order-card:before{position:absolute;content:"";left:-4px;top:2px;width:7px;height:7px;border:1px solid #c5b57f;background:var(--chrome)}.order-card .order-kind{font-size:12px;color:#ddd6bc}.order-card p{font-size:10px;color:#8fa2a0;line-height:1.9;margin:8px 0 11px}.order-distance{display:flex;gap:19px;font:10px var(--mono);color:#c4c9b6}.order-distance small{font-size:8px;color:#869995}.inspector-actions{padding:19px 22px;margin-top:auto;display:flex;flex-direction:column;gap:8px}.action-btn{width:100%;height:35px;border:1px solid #58696b;font-size:10px;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:9px}.action-btn.primary{border-color:#9a926e;background:#a7a0821c;color:#e2d7b5}.action-btn:hover{background:#465451}.action-btn[aria-pressed=true]{border-color:#b9ac7c;background:#b9ac7c22;color:#e3d6ae}.inspector-footnote{font:8px var(--mono);letter-spacing:1px;color:#778b8f;text-align:center;margin:5px 0 0}.footer{position:absolute;bottom:17px;left:25px;display:flex;flex-direction:column;gap:5px;padding:15px 0 0;color:#68715e;font:8px var(--mono);letter-spacing:.7px;pointer-events:none}.status-light{display:inline-block;width:4px;height:4px;background:#71816c;margin-right:7px}.toast{position:absolute;left:50%;bottom:91px;transform:translateX(-50%) translateY(10px);max-width:min(560px,90%);width:max-content;padding:24px 19px 12px;background:#253338f5;border:1px solid #8b987e;box-shadow:0 4px 20px #14252b22;color:#e2dfc6;font-size:11px;z-index:10;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;line-height:1.7}.toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}.mobile-inspector{display:none}dialog{color:#d5dcd4;background:#273438;border:1px solid #768780;max-width:570px;width:calc(100% - 40px);padding:30px 33px;box-shadow:0 25px 100px #0006}dialog::backdrop{background:#101e2499;backdrop-filter:blur(3px)}dialog h2{font-size:23px;font-weight:400;letter-spacing:3px;margin:14px 0 21px}dialog p{line-height:1.95;font-size:12px;color:#b7c1b7}dialog strong{color:#d6c8a6;font-weight:500}.design-swatches{display:flex;gap:8px;margin:25px 0}.design-swatches i{height:24px;flex:1}.dialog-close{border:1px solid #a89f78;padding:9px 18px;margin-top:13px;color:#ddcfaa;float:right}.dialog-kicker{font:9px var(--mono);letter-spacing:2px;color:#a5b0a0}
 .inspector-top{padding:30px 22px 12px}.unit-display{margin:16px 0 10px}.inspector-section{padding:23px 22px 11px}.section-title{margin-bottom:12px;font-size:11px}.strength{margin-bottom:13px}.metric{margin-top:11px}.data-grid{gap:15px 16px}.inspector-actions{padding:24px 22px 10px}.action-btn{height:32px;flex-shrink:0}.datum label{font-size:10px}
 [data-ui-id]::after{content:attr(data-ui-id);position:absolute;left:7px;top:5px;font:9px/1 var(--mono);letter-spacing:.3px;color:#b34135;pointer-events:none;z-index:12;white-space:nowrap}.topbar,.subbar{position:relative}.topbar::after,.subbar::after{left:5px;top:3px;font-size:8px;color:#ec8d81}.inspector [data-ui-id]::after,.inspector::after,.toast::after,dialog::after{color:#ee9286}.inspector::after{left:22px;top:10px}.inspector-top::after{left:auto;right:22px;top:10px}.inspector-section::after,.inspector-actions::after{left:22px;top:8px}.map-title::after,.map-notice::after,.footer::after{left:0;top:0}.map-tools{padding-top:17px}.map-tools::after{font-size:8px;left:4px}.compass-wrap{position:absolute;right:27px;top:118px;width:56px;height:84px;pointer-events:none}.compass-wrap .compass{inset:auto;left:5px;top:17px}.map-stamp{padding-top:15px}.map-stamp::after{writing-mode:horizontal-tb;left:-7px;top:0}.scale::after{font-size:8px;top:5px;left:8px}.layer-card::after{left:16px;top:9px}.layer-toggle::after{font-size:8px;left:9px;top:5px}
+.orbat-drawer[data-ui-id]::after,.cmd-drawer[data-ui-id]::after,.reorg-equip-panel[data-ui-id]::after,.orbat-body[data-ui-id]::after,.pulse-staging[data-ui-id]::after{color:#ee9286}
+.orbat-drawer::after{left:12px;top:8px}
+.orbat-body{position:relative;padding-top:20px}
+.orbat-body::after{left:14px;top:4px}
+.reorg-equip-panel{position:relative;padding-top:20px}
+.reorg-equip-panel::after{left:12px;top:5px}
+.cmd-drawer::after{left:12px;top:8px}
+.pulse-staging{position:relative;display:inline-flex;align-items:center;padding:0 8px 0 42px;height:24px;background:#1e272b;border:1px solid #4a575c;color:#d1d7d3;font:10px var(--mono);border-radius:2px}
+.pulse-staging::after{left:5px;top:7px;font-size:8.5px;color:#ec8d81}
 
-/* ORBAT 编制母树抽屉 (纯净融合，绝无破坏视口高度) */
-.orbat-drawer{position:fixed;top:62px;left:286px;width:340px;bottom:0;background:#202a2ef7;border-right:1px solid #3d4a4f;box-shadow:8px 0 24px #101a1e33;z-index:15;display:none;flex-direction:column;color:#d6d9d4}
-.orbat-drawer.open{display:flex}
-.orbat-head{padding:16px 18px;border-bottom:1px solid #364449;display:flex;align-items:center;justify-content:space-between}
-.orbat-head b{font:13px var(--sans);letter-spacing:2px;color:#e2dfc6}
-.orbat-body{padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1}
+/* ORBAT 编制母树抽屉与四类修改面板 (纯净融合，绝无破坏视口高度) */
+.orbat-drawer,.cmd-drawer{position:fixed;top:62px;left:286px;width:340px;bottom:0;background:#202a2ef7;border-right:1px solid #3d4a4f;box-shadow:8px 0 24px #101a1e33;z-index:15;display:none;flex-direction:column;color:#d6d9d4}
+.orbat-drawer.open,.cmd-drawer.open{display:flex}
+.orbat-head,.cmd-head{padding:16px 18px;border-bottom:1px solid #364449;display:flex;align-items:center;justify-content:space-between}
+.orbat-head b,.cmd-head b{font:13px var(--sans);letter-spacing:2px;color:#e2dfc6}
+.orbat-body,.cmd-body{padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1}
 .orbat-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#263238;border:1px solid #455359;cursor:pointer;border-radius:2px;font-size:11px;transition:background .15s}
 .orbat-item:hover{background:#35444a;border-color:#c5aa70}
 .orbat-item.active{background:#3a4b52;border-color:#dfc486;color:#ffffff}
 .orbat-item .unit-badge{font:9px var(--mono);color:#92a4a7}
 
-@media(min-width:1800px){.workspace{grid-template-columns:310px minmax(0,1fr)}.inspector-top{padding-top:35px}.inspector-section{padding:29px 25px 20px}.topbar{padding-inline:26px}.orbat-drawer{left:310px}}
-@media(max-width:1250px){.workspace{grid-template-columns:258px minmax(0,1fr)}.topbar{gap:18px;padding-inline:15px}.brand{min-width:165px}.brand b{font-size:16px}.nav{gap:16px}.concept-tag{display:none}.top-right{gap:13px}.inspector-section{padding:24px 19px 13px}.inspector-top{padding:30px 19px 16px}.inspector-actions{padding:25px 19px 15px}.map-notice{display:none}.map-title{left:21px}.clock b{font-size:18px}.top-right .help-button span{display:none}.footer{font-size:7px}.orbat-drawer{left:258px;width:300px}}
-@media(max-width:1050px){.workspace{grid-template-columns:minmax(0,1fr)}.inspector{position:absolute;left:0;top:101px;bottom:0;width:286px;box-shadow:10px 0 30px #13222833;transform:translateX(-100%);visibility:hidden;pointer-events:none;transition:transform .24s ease,visibility .24s}.inspector.mobile-open{transform:translateX(0);visibility:visible;pointer-events:auto}.mobile-inspector{display:flex}.topbar .nav{gap:13px}.topbar .brand{min-width:155px}.topbar{gap:15px}.subbar{gap:12px}.hide-tablet{display:none}.map-stamp{right:22px}.top-right{gap:14px}.orbat-drawer{left:0;top:101px;width:100%}}
+.reorg-equip-panel{border-top:1px solid #364449;padding:12px 14px;background:#182125;display:flex;flex-direction:column;gap:8px}
+.reorg-grid,.cmd-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.reorg-btn,.cmd-btn{padding:7px 8px;background:#243035;border:1px solid #455359;color:#d1d8d4;cursor:pointer;font-size:10px;border-radius:2px;text-align:center;transition:background .15s}
+.reorg-btn:hover,.cmd-btn:hover{background:#35444a;border-color:#c5aa70}
+.cmd-btn.active{background:#3a4b52;border-color:#dfc486;color:#ffffff}
+
+@media(min-width:1800px){.workspace{grid-template-columns:310px minmax(0,1fr)}.inspector-top{padding-top:35px}.inspector-section{padding:29px 25px 20px}.topbar{padding-inline:26px}.orbat-drawer,.cmd-drawer{left:310px}}
+@media(max-width:1250px){.workspace{grid-template-columns:258px minmax(0,1fr)}.topbar{gap:18px;padding-inline:15px}.brand{min-width:165px}.brand b{font-size:16px}.nav{gap:16px}.concept-tag{display:none}.top-right{gap:13px}.inspector-section{padding:24px 19px 13px}.inspector-top{padding:30px 19px 16px}.inspector-actions{padding:25px 19px 15px}.map-notice{display:none}.map-title{left:21px}.clock b{font-size:18px}.top-right .help-button span{display:none}.footer{font-size:7px}.orbat-drawer,.cmd-drawer{left:258px;width:300px}}
+@media(max-width:1050px){.workspace{grid-template-columns:minmax(0,1fr)}.inspector{position:absolute;left:0;top:101px;bottom:0;width:286px;box-shadow:10px 0 30px #13222833;transform:translateX(-100%);visibility:hidden;pointer-events:none;transition:transform .24s ease,visibility .24s}.inspector.mobile-open{transform:translateX(0);visibility:visible;pointer-events:auto}.mobile-inspector{display:flex}.topbar .nav{gap:13px}.topbar .brand{min-width:155px}.topbar{gap:15px}.subbar{gap:12px}.hide-tablet{display:none}.map-stamp{right:22px}.top-right{gap:14px}.orbat-drawer,.cmd-drawer{left:0;top:101px;width:100%}}
 @media(max-width:700px){.app{grid-template-rows:54px 39px minmax(0,1fr)}.topbar{padding:0 12px;gap:10px}.brand{min-width:auto!important;gap:7px}.brand b{font-size:13px;letter-spacing:2px}.brand small{font-size:6px;letter-spacing:1.4px}.brand-mark{width:22px;height:25px}.nav{display:none}.clock b{font-size:15px}.clock span{display:none}.top-right{gap:13px}.help-button{padding:0}.subbar{padding:0 12px;font-size:9px;gap:8px}.subbar .weather,.subbar .divider,.hide-phone{display:none}.subbar .right{gap:6px}.control{padding:0 7px;font-size:10px}.map-title{top:20px;left:17px}.title-heading{font-size:19px;letter-spacing:3px}.title-details>span{font-size:7px;letter-spacing:1px}.map-stamp{right:13px;top:23px}.compass-wrap{right:10px;top:128px;width:47px;height:69px}.compass-wrap .compass{left:6px;width:35px;height:53px}.map-tools{right:12px;top:215px}.layer-dock{right:12px;bottom:13px}.layer-card{width:min(258px,calc(100vw - 24px))}.layer-toggle{padding:18px 10px 8px;gap:7px;font-size:10px}.layer-toggle svg{width:12px;height:12px}.scale{bottom:13px;padding:18px 9px 6px}.scale-caption{font-size:7px;letter-spacing:0}.footer{left:13px;bottom:19px;font-size:7px;letter-spacing:0;max-width:68px;gap:4px}.footer .footer-grid{display:none}.inspector{top:93px;width:min(300px,86vw)}.toast{bottom:97px;text-align:center;width:85%;font-size:10px}}
 @media(max-height:700px) and (min-width:1051px){.inspector-top{padding-bottom:10px}.inspector-section{padding-top:21px;padding-bottom:10px}.unit-display{margin:12px 0}.metric{margin-top:8px}.strength{margin-bottom:9px}.inspector-actions{padding-top:21px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
@@ -51,7 +66,7 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 <nav class="nav" aria-label="工作视图"><button class="active" data-view="situation">战场态势</button><button data-view="orders">行动规划</button><button data-view="intelligence">情报分析</button></nav>
 <div class="top-right"><span class="concept-tag">PURE-CPU 8M CORE</span><div class="clock"><b id="clock">06:30:00</b><span>LOCAL</span></div><button class="help-button" id="designHelp"><svg class="ico"><use href="#i-info"/></svg><span>设计说明</span></button></div>
 </header>
-<div class="subbar" data-ui-id="UI-02"><span class="operation" id="subbarOp">白桦行动 <span class="mono" style="color:#97a39a;margin-left:8px">OP. BIRCH</span></span><span class="divider"></span><span class="hide-phone mono" id="subbarDate">22 JUN 1944 · SUBTICK 16S</span><span class="divider"></span><span class="weather"><svg class="ico" style="width:14px;height:14px"><use href="#i-cloud"/></svg><span id="subbarWeather">薄云 18°C</span></span><div class="right"><span class="hide-tablet muted" id="subbarTurnState">8m战术基准 · 权威联机</span><button class="control mobile-inspector" id="openInspector" aria-expanded="false"><svg class="ico"><use href="#i-panel"/></svg>部队</button><button class="control" id="orbatToggle" title="查看战术指挥链编制母树"><svg class="ico"><use href="#i-tree"/></svg>编制</button><button class="control" id="play" aria-pressed="false"><svg class="ico"><use id="playIcon" href="#i-play"/></svg><span id="playLabel">预演</span></button><button class="control speed" id="speed" aria-label="切换演示时间速度">1×</button></div></div>
+<div class="subbar" data-ui-id="UI-02"><span class="operation" id="subbarOp">白桦行动 <span class="mono" style="color:#97a39a;margin-left:8px">OP. BIRCH</span></span><span class="divider"></span><span class="hide-phone mono" id="subbarDate">22 JUN 1944 · SUBTICK 16S</span><span class="divider"></span><span class="weather"><svg class="ico" style="width:14px;height:14px"><use href="#i-cloud"/></svg><span id="subbarWeather">薄云 18°C</span></span><div class="right"><span class="hide-tablet muted" id="subbarTurnState">8m战术基准 · 权威联机</span><div class="pulse-staging" id="pulseStagingBar" data-ui-id="UI-18">STEP 00/16S · 暂存 0</div><button class="control mobile-inspector" id="openInspector" aria-expanded="false"><svg class="ico"><use href="#i-panel"/></svg>部队</button><button class="control" id="orbatToggle" title="查看战术指挥链编制母树"><svg class="ico"><use href="#i-tree"/></svg>编制</button><button class="control" id="actionQueueToggle" title="第一类修改 · 计划行动任务队列">行动</button><button class="control" id="eventQueueToggle" title="第二类修改 · 计划事件队列">事件</button><button class="control" id="commandFieldToggle" title="第四类修改 · 指挥安排与场绘制">态势场</button><button class="control" id="play" aria-pressed="false"><svg class="ico"><use id="playIcon" href="#i-play"/></svg><span id="playLabel">预演</span></button><button class="control speed" id="speed" aria-label="切换演示时间速度">1×</button></div></div>
 <div class="workspace">
 <aside class="inspector" id="inspector" aria-label="选中单位详情" data-ui-id="UI-03">
 <div class="inspector-top" data-ui-id="UI-03A"><div class="inspector-heading"><div class="eyebrow">UNIT / INSPECTOR</div><button class="mobile-inspector" id="closeInspector" aria-label="关闭单位详情" style="font-size:19px">×</button><span class="mono muted hide-tablet" style="font-size:9px" id="inspectorId">F-0313</span></div><div class="unit-display"><svg class="big-symbol" id="inspectorSymbol" viewBox="0 0 60 50" aria-hidden="true"></svg><div><h2 id="unitName">第 3 步兵营</h2><p id="unitCode">3 / 91 INFANTRY</p></div></div><div class="status-tag" id="unitStatus">待命 · 通信正常</div></div>
@@ -106,15 +121,102 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 </div>
 
 <!-- 编制母树 (ORBAT) 交互式侧边抽屉 -->
-<aside class="orbat-drawer" id="orbatDrawer" aria-label="战术编制母树">
+<aside class="orbat-drawer" id="orbatDrawer" data-ui-id="UI-14" aria-label="战术编制母树">
   <div class="orbat-head">
     <b>战术编制链 <small class="mono muted">ORDER OF BATTLE</small></b>
     <button id="closeOrbat" style="font-size:18px;color:#91a5aa">×</button>
   </div>
-  <div class="orbat-body" id="orbatTreeList">
+  <div class="orbat-body" id="orbatTreeList" data-ui-id="UI-14A">
     <!-- 动态填充部队层级树 -->
   </div>
+  <div class="reorg-equip-panel" id="reorgEquipPanel" data-ui-id="UI-14B">
+    <div class="section-title" style="margin-bottom:6px">直接调整 <small class="mono">REORG & EQUIP</small></div>
+    <div class="reorg-grid">
+      <button class="reorg-btn" id="btnSplitSquad">拆分编制</button>
+      <button class="reorg-btn" id="btnMergeSquad">整编编制</button>
+      <button class="reorg-btn" id="btnEquipAdjust">调整装备</button>
+      <button class="reorg-btn" id="btnUseItem">使用物品</button>
+      <button class="reorg-btn" id="btnDeployHeavy">架设重武器</button>
+      <button class="reorg-btn" id="btnPackHeavy">收拢重武器</button>
+    </div>
+  </div>
 </aside>
+
+<!-- 第一类修改 · 计划行动任务队列 -->
+<section class="cmd-drawer" id="actionQueuePanel" data-ui-id="UI-15" aria-label="计划行动任务队列">
+  <div class="cmd-head">
+    <b>计划行动队列 <small class="mono muted">ACTION QUEUE</small></b>
+    <button id="closeActionQueue" style="font-size:18px;color:#91a5aa">×</button>
+  </div>
+  <div class="cmd-body">
+    <div class="section-title">行军姿态与射击控制</div>
+    <div class="cmd-grid">
+      <button class="cmd-btn active" id="btnModeNormal">常速 (Normal)</button>
+      <button class="cmd-btn" id="btnModeFast">强行军 (Fast)</button>
+      <button class="cmd-btn" id="btnModeSlow">潜行 (Slow)</button>
+      <button class="cmd-btn" id="btnModeHold">隐蔽停火</button>
+    </div>
+    <div class="section-title" style="margin-top:8px">任务动作排队 (16s 周期)</div>
+    <div class="cmd-grid">
+      <button class="cmd-btn" id="btnActionMove">排入移动</button>
+      <button class="cmd-btn" id="btnActionFire">排入射击</button>
+      <button class="cmd-btn" id="btnActionConceal">排入隐蔽</button>
+      <button class="cmd-btn" id="btnActionStop">排入停止</button>
+      <button class="cmd-btn" id="btnActionRetreat">排入撤退</button>
+      <button class="cmd-btn" id="btnClearAction">清空队列</button>
+    </div>
+    <div id="actionQueueDisplay" class="mono muted" style="font-size:10px;padding:8px;background:#182125;border:1px solid #364449;border-radius:2px">
+      暂无计划行动任务
+    </div>
+  </div>
+</section>
+
+<!-- 第二类修改 · 计划事件队列 -->
+<section class="cmd-drawer" id="eventQueuePanel" data-ui-id="UI-16" aria-label="计划事件队列">
+  <div class="cmd-head">
+    <b>计划事件队列 <small class="mono muted">EVENT QUEUE</small></b>
+    <button id="closeEventQueue" style="font-size:18px;color:#91a5aa">×</button>
+  </div>
+  <div class="cmd-body">
+    <div class="section-title">工兵与战术读秒事件</div>
+    <div class="cmd-grid">
+      <button class="cmd-btn" id="btnEventMine">布设雷区</button>
+      <button class="cmd-btn" id="btnEventTrench">挖掘堑壕</button>
+      <button class="cmd-btn" id="btnEventBuild">构筑工事</button>
+      <button class="cmd-btn" id="btnEventDemolish">爆破拆除</button>
+      <button class="cmd-btn" id="btnEventRadio">静默/诱饵</button>
+      <button class="cmd-btn" id="btnEventRangefind">炮兵测距</button>
+    </div>
+    <div id="eventQueueDisplay" class="mono muted" style="font-size:10px;padding:8px;background:#182125;border:1px solid #364449;border-radius:2px">
+      暂无计划事件
+    </div>
+  </div>
+</section>
+
+<!-- 第四类修改 · 指挥安排与场绘制 -->
+<section class="cmd-drawer" id="commandFieldPanel" data-ui-id="UI-17" aria-label="指挥安排与场绘制">
+  <div class="cmd-head">
+    <b>指挥安排与场绘制 <small class="mono muted">COMMAND FIELD</small></b>
+    <button id="closeCommandField" style="font-size:18px;color:#91a5aa">×</button>
+  </div>
+  <div class="cmd-body">
+    <div class="section-title">战役战术线与责任区 (AO)</div>
+    <div class="cmd-grid">
+      <button class="cmd-btn" id="btnFieldAo">划分任务AO</button>
+      <button class="cmd-btn" id="btnFieldAttack">绘制进攻线</button>
+      <button class="cmd-btn" id="btnFieldMove">绘制移动线</button>
+      <button class="cmd-btn" id="btnFieldDeploy">绘制部署线</button>
+    </div>
+    <div class="section-title" style="margin-top:8px">连续势场叠加显示</div>
+    <div class="cmd-grid">
+      <button class="cmd-btn" id="toggleGravField">任务引力场 G</button>
+      <button class="cmd-btn" id="toggleRepulseField">信息斥力场 I</button>
+    </div>
+    <div id="commandFieldDisplay" class="mono muted" style="font-size:10px;padding:8px;background:#182125;border:1px solid #364449;border-radius:2px">
+      场状态：引力场 [关] · 斥力场 [关]
+    </div>
+  </div>
+</section>
 
 <dialog id="designDialog" data-ui-id="UI-10" aria-label="美术设计说明"><div class="dialog-kicker">GENTACTIX / ART DIRECTION STUDY 01</div><h2>印刷地图，精确指挥。</h2><p><strong>底图来自 SD2 的视觉方向</strong>：暖灰纸色、低饱和道路、印刷式森林和等高线。没有厚重木桌、做旧污渍或装饰性立体棋子。</p><p><strong>兵牌采用 APP-6 风格的符号语法</strong>：蓝色矩形为己方，红色菱形为敌方；框内表示兵种，框上表示梯队。此页是美术示意，并非完整的 APP-6 标准实现。</p><p><strong>信息组织借鉴 CMO</strong>：单位详情集中在左侧，图层收于右下角，比例尺固定在屏幕底边。火控、路线和情报按需叠加。红色小字 UI-ID 为评审定位标记，不属于战场情报。</p><div class="design-swatches" aria-label="纸张、石墨、友军蓝、敌军红、注记金色板"><i style="background:#ddd7bd"></i><i style="background:#1b2428;border:1px solid #475459"></i><i style="background:#688591"></i><i style="background:#a94f43"></i><i style="background:#c5aa70"></i></div><p style="font-size:11px">可操作：选择兵牌、切换图层、拖动与缩放地图、切换情报视图、播放示意时钟。地图、兵力、路径和火控均为虚构静态样例，不读取或修改正在重构的后端。</p><button class="dialog-close" id="closeDesign">返回作战地图</button></dialog>
 
@@ -336,17 +438,66 @@ narrowScreen.addEventListener('change',syncInspector);
 $('openInspector').addEventListener('click',()=>setInspector(!$('inspector').classList.contains('mobile-open')));
 $('closeInspector').addEventListener('click',()=>setInspector(false));
 
-// 视图切换与 ORBAT 编制母树
-function setOrbatOpen(on){
-  $('orbatDrawer').classList.toggle('open',on);
-  $('orbatToggle').setAttribute('aria-pressed',String(on));
-  if(on)buildOrbatList();
+// 视图切换与四类修改抽屉面板互斥控制
+const ALL_DRAWERS = ['orbatDrawer', 'actionQueuePanel', 'eventQueuePanel', 'commandFieldPanel'];
+function closeAllDrawers(){
+  ALL_DRAWERS.forEach(id=>{
+    const el=$(id);
+    if(el)el.classList.remove('open');
+  });
+  if($('orbatToggle'))$('orbatToggle').setAttribute('aria-pressed','false');
+  if($('actionQueueToggle'))$('actionQueueToggle').setAttribute('aria-pressed','false');
+  if($('eventQueueToggle'))$('eventQueueToggle').setAttribute('aria-pressed','false');
+  if($('commandFieldToggle'))$('commandFieldToggle').setAttribute('aria-pressed','false');
 }
-$('orbatToggle').addEventListener('click',()=>setOrbatOpen(!$('orbatDrawer').classList.contains('open')));
-$('closeOrbat').addEventListener('click',()=>setOrbatOpen(false));
+function setDrawerOpen(id, on){
+  const el=$(id);
+  if(!el)return;
+  if(on){
+    closeAllDrawers();
+    el.classList.add('open');
+    if(id==='orbatDrawer'){
+      if($('orbatToggle'))$('orbatToggle').setAttribute('aria-pressed','true');
+      buildOrbatList();
+    }else if(id==='actionQueuePanel'){
+      if($('actionQueueToggle'))$('actionQueueToggle').setAttribute('aria-pressed','true');
+    }else if(id==='eventQueuePanel'){
+      if($('eventQueueToggle'))$('eventQueueToggle').setAttribute('aria-pressed','true');
+    }else if(id==='commandFieldPanel'){
+      if($('commandFieldToggle'))$('commandFieldToggle').setAttribute('aria-pressed','true');
+    }
+  }else{
+    el.classList.remove('open');
+    if(id==='orbatDrawer'&&$('orbatToggle'))$('orbatToggle').setAttribute('aria-pressed','false');
+    else if(id==='actionQueuePanel'&&$('actionQueueToggle'))$('actionQueueToggle').setAttribute('aria-pressed','false');
+    else if(id==='eventQueuePanel'&&$('eventQueueToggle'))$('eventQueueToggle').setAttribute('aria-pressed','false');
+    else if(id==='commandFieldPanel'&&$('commandFieldToggle'))$('commandFieldToggle').setAttribute('aria-pressed','false');
+  }
+}
+function toggleDrawer(id){
+  const el=$(id);
+  if(!el)return;
+  setDrawerOpen(id,!el.classList.contains('open'));
+}
+function setOrbatOpen(on){
+  setDrawerOpen('orbatDrawer',on);
+}
+
+if($('orbatToggle'))$('orbatToggle').addEventListener('click',()=>toggleDrawer('orbatDrawer'));
+if($('closeOrbat'))$('closeOrbat').addEventListener('click',()=>setDrawerOpen('orbatDrawer',false));
+
+if($('actionQueueToggle'))$('actionQueueToggle').addEventListener('click',()=>toggleDrawer('actionQueuePanel'));
+if($('closeActionQueue'))$('closeActionQueue').addEventListener('click',()=>setDrawerOpen('actionQueuePanel',false));
+
+if($('eventQueueToggle'))$('eventQueueToggle').addEventListener('click',()=>toggleDrawer('eventQueuePanel'));
+if($('closeEventQueue'))$('closeEventQueue').addEventListener('click',()=>setDrawerOpen('eventQueuePanel',false));
+
+if($('commandFieldToggle'))$('commandFieldToggle').addEventListener('click',()=>toggleDrawer('commandFieldPanel'));
+if($('closeCommandField'))$('closeCommandField').addEventListener('click',()=>setDrawerOpen('commandFieldPanel',false));
 
 function buildOrbatList(){
   const list=$('orbatTreeList');
+  if(!list)return;
   list.innerHTML='';
   units.filter(u=>!u.enemy).forEach(u=>{
     const item=document.createElement('div');
@@ -362,6 +513,118 @@ function buildOrbatList(){
   });
 }
 
+// -----------------------------------------------------------------------------
+// 四类修改暂存状态机与脉冲计数器 (UI-14B, UI-15, UI-16, UI-17, UI-18)
+// -----------------------------------------------------------------------------
+let stagedOpsCount=0;
+let stagedActions=[];
+let stagedEvents=[];
+let stagedOps=[];
+let stagedFieldDirectives={};
+let stepAccumulator=0;
+
+function updatePulseStaging(){
+  const el=$('pulseStagingBar');
+  if(el){
+    el.textContent=`STEP ${String(stepAccumulator).padStart(2,'0')}/16S · 暂存 ${stagedOpsCount}`;
+  }
+}
+
+// 第三类修改 · 非队列直接调整 (UI-14B)
+['btnSplitSquad','btnMergeSquad','btnEquipAdjust','btnUseItem','btnDeployHeavy','btnPackHeavy'].forEach(btnId=>{
+  const btn=$(btnId);
+  if(!btn)return;
+  btn.addEventListener('click',async()=>{
+    stagedOpsCount++;
+    const uId=selected?selected.id:'u3';
+    stagedOps.push({op:btnId,unit_id:uId,time:Date.now()});
+    updatePulseStaging();
+    notify(`直接调整：${btn.textContent}（已暂存，于下一16s脉冲同步）`);
+    if(window.location.protocol.startsWith('http')&&selected){
+      try{
+        await fetch('/api/unit_op',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({unit_id:selected.id,op:btnId})
+        });
+      }catch(e){}
+    }
+  });
+});
+
+// 第一类修改 · 计划行动任务队列 (UI-15)
+['btnActionMove','btnActionFire','btnActionConceal','btnActionStop','btnActionRetreat'].forEach(btnId=>{
+  const btn=$(btnId);
+  if(!btn)return;
+  btn.addEventListener('click',()=>{
+    stagedOpsCount++;
+    const actionName=btn.textContent.replace('排入','');
+    const uName=selected?selected.name:'单位';
+    const uId=selected?selected.id:'u3';
+    stagedActions.push({unit_id:uId,action:actionName});
+    updatePulseStaging();
+    const display=$('actionQueueDisplay');
+    if(display)display.textContent=`已排入 ${stagedActions.length} 项行动：最新 [${actionName} -> ${uName}]`;
+    notify(`行动队列已追加：[${uName}] ${actionName}`);
+  });
+});
+if($('btnClearAction')){
+  $('btnClearAction').addEventListener('click',()=>{
+    stagedOpsCount=Math.max(0,stagedOpsCount-stagedActions.length);
+    stagedActions=[];
+    updatePulseStaging();
+    const display=$('actionQueueDisplay');
+    if(display)display.textContent='暂无计划行动任务';
+    notify('已清空行动队列暂存');
+  });
+}
+
+// 第二类修改 · 计划事件队列 (UI-16)
+['btnEventMine','btnEventTrench','btnEventBuild','btnEventDemolish','btnEventRadio','btnEventRangefind'].forEach(btnId=>{
+  const btn=$(btnId);
+  if(!btn)return;
+  btn.addEventListener('click',()=>{
+    stagedOpsCount++;
+    const evName=btn.textContent;
+    const uId=selected?selected.id:'u3';
+    stagedEvents.push({unit_id:uId,event:evName});
+    updatePulseStaging();
+    const display=$('eventQueueDisplay');
+    if(display)display.textContent=`已排入 ${stagedEvents.length} 项事件：最新 [${evName}]`;
+    notify(`计划事件已排入：${evName}`);
+  });
+});
+
+// 第四类修改 · 指挥安排与场绘制 (UI-17)
+['btnFieldAo','btnFieldAttack','btnFieldMove','btnFieldDeploy'].forEach(btnId=>{
+  const btn=$(btnId);
+  if(!btn)return;
+  btn.addEventListener('click',()=>{
+    stagedOpsCount++;
+    const fieldOp=btn.textContent;
+    stagedFieldDirectives[btnId]=true;
+    updatePulseStaging();
+    notify(`指挥安排已设定：${fieldOp}`);
+  });
+});
+let gravOn=false,repulseOn=false;
+if($('toggleGravField')){
+  $('toggleGravField').addEventListener('click',()=>{
+    gravOn=!gravOn;
+    $('toggleGravField').classList.toggle('active',gravOn);
+    $('commandFieldDisplay').textContent=`场状态：引力场 [${gravOn?'开':'关'}] · 斥力场 [${repulseOn?'开':'关'}]`;
+    notify(`任务引力场 G：${gravOn?'已开启可视化':'已关闭'}`);
+  });
+}
+if($('toggleRepulseField')){
+  $('toggleRepulseField').addEventListener('click',()=>{
+    repulseOn=!repulseOn;
+    $('toggleRepulseField').classList.toggle('active',repulseOn);
+    $('commandFieldDisplay').textContent=`场状态：引力场 [${gravOn?'开':'关'}] · 斥力场 [${repulseOn?'开':'关'}]`;
+    notify(`信息斥力场 I：${repulseOn?'已开启可视化':'已关闭'}`);
+  });
+}
+
 document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b===btn));
   const view=btn.dataset.view;
@@ -369,11 +632,13 @@ document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('clic
   if(view==='orders'){
     if(selected.enemy)selectUnit('u3');
     setLayer('routes',true);
-    notify('行动规划视图：金色虚线表示拟定路线，带Phase分段标记。');
-  }
-  if(view==='intelligence'){
-    setOrbatOpen(true);
+    setDrawerOpen('actionQueuePanel',true);
+    notify('行动规划视图：金色虚线表示拟定路线，已呼出计划行动任务队列。');
+  }else if(view==='intelligence'){
+    setDrawerOpen('orbatDrawer',true);
     notify('情报分析视图：已展开德军战术编制母树（ORBAT）。');
+  }else{
+    closeAllDrawers();
   }
 }));
 
@@ -401,26 +666,65 @@ $('fireButton').addEventListener('click',async()=>{
   }
 });
 
-// 回合推进控制 (Play / Commit Turn)
-$('play').addEventListener('click',async()=>{
+// -----------------------------------------------------------------------------
+// Phase 05 · 双频计时器与 2^n 倍速闭环 (1s 显示走表 + 16s 脉冲结算)
+// -----------------------------------------------------------------------------
+const SPEED_STEPS = [1, 2, 4, 8, 16];
+let speedIdx = 0;
+speed = SPEED_STEPS[speedIdx];
+$('speed').addEventListener('click',()=>{
+  speedIdx = (speedIdx + 1) % SPEED_STEPS.length;
+  speed = SPEED_STEPS[speedIdx];
+  $('speed').textContent = speed + '×';
+});
+
+clockSeconds = 23400; // 06:30:00
+let lastTickTime = performance.now();
+let logicMsAccumulator = 0;
+
+function formatClockHms(sec){
+  const h=String(Math.floor(sec/3600)).padStart(2,'0');
+  const m=String(Math.floor((sec%3600)/60)).padStart(2,'0');
+  const s=String(sec%60).padStart(2,'0');
+  return `${h}:${m}:${s}`;
+}
+
+// 物理高精度双频心跳 (每 50ms 轮询，依据倍速累加逻辑秒并精确触发 16s 结算)
+setInterval(()=>{
+  const now = performance.now();
+  const dtMs = now - lastTickTime;
+  lastTickTime = now;
+  if(!running) return;
+
+  logicMsAccumulator += dtMs * speed;
+  while(logicMsAccumulator >= 1000){
+    logicMsAccumulator -= 1000;
+    clockSeconds = (clockSeconds + 1) % 86400;
+    $('clock').textContent = formatClockHms(clockSeconds);
+    stepAccumulator += 1;
+    updatePulseStaging();
+
+    if(stepAccumulator >= 16){
+      stepAccumulator = 0;
+      updatePulseStaging();
+      if(typeof window.commitSimulationTurn === 'function'){
+        window.commitSimulationTurn();
+      }
+    }
+  }
+}, 50);
+
+// 回合推进控制 (Play / Pause)
+$('play').addEventListener('click',()=>{
   running=!running;
   $('play').setAttribute('aria-pressed',String(running));
   $('playLabel').textContent=running?'暂停':'预演';
   $('playIcon').setAttribute('href',running?'#i-pause':'#i-play');
+  lastTickTime = performance.now();
   if(running){
-    notify('推演预演已启动，正持续推进 Subtick 事务...');
-    if(typeof window.commitSimulationTurn==='function'){
-      window.commitSimulationTurn();
-    }
+    notify('推演预演已启动，正持续推进 16s 脉冲事务...');
   }
 });
-
-$('speed').addEventListener('click',()=>{speed=speed===1?5:speed===5?15:1;$('speed').textContent=speed+'×';});
-setInterval(()=>{
-  if(!running)return;
-  clockSeconds=(clockSeconds+speed)%86400;
-  $('clock').textContent=[Math.floor(clockSeconds/3600),Math.floor(clockSeconds%3600/60),clockSeconds%60].map(x=>String(x).padStart(2,'0')).join(':');
-},1000);
 
 $('designHelp').addEventListener('click',()=>$('designDialog').showModal());
 $('closeDesign').addEventListener('click',()=>$('designDialog').close());
@@ -433,9 +737,13 @@ $('designDialog').addEventListener('click',e=>{
 
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||$('designDialog').open)return;
-  if($('orbatDrawer').classList.contains('open'))setOrbatOpen(false);
-  else if(narrowScreen.matches&&$('inspector').classList.contains('mobile-open'))setInspector(false);
-  else setLayersOpen(false);
+  if(ALL_DRAWERS.some(id=>{const el=$(id);return el&&el.classList.contains('open');})){
+    closeAllDrawers();
+  }else if(narrowScreen.matches&&$('inspector').classList.contains('mobile-open')){
+    setInspector(false);
+  }else{
+    setLayersOpen(false);
+  }
 });
 
 // -----------------------------------------------------------------------------
@@ -449,13 +757,17 @@ async function fetchBackendState(){
     const data=await res.json();
     if(!data.ok)return;
 
-    // 1. 同步顶部栏信息与时钟
-    if(typeof data.clock_hours==='number'){
+    // 1. 同步顶部栏信息与 16s 权威时钟
+    if(typeof data.clock_seconds==='number'){
+      clockSeconds=data.clock_seconds;
+      $('clock').textContent=formatClockHms(clockSeconds);
+    }else if(typeof data.clock_hours==='number'){
       clockSeconds=Math.round(data.clock_hours*3600);
-      $('clock').textContent=[Math.floor(clockSeconds/3600),Math.floor(clockSeconds%3600/60),clockSeconds%60].map(x=>String(x).padStart(2,'0')).join(':');
+      $('clock').textContent=formatClockHms(clockSeconds);
     }
-    if(typeof data.turn==='number'){
-      $('subbarDate').textContent=`第 ${data.turn} 回合 · SUBTICK ${data.subtick || 0} (16S)`;
+    if(typeof data.tick==='number'||typeof data.turn==='number'){
+      const curTick = typeof data.tick==='number'?data.tick:(data.subtick||0);
+      $('subbarDate').textContent=`22 JUN 1944 · TICK ${curTick} (16S)`;
       $('subbarTurnState').textContent=`8m战术基准 · ${data.own_pieces?data.own_pieces.length:0}友军 / ${data.visible_enemies?data.visible_enemies.length:0}接触点`;
     }
 
@@ -463,7 +775,6 @@ async function fetchBackendState(){
     if(Array.isArray(data.own_pieces)&&data.own_pieces.length>0){
       const gridRows=data.grid?data.grid.rows:64;
       const gridCols=data.grid?data.grid.cols:64;
-      const cellM=data.grid?data.grid.cell_m:8.0;
 
       const newUnits=[];
       for(const p of data.own_pieces){
@@ -570,17 +881,33 @@ window.fetchStateWeaponLos=async function(pieceId){
   }
 };
 
-// 提交推进回合
+// 提交推进 16s 脉冲步长 (Phase 03 & Phase 05 API)
 window.commitSimulationTurn=async function(){
   try{
-    const res=await fetch('/api/commit_turn',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({turn_hours:1.0/12.0})
-    });
-    if(res.ok){
-      notify('已提交并推进一个 Subtick 事务！');
-      fetchBackendState();
+    const payload={
+      subticks: 1,
+      step_count: 1,
+      planned_actions: [...stagedActions],
+      planned_events: [...stagedEvents],
+      staging_ops: [...stagedOps],
+      field_directives: {...stagedFieldDirectives}
+    };
+    stagedActions=[];
+    stagedEvents=[];
+    stagedOps=[];
+    stagedOpsCount=0;
+    updatePulseStaging();
+
+    if(window.location.protocol.startsWith('http')){
+      const res=await fetch('/api/commit_turn',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(res.ok){
+        notify('已推进 16s 权威脉冲事务！');
+        await fetchBackendState();
+      }
     }
   }catch(e){
     console.warn('Commit turn failed:', e);
@@ -592,11 +919,11 @@ renderUnitsLayer();
 selectUnit('u3');
 syncInspector();
 applyView();
+updatePulseStaging();
 
-// 若在生产后端环境中，开启实时同步
+// 若在生产后端环境中，仅在初始化时拉取一次权威状态
 if(window.location.protocol.startsWith('http')){
   fetchBackendState();
-  setInterval(fetchBackendState, 2500);
 }
 </script>
 </body>
