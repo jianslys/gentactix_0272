@@ -4,6 +4,7 @@ GENTACTIX V6.0 · V5 审计缺陷清零与外置伪装异步时间机全栈推�
 1. docs/SPEC/SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md
 2. docs/SPEC/SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md
 3. docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md
+分步工作流指针：.agent/workflows/v6-phase1.md ~ v6-phase6.md
 ================================================================================
 
 [铁律锁定]
@@ -13,9 +14,11 @@ GENTACTIX V6.0 · V5 审计缺陷清零与外置伪装异步时间机全栈推�
    切段喂数、驱动只读粒子插值、I 场外围 visibility=0 预渲染环显隐与 exact_ms 毫秒放片。
 3. 严禁孤岛自嗨与 E2E 作弊：所有 V5 算子必须真实接入 sim_loop.rs::step_subtick_16s；
    E2E 严禁直接调用全局 JS 函数绕过 DOM 点击，必须实测物理位移 Δpos > 0 与全图红字零重叠。
+4. 跨阶段物理阻断铁律：严禁一次性连续做完多个 Phase！建议切到 Planning 模式逐阶段敲
+   `/v6-phase1` 到 `/v6-phase6`，每做完一个 Phase 必须物理停机等待大王确认！
 
 --------------------------------------------------------------------------------
-PHASE 01 · 根治算子孤岛：将 V5 四大数学算子真实接入 sim_loop.rs 主循环
+PHASE 01 · 根治算子孤岛：将 V5 四大数学算子真实接入 sim_loop.rs 主循环 (/v6-phase1)
 --------------------------------------------------------------------------------
 目标文件：
 - crates/gentactix-core/src/sim_loop.rs
@@ -32,9 +35,15 @@ PHASE 01 · 根治算子孤岛：将 V5 四大数学算子真实接入 sim_loop.
    - `geometry::tactical_instance::AugmentedArcIntegrator` 与 `DetonatorSwitchEntity`
      （驱动工兵在 16s 步长内按增广弧长 s_tilde 边走边把虚拟实例转正写入 WorldGrid，
      半截撤退持久化保留进度）。
+2. 本 Phase 专属验收命令：
+   `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core`
+
+【硬阻断 · 强制停机等待确认】：
+执行完当前 PHASE 01 的代码改动与专属单测后，必须立刻停止，汇报改动点与测试结果，
+等待大王回复“确认”或手动输入 `/v6-phase2` 后再进入下一阶段；严禁触碰后续 Phase 文件！
 
 --------------------------------------------------------------------------------
-PHASE 02 · 实装外置伪装异步“时间机 (Time Machine)”与五张品类时间 LUT
+PHASE 02 · 实装外置伪装异步“时间机 (Time Machine)”与五张品类时间 LUT (/v6-phase2)
 --------------------------------------------------------------------------------
 目标文件：
 - crates/gentactix-core/src/time_machine.rs (新建外置时间机模块，并在 lib.rs 导出)
@@ -60,13 +69,20 @@ PHASE 02 · 实装外置伪装异步“时间机 (Time Machine)”与五张品�
        `initial_visibility: 0`）的分段轨迹 `particle_tracks`；
      * 将步长引擎算完的既定命中/爆炸/完工/G场生效结果原封不动封装为 `playback_events`，
        每项附带唯一 `exact_ms` 与原装 `exact_hp_loss` / `exact_supp_add`（严禁二次切分伤害）。
+4. 本 Phase 专属验收命令：
+   `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace`
+
+【硬阻断 · 强制停机等待确认】：
+执行完当前 PHASE 02 的代码改动与专属测试后，必须立刻停止，汇报时间机单测（含 `#0` 冻结、
+原装伤害零篡改、`abs_sec + unit_name` 复盘一致、预渲染环输出）并等待大王回复“确认”或手动
+输入 `/v6-phase3` 后再进入下一阶段，严禁提前改写前端！
 
 --------------------------------------------------------------------------------
-PHASE 03 · 修复前后端单位脱节（消灭“0友军”）与 HTTP 契约严密化
+PHASE 03 · 修复前后端单位脱节（消灭“0友军”）与 HTTP 契约严密化 (/v6-phase3)
 --------------------------------------------------------------------------------
 目标文件：
 - crates/gentactix-server/src/main.rs
-- web/index.html
+- web/index.html（仅限 fetchBackendState 与 UI-14B op 映射部分）
 
 核心交付清单：
 1. 修复默认视角 `0友军` Bug：
@@ -79,9 +95,16 @@ PHASE 03 · 修复前后端单位脱节（消灭“0友军”）与 HTTP 契约�
    - 前端 `btnSplitSquad` 等按钮必须映射为规范枚举 `"split_squad"`、`"merge_squads"`、
      `"equip_adjust"`、`"deploy_heavy_unit"`、`"pack_heavy_unit"`，后端 `/api/unit_op` 全部
      走通返回 `200 OK`（交由时间机挂起进入下一回合生效）。
+3. 本 Phase 专属验收命令：
+   `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace` + HTTP 联调实测 `/api/state`
+   返回非空 `own_pieces` 及 `/api/unit_op` 返回 200 OK。
+
+【硬阻断 · 强制停机等待确认】：
+执行完当前 PHASE 03 并验证接口真实返回非零友军后，必须立刻停止等待大王确认或手动输入 `/v6-phase4`，
+严禁擅自提前修改视觉排版或 E2E 脚本！
 
 --------------------------------------------------------------------------------
-PHASE 04 · 根治截图 4 处视觉叠字、清理残留假文案与实装真点击多开 UI-03
+PHASE 04 · 根治截图 4 处视觉叠字、清理残留假文案与实装真点击多开 UI-03 (/v6-phase4)
 --------------------------------------------------------------------------------
 目标文件：
 - web/index.html
@@ -100,9 +123,14 @@ PHASE 04 · 根治截图 4 处视觉叠字、清理残留假文案与实装真�
    - 修改 `renderUnitsLayer()` 中兵牌的 `click` 事件：点击任意兵牌真实调用
      `openFloatingUnitCard(u.id)` 弹出或置顶该单位专属浮动卡片（多张卡片自动阶梯错位摆放，
      各自可拖拽、各自点 `×` 关闭）。
+3. 本 Phase 专属验收：打开真实浏览器/无头 Chrome 截图核对视觉零叠压且真点击可出多卡。
+
+【硬阻断 · 强制停机等待确认】：
+执行完当前 PHASE 04 的前端布局修复并核实截图后，必须立刻停止等待大王确认或手动输入 `/v6-phase5`，
+严禁跨阶段连续执行！
 
 --------------------------------------------------------------------------------
-PHASE 05 · 真实地图交互选点与前端时间机渲染闭环（Pre-Render Skirt + exact_ms）
+PHASE 05 · 真实地图交互选点与前端时间机渲染闭环 (/v6-phase5)
 --------------------------------------------------------------------------------
 目标文件：
 - web/index.html
@@ -120,17 +148,21 @@ PHASE 05 · 真实地图交互选点与前端时间机渲染闭环（Pre-Render 
    - 当走表时钟到达 `playback_events` 的 `exact_ms` 时，直接在目标此刻的插值坐标 `x(exact_ms)`
      上触发弹着爆炸特效并刷出真实伤害 `exact_hp_loss`。
 
+【硬阻断 · 强制停机等待确认】：
+执行完当前 PHASE 05 后必须立刻停止，汇报地图点选与前端时间机放片功能验证，
+等待大王回复“确认”或手动输入 `/v6-phase6` 后再进入最后阶段！
+
 --------------------------------------------------------------------------------
-PHASE 06 · 无作弊 E2E 严格验收与截图复核
+PHASE 06 · 无作弊 E2E 严格验收与截图复核 (/v6-phase6)
 --------------------------------------------------------------------------------
 目标文件：
 - tests/e2e/verify_production_ui.mjs
 
 核心交付清单：
 1. 全面升级 AABB 零重叠门禁：
-   - 不仅检查 `UI-01/02/09A`，必须增加检查 `UI-03A` 与 `.card-close-btn` 零交叠、`UI-11` 与
-     `UI-04` 零交叠、初始卡片不遮挡 `UI-04` 标题；
-   - 禁词扫描增加拦截 `"ROUTE / 1.8km"`、`"~ 24 min"`、`"0友军"`。
+   - 检查 `UI-01/02/09A`、`UI-03A` 与 `.card-close-btn`、`UI-11` 与 `UI-04` 全部 AABB 零交叠，
+     初始卡片不遮挡 `UI-04` 标题；
+   - 禁词扫描拦截 `"ROUTE / 1.8km"`、`"~ 24 min"`、`"0友军"`、`"示意"`、`"示例范围"`、`"200m / 格"`。
 2. 严禁作弊的真点击多卡测试：
    - 严禁调用 `window.openFloatingUnitCard`！必须用鼠标真实点击地图上 2 个不同的 `.map-unit`
      元素，断言 `.inspector.unit-card` 可见数量 `>= 2`。
@@ -138,4 +170,11 @@ PHASE 06 · 无作弊 E2E 严格验收与截图复核
    - 下达指令并推进回合后，对比 `/api/state` 中单位推进前后的真实坐标 `p0` 与 `p1`，
      强制断言 `Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 0.01`，同时校验 `time_machine_frame`
      包含 `particle_tracks`（含预渲染环字段）与 `playback_events`（含 `exact_ms`）。
+4. 全盘总验收与推送：
+   - 运行 `cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace`；
+   - 编译启动服务端跑通 `node "D:\tools\gentactix\tests\e2e\verify_production_ui.mjs"`，读取
+     `D:\tools\gentactix\scratch\production_desktop_screenshot.png` 确认视觉完美后提交并推回 `origin/main`。
+
+【硬阻断 · 强制停机等待确认】：
+完成全量验证并推送回 `origin/main` 后立刻停手，提交详细真实验证报告等待大王验收！
 ================================================================================
