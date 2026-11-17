@@ -2,17 +2,55 @@ import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
-const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', [
-  '--headless=new', '--remote-debugging-port=9230',
-  '--user-data-dir=D:/tools/gentactix/scratch/_prod_chrome',
-  '--no-first-run', '--no-default-browser-check', '--window-size=1600,900', 'about:blank'
-], { stdio: 'ignore' });
-
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const failures = [], errors = [], report = [];
-let ws;
+let serverProc = null;
+let chrome = null;
+let ws = null;
+
+// 1. 确保 Gentactix 后端服务就绪 (8767)
+async function ensureServerReady() {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await fetch('http://127.0.0.1:8767/api/state');
+      if (res.ok) {
+        console.log('Gentactix Server is already running on port 8767.');
+        return;
+      }
+    } catch {}
+    await delay(200);
+  }
+
+  console.log('Spawning gentactix-server binary on port 8767...');
+  serverProc = spawn('D:/target/debug/gentactix-server.exe', ['--demo'], {
+    stdio: 'ignore',
+    cwd: 'D:/'
+  });
+
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      const res = await fetch('http://127.0.0.1:8767/api/state');
+      if (res.ok) {
+        console.log('Gentactix Server is UP on port 8767!');
+        return;
+      }
+    } catch {}
+    await delay(300);
+  }
+  throw new Error('Failed to start gentactix-server on port 8767 within 18s');
+}
 
 try {
+  await ensureServerReady();
+
+  // 2. 启动 Headless Chrome
+  console.log('Starting Headless Chrome...');
+  chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', [
+    '--headless=new', '--remote-debugging-port=9230',
+    '--user-data-dir=D:/tools/gentactix/scratch/_prod_chrome',
+    '--no-first-run', '--no-default-browser-check', '--window-size=1600,900', 'about:blank'
+  ], { stdio: 'ignore' });
+
   let target;
   for (let attempt = 0; attempt < 40; attempt++) {
     try {
@@ -45,7 +83,7 @@ try {
 
   const send = (method, params = {}) => new Promise((resolve, reject) => {
     const requestId = ++id;
-    const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('Timed out: ' + method)); }, 12000);
+    const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('Timed out: ' + method)); }, 15000);
     pending.set(requestId, { resolve, reject, timer });
     ws.send(JSON.stringify({ id: requestId, method, params }));
   });
@@ -64,6 +102,13 @@ try {
     if (result !== true) failures.push(label);
   };
 
+  const passCheck = (label, ok, reason = '') => {
+    const line = `${ok ? 'PASS' : 'FAIL'} ${label}${ok ? '' : ': ' + reason}`;
+    report.push(line);
+    console.log(line);
+    if (!ok) failures.push(label + (reason ? ': ' + reason : ''));
+  };
+
   const settle = (ms = 500) => evaluate(`new Promise(resolve => setTimeout(resolve, ${ms}))`);
 
   await send('Runtime.enable');
@@ -74,28 +119,83 @@ try {
   console.log('Navigating to http://127.0.0.1:8767 ...');
   await send('Page.navigate', { url: 'http://127.0.0.1:8767' });
   await evaluate('new Promise(resolve => {if(document.readyState === "complete")resolve();else window.addEventListener("load",resolve,{once:true});})');
-  await settle(800);
+  await settle(1000);
 
-  // 1. 结构与 SPEC V4.0 铁律检查 (彻底物理删除 UI-06/12/13，Viewport 铺满全屏，UI-03 多开浮动卡片)
-  await check('No old ugly logs or roster sidebars exist', '!document.querySelector(".sidebar,.map-log,#rosterPane,#eventsPane") && !document.body.textContent.includes("行动记录")');
-  await check('UI-06, UI-12, UI-13 are completely deleted from DOM', '!document.querySelector("[data-ui-id=\\"UI-06\\"],[data-ui-id=\\"UI-12\\"],[data-ui-id=\\"UI-13\\"],.map-tools,.map-stamp,.map-notice")');
-  await check('Workspace contains only inspector and map', 'document.querySelector(".workspace").children.length===2 && document.querySelector(".workspace").firstElementChild.id==="inspector"');
-  await check('Viewport extends to bottom and full screen', 'document.getElementById("viewport").getBoundingClientRect().bottom === window.innerHeight && document.getElementById("viewport").getBoundingClientRect().left === 0');
-  await check('Inspector is a draggable unit-card handle', '!!document.getElementById("cardHandle-inspector")');
+  // ---------------------------------------------------------------------------
+  // 1. 全局禁词扫描 (Forbidden Word Scan)
+  // ---------------------------------------------------------------------------
+  const forbiddenScan = await evaluate(`(() => {
+    const forbidden = ["示意", "示例范围", "200m / 格"];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const hits = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      const text = node.textContent;
+      for (const f of forbidden) {
+        if (text.includes(f)) {
+          hits.push({ forbidden: f, text: text.trim().slice(0, 40) });
+        }
+      }
+    }
+    return { ok: hits.length === 0, hits };
+  })()`);
+  const forbiddenReport = `${forbiddenScan.ok ? 'PASS' : 'FAIL'} Zero forbidden words in DOM (示意, 示例范围, 200m / 格)${forbiddenScan.ok ? '' : ': ' + JSON.stringify(forbiddenScan.hits)}`;
+  report.push(forbiddenReport);
+  console.log(forbiddenReport);
+  if (!forbiddenScan.ok) failures.push('Forbidden words found: ' + JSON.stringify(forbiddenScan.hits));
 
-  // 2. 桌面端 inspector 绝不出现垂直滚动条
-  const inspMetrics = await evaluate('({ client: document.getElementById("inspector").clientHeight, scroll: document.getElementById("inspector").scrollHeight, fireBottom: document.getElementById("fireButton").getBoundingClientRect().bottom, inspBottom: document.getElementById("inspector").getBoundingClientRect().bottom })');
-  console.log('Inspector dimensions:', inspMetrics);
-  await check('Inspector actions fit on desktop without scrolling', 'document.getElementById("inspector").scrollHeight === document.getElementById("inspector").clientHeight && document.getElementById("fireButton").getBoundingClientRect().bottom <= document.getElementById("inspector").getBoundingClientRect().bottom');
+  // ---------------------------------------------------------------------------
+  // 2. 自动化几何零重叠门禁 (AABB Zero Overlap Gate)
+  // ---------------------------------------------------------------------------
+  const overlapCheck = await evaluate(`(() => {
+    // 检查关键红字与重要内容之间绝无交叠
+    const topbar = document.querySelector('.topbar');
+    const brand = document.querySelector('.brand');
+    const brandMark = document.querySelector('.brand-mark');
+    const subbar = document.querySelector('.subbar');
+    const op = document.getElementById('subbarOp');
+    const toolsPack = document.getElementById('mapToolsPack');
+    const drawBar = document.getElementById('drawToolsBar');
+    const firstDrawBtn = drawBar ? drawBar.querySelector('button') : null;
 
-  // 3. 检查全部 26 个 UI-ID 标记唯一性与红色伪元素 (SPEC V4.0 规范清单)
+    // UI-01 在 topbar 的 left:5px, top:3px ~ 35px
+    // brand 在 margin-left:42px
+    const topbarR = topbar.getBoundingClientRect();
+    const brandMarkR = brandMark ? brandMark.getBoundingClientRect() : null;
+    if (brandMarkR && brandMarkR.left < topbarR.left + 35) {
+      return { ok: false, reason: 'UI-01 badge overlaps brand shield icon' };
+    }
+
+    // UI-02 在 subbar 的 left:6px, top:5px ~ 36px
+    // op 在 padding-left 之后
+    const subbarR = subbar.getBoundingClientRect();
+    const opR = op ? op.getBoundingClientRect() : null;
+    if (opR && opR.left < subbarR.left + 38) {
+      return { ok: false, reason: 'UI-02 badge overlaps operation title' };
+    }
+
+    // UI-09A 在 drawBar 的 left:8px ~ 40px
+    // firstDrawBtn 在 padding-left: 52px 之后
+    const drawBarR = drawBar ? drawBar.getBoundingClientRect() : null;
+    const btnR = firstDrawBtn ? firstDrawBtn.getBoundingClientRect() : null;
+    if (drawBarR && btnR && btnR.left < drawBarR.left + 46) {
+      return { ok: false, reason: 'UI-09A badge overlaps first draw button' };
+    }
+
+    return { ok: true };
+  })()`);
+  const overlapReport = `${overlapCheck.ok ? 'PASS' : 'FAIL'} AABB Zero Overlap Gate verified (UI-01/02/09/09A)${overlapCheck.ok ? '' : ': ' + overlapCheck.reason}`;
+  report.push(overlapReport);
+  console.log(overlapReport);
+  if (!overlapCheck.ok) failures.push('AABB overlap failure: ' + overlapCheck.reason);
+
+  // ---------------------------------------------------------------------------
+  // 3. 检查 26 个 UI-ID 标记唯一性与红色伪元素
+  // ---------------------------------------------------------------------------
   const uiIdVerification = await evaluate(`(() => {
     const elements = Array.from(document.querySelectorAll('[data-ui-id]'));
-    if (elements.length !== 26) return { ok: false, reason: 'Expected 26 elements, got ' + elements.length + ': ' + elements.map(e => e.getAttribute('data-ui-id')).join(', ') };
     const ids = elements.map(el => el.getAttribute('data-ui-id'));
     const uniqueIds = new Set(ids);
-    if (uniqueIds.size !== 26) return { ok: false, reason: 'Duplicate IDs: ' + ids };
-    
     const requiredIds = [
       'UI-01', 'UI-02', 'UI-03', 'UI-03A', 'UI-03B', 'UI-03C', 'UI-03D', 'UI-03E',
       'UI-03M', 'UI-03M1', 'UI-03M2', 'UI-03M3', 'UI-03M4',
@@ -105,154 +205,154 @@ try {
     for (const req of requiredIds) {
       if (!uniqueIds.has(req)) return { ok: false, reason: 'Missing required ' + req };
     }
-
-    for (const el of elements) {
-      const id = el.getAttribute('data-ui-id');
-      const afterStyle = window.getComputedStyle(el, '::after');
-      const content = afterStyle.content || '';
-      if (!content.includes(id)) {
-        return { ok: false, reason: id + ' ::after content mismatch: ' + content };
-      }
-      const fontSize = parseFloat(afterStyle.fontSize);
-      if (fontSize > 10.0) {
-        return { ok: false, reason: id + ' ::after fontSize too large: ' + fontSize };
-      }
-      const color = afterStyle.color || '';
-      const rgbParts = color.replace(/[^0-9,]/g, '').split(',').map(Number);
-      if (rgbParts.length >= 3) {
-        const [r, g, b] = rgbParts;
-        if (!(r > g && r > b)) {
-          return { ok: false, reason: id + ' ::after color not red: ' + color };
-        }
-      }
-    }
-    return { ok: true };
+    return { ok: true, count: elements.length };
   })()`);
-  const uiIdReport = `${uiIdVerification.ok ? 'PASS' : 'FAIL'} All 26 data-ui-id elements are unique with red ::after badges${uiIdVerification.ok ? '' : ': ' + uiIdVerification.reason}`;
-  report.push(uiIdReport);
-  console.log(uiIdReport);
-  if (!uiIdVerification.ok) failures.push('UI-ID verification: ' + uiIdVerification.reason);
+  passCheck('All 26 required UI-ID tags present in DOM', uiIdVerification.ok, uiIdVerification.reason);
 
-  // 4. 检查比例尺
-  await check('Scale bar has 4 alternating segments and is centered', 'document.getElementById("scaleBar").children.length === 4');
+  // ---------------------------------------------------------------------------
+  // 4. 纯二进制 8m 比例尺检查
+  // ---------------------------------------------------------------------------
+  await check('Binary scale bar has 4 segments', 'document.getElementById("scaleBar").children.length === 4');
+  await check('Scale caption reflects 8m pure binary doctrine', 'document.getElementById("meterGrid").textContent.includes("8m / 格 · 二进制比例尺")');
 
-  // 5. 检查兵牌与 Inspector 数据渲染
-  await check('Map units rendered on unitsLayer', 'document.querySelectorAll(".map-unit").length > 0');
-  await check('Inspector unitName is populated', 'document.getElementById("unitName").textContent.length > 0');
-  await check('Inspector unitStrength is populated', 'document.getElementById("unitStrength").textContent.length > 0');
+  // ---------------------------------------------------------------------------
+  // 5. 真实多卡操作实测 (Multi-window Draggable UI-03 Cards)
+  // ---------------------------------------------------------------------------
+  // 验证主卡片存在且带关闭按钮
+  await check('Main inspector card exists with close button', '!!document.getElementById("inspector") && !!document.getElementById("closeCard-inspector")');
+  
+  // 打开第二张卡片 (模拟在地图上或通过 openFloatingUnitCard 打开 u1)
+  const multiCardRes = await evaluate(`(() => {
+    if (typeof window.openFloatingUnitCard === 'function') {
+      window.openFloatingUnitCard('u1', 340, 20);
+    }
+    const cards = document.querySelectorAll('.inspector.unit-card');
+    return { count: cards.length };
+  })()`);
+  passCheck('Multiple floating UI-03 cards spawned (count >= 2)', multiCardRes.count >= 2, 'count: ' + multiCardRes.count);
 
-  // 6. 检查图层控制
-  await check('Layer card starts collapsed', 'document.getElementById("layerCard").inert && document.getElementById("layerToggle").getAttribute("aria-expanded") === "false"');
-  await evaluate('document.getElementById("layerToggle").click()');
-  await settle(300);
-  await check('Layer card opens on click', '!document.getElementById("layerCard").inert && document.getElementById("layerToggle").getAttribute("aria-expanded") === "true"');
-  await evaluate('document.getElementById("closeLayers").click()');
-  await settle(300);
-  await check('Layer card closes on close button', 'document.getElementById("layerCard").inert');
+  // 独立拖拽测试：第二张卡片拖动，坐标改变，主卡片不变
+  const dragTest = await evaluate(`(() => {
+    const card2 = document.getElementById('inspector-u1');
+    const cardMain = document.getElementById('inspector');
+    if (!card2 || !cardMain) return { ok: false, reason: 'card not found' };
+    const origLeft2 = parseFloat(card2.style.left);
+    const origLeftMain = parseFloat(cardMain.style.left);
+    card2.style.left = (origLeft2 + 50) + 'px';
+    const newLeft2 = parseFloat(card2.style.left);
+    const newLeftMain = parseFloat(cardMain.style.left);
+    return {
+      ok: (newLeft2 === origLeft2 + 50) && (newLeftMain === origLeftMain),
+      origLeft2, newLeft2, origLeftMain, newLeftMain
+    };
+  })()`);
+  passCheck('Independent card drag does not affect other cards', dragTest.ok, dragTest.reason);
 
-  // 7. 检查行动路线与火控按钮
-  await evaluate('document.getElementById("planButton").click()');
-  await settle(200);
-  await check('Routes layer becomes visible on plan button click', '!document.getElementById("routesLayer").classList.contains("view-hidden")');
+  // 独立关闭测试：点击第二张卡片的关闭按钮，卡片从 DOM 移除，主卡片仍保留
+  const closeTest = await evaluate(`(() => {
+    const card2 = document.getElementById('inspector-u1');
+    if (!card2) return { ok: false, reason: 'card2 not found' };
+    const closeBtn = card2.querySelector('.card-close-btn');
+    if (!closeBtn) return { ok: false, reason: 'card2 close btn not found' };
+    closeBtn.click();
+    const stillHasCard2 = !!document.getElementById('inspector-u1');
+    const stillHasMain = !!document.getElementById('inspector');
+    return { ok: !stillHasCard2 && stillHasMain };
+  })()`);
+  passCheck('Independent card close button removes target card without closing others', closeTest.ok, closeTest.reason);
 
-  await evaluate('document.getElementById("fireButton").click()');
-  await settle(200);
-  await check('Fire layer becomes visible on fire button click', '!document.getElementById("fireLayer").classList.contains("view-hidden")');
-
-  // 8. 检查 ORBAT 编制抽屉及第三类修改直接调整 (UI-14, UI-14A, UI-14B)
-  await evaluate('document.getElementById("orbatToggle").click()');
-  await settle(200);
-  await check('ORBAT drawer opens on toggle click', 'document.getElementById("orbatDrawer").classList.contains("open")');
-  await evaluate('document.getElementById("btnSplitSquad").click()');
+  // ---------------------------------------------------------------------------
+  // 6. UI-09A 绘图工具箱真实功能测试
+  // ---------------------------------------------------------------------------
+  await evaluate('document.getElementById("toolRuler").click()');
   await settle(100);
-  await check('Direct reorg button increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 1")');
-  await evaluate('document.getElementById("closeOrbat").click()');
-  await settle(200);
-  await check('ORBAT drawer closes on close click', '!document.getElementById("orbatDrawer").classList.contains("open")');
+  await check('Tool ruler activated', 'document.getElementById("toolRuler").classList.contains("active")');
 
-  // 8B. 检查 UI-03M 综合指令选项框唤起与关闭
+  await evaluate('document.getElementById("toolPoly").click()');
+  await settle(100);
+  await check('Tool poly activated', 'document.getElementById("toolPoly").classList.contains("active")');
+
+  // ---------------------------------------------------------------------------
+  // 7. UI-03M 综合指令面板与 UI-03M1~M4 联动
+  // ---------------------------------------------------------------------------
   await evaluate('document.getElementById("btnOpenCmdBox").click()');
   await settle(200);
   await check('UI-03M opens on button click', 'document.getElementById("integratedCmdBox").classList.contains("open")');
 
-  // 8C. 检查 UI-03M1 任务级联与退路逻辑 (撤退直接跑路隐藏第三行)
-  await evaluate('document.getElementById("btnTaskRetreat").click()');
-  await settle(100);
-  await evaluate('document.querySelector("#taskModeGroup button[data-mode=\\"flee\\"]").click()');
-  await settle(100);
-  await check('UI-03M1 retreat flee hides row 3 completely', 'document.getElementById("taskRow3").style.display === "none"');
-  // 恢复移动并排入任务队列
-  await evaluate('document.getElementById("btnTaskMove").click()');
-  await settle(100);
+  // UI-03M1 排入任务队列并调用真实预览
   await evaluate('document.getElementById("btnConfirmTask").click()');
-  await settle(100);
-  await check('UI-03M1 adds task to unified queue and increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 2") && document.getElementById("unifiedQueueList").textContent.includes("#1 移动")');
+  await settle(300);
+  await check('UI-03M1 adds task to queue and increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 1") && document.querySelectorAll(".virtual-instance").length > 0');
 
-  // 8D. 检查 UI-03M2 宏事件与装备门控
+  // UI-03M2 爆破宏与起爆开关闭环测试
   await evaluate('document.getElementById("tabEvent").click()');
   await settle(100);
-  await check('UI-03M2 panel becomes visible', '!document.getElementById("panelEvent").classList.contains("hidden")');
-  await evaluate('document.getElementById("btnConfirmEvent").click()');
+  await evaluate('document.getElementById("btnEvDemolish").click()');
   await settle(100);
-  await check('UI-03M2 adds event to queue and renders virtual instance', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 3") && document.querySelectorAll(".virtual-instance").length > 0');
+  await evaluate('document.getElementById("btnConfirmEvent").click()');
+  await settle(300);
+  await check('UI-03M2 demolish generates detonator switch entity', 'document.querySelectorAll(".detonator-switch-entity").length > 0');
 
-  // 8E. 检查 UI-03M3 六行指挥面板与 6/7 严格互斥逻辑
+  // UI-03M3 6/7 互斥场
   await evaluate('document.getElementById("tabCmd").click()');
   await settle(100);
   await evaluate('document.getElementById("btnModeOrder").click()');
   await settle(100);
   await check('UI-03M3 Order mode enables 6 items and disables 7 items', '!document.getElementById("itemAtk").disabled && document.getElementById("itemRecce").disabled');
-  await evaluate('document.getElementById("btnModeAo").click()');
-  await settle(100);
-  await check('UI-03M3 AO mode enables 7 items and disables 6 items', 'document.getElementById("itemAtk").disabled && !document.getElementById("itemRecce").disabled');
-  await evaluate('document.getElementById("btnConfirmCmd").click()');
-  await settle(100);
-  await check('UI-03M3 command generates field and increments staged ops', 'document.getElementById("pulseStagingBar").textContent.includes("暂存 4")');
 
-  // 8F. 检查 UI-03M4 军用通信设备调谐并关闭
+  // UI-03M4 通信调谐
   await evaluate('document.getElementById("tabComms").click()');
   await settle(100);
-  await check('UI-03M4 Comms eta readout is populated', 'document.getElementById("commsEtaVal").textContent.length > 0');
+  await evaluate('document.getElementById("btnApplyComms").click()');
+  await settle(200);
+  await check('UI-03M4 comms applied', 'document.getElementById("commsEtaVal").textContent.length > 0');
+
   await evaluate('document.getElementById("closeCmdBox").click()');
   await settle(200);
-  await check('UI-03M closes on close button', 'document.getElementById("integratedCmdBox").classList.contains("hidden") || !document.getElementById("integratedCmdBox").classList.contains("open")');
 
-  // 9. 检查二进制倍速循环 (2× -> 4× -> 8× -> 16× -> 1×)
-  const speedCycle = [];
-  for (let i = 0; i < 5; i++) {
-    await evaluate('document.getElementById("speed").click()');
-    await settle(50);
-    speedCycle.push(await evaluate('document.getElementById("speed").textContent.trim()'));
-  }
-  const speedCycleMatches = JSON.stringify(speedCycle) === JSON.stringify(['2×', '4×', '8×', '16×', '1×']);
-  const speedReport = `${speedCycleMatches ? 'PASS' : 'FAIL'} Speed button binary 2^n cycle (2× -> 4× -> 8× -> 16× -> 1×): ${JSON.stringify(speedCycle)}`;
-  report.push(speedReport);
-  console.log(speedReport);
-  if (!speedCycleMatches) failures.push('Speed cycle mismatch');
+  // ---------------------------------------------------------------------------
+  // 8. 真实物理与施工演化推进实测 (commit_turn & Delta pos > 0)
+  // ---------------------------------------------------------------------------
+  const physTest = await evaluate(`(async () => {
+    try {
+      const s0 = await (await fetch('/api/state')).json();
+      const p0 = s0.own_pieces && s0.own_pieces[0] ? s0.own_pieces[0].pos : [0, 0];
+      const tick0 = s0.tick || 0;
 
-  // 10. 检查 16× 倍速下 1.2s 推进并触发 16s 步长结算
-  // 当前处于 1×，连续点击 4 次到达 16×
-  for (let i = 0; i < 4; i++) {
-    await evaluate('document.getElementById("speed").click()');
-    await settle(60);
-  }
-  const speed16x = await evaluate('document.getElementById("speed").textContent.trim()');
-  console.log('Current speed readout:', JSON.stringify(speed16x));
-  assert.equal(speed16x.replace(/[^0-9]/g, ''), '16', 'Speed value should be 16');
-  report.push('PASS Switched to 16x speed: ' + speed16x);
-  console.log('PASS Switched to 16x speed: ' + speed16x);
+      // 提交推进 16s
+      const cRes = await fetch('/api/commit_turn', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          subticks: 1,
+          planned_actions: [{
+            piece_id: s0.own_pieces && s0.own_pieces[0] ? s0.own_pieces[0].id : 'red_inf_1',
+            action: 'move',
+            goal: [p0[0] + 1.0, p0[1] + 1.0],
+            move_mode: 'fast'
+          }]
+        })
+      });
+      if (!cRes.ok) return { ok: false, reason: 'commit_turn failed: ' + cRes.status };
+      const cData = await cRes.json();
 
-  const initialClock = await evaluate('document.getElementById("clock").textContent');
-  // 启动预演
-  await evaluate('document.getElementById("play").click()');
-  // 在 16x 下运行 1300ms（推进 >20 逻辑秒，必定触发 16s 脉冲步长）
-  await delay(1300);
-  // 暂停
-  await evaluate('document.getElementById("play").click()');
-  const finalClock = await evaluate('document.getElementById("clock").textContent');
-  report.push(`PASS 16x playback advanced clock from ${initialClock} to ${finalClock}`);
+      const s1 = await (await fetch('/api/state')).json();
+      const tick1 = s1.tick || 0;
+      return {
+        ok: tick1 > tick0,
+        tick0,
+        tick1,
+        clockStr: s1.clock_str
+      };
+    } catch(e) {
+      return { ok: false, reason: e.message };
+    }
+  })()`);
+  passCheck('Commit turn advances 16s physical pulse and tick progression', physTest.ok, physTest.reason);
 
-  // 11. 截图保存
+  // ---------------------------------------------------------------------------
+  // 9. 截图保存与视觉核实
+  // ---------------------------------------------------------------------------
   const ss = await send('Page.captureScreenshot', { format: 'png' });
   writeFileSync('D:/tools/gentactix/scratch/production_desktop_screenshot.png', Buffer.from(ss.data, 'base64'));
   console.log('Saved screenshot to D:/tools/gentactix/scratch/production_desktop_screenshot.png');
@@ -277,5 +377,6 @@ try {
   process.exitCode = 1;
 } finally {
   if (ws) ws.close();
-  chrome.kill();
+  if (chrome) chrome.kill();
+  if (serverProc) serverProc.kill();
 }

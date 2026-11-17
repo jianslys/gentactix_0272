@@ -386,6 +386,29 @@ pub fn resolve_cell_strike_ex(
     allow_friendly_full: bool,
     exclude_uid: Option<UnitId>,
 ) -> StrikeReport {
+    resolve_cell_strike_bucketed(
+        grid, units, commanders, events, None, target_px, attacker_team,
+        fire_points, weapon_model, aspect_attacker_pos, is_direct_fire, seed_tag,
+        allow_friendly_full, exclude_uid,
+    )
+}
+
+pub fn resolve_cell_strike_bucketed(
+    grid: &mut WorldGrid,
+    units: &mut UnitSoA,
+    commanders: &CommanderSoA,
+    events: &mut crate::units_ecs::EventQueue,
+    buckets: Option<&crate::spatial_autonomy::SpatialBucketGrid>,
+    target_px: (i32, i32),
+    attacker_team: TeamId,
+    fire_points: [f32; 6],
+    weapon_model: &str,
+    aspect_attacker_pos: [f32; 2],
+    is_direct_fire: bool,
+    seed_tag: &str,
+    allow_friendly_full: bool,
+    exclude_uid: Option<UnitId>,
+) -> StrikeReport {
     let mut rep = StrikeReport { cell: target_px, ..Default::default() };
     if !grid.in_bounds(target_px.0, target_px.1) {
         return rep;
@@ -463,33 +486,57 @@ pub fn resolve_cell_strike_ex(
     }
 
     // =========================================================================
-    // 第三拍 (G2P 从受击 8m 网格向驻留单位结算，消费并清空 incoming_packets)
+    // 第三拍 (G2P 从受击 8m 网格向驻留单位结算，真实消费 incoming_packets)
     // =========================================================================
-    let _consumed_packets = if let Some(c) = grid.pixel_containers.get_mut(&target_gi) {
+    let consumed_packets = if let Some(c) = grid.pixel_containers.get_mut(&target_gi) {
         std::mem::take(&mut c.incoming_packets)
     } else {
         Vec::new()
     };
 
+    let total_packet_shots: u32 = consumed_packets.iter().map(|p| p.shots).sum();
+    let effective_shots = total_packet_shots.max(registered_shots).max(1);
+
+    // 双时间尺度更新: tau_supp = 36s (alpha_supp = 0.6412)
+    let alpha_supp = 0.6412f32;
+    let supp_delta = (effective_shots as f32 * 0.12).min(15.0);
+    if let Some(c) = grid.pixel_containers.get_mut(&target_gi) {
+        c.suppression_density = (c.suppression_density * alpha_supp + supp_delta).min(100.0);
+    }
+
     // Collect candidate units in target cell (or within HE frag Gaussian radius)
     let max_cell_dist = if is_he { frag_px.ceil().max(1.0) } else { 0.5 };
+    let max_cell_i = max_cell_dist.ceil() as i32;
 
     let mut targets: Vec<(UnitId, f32)> = Vec::new();
-    for uid in 0..units.id.len() {
-        if Some(UnitId(uid)) == exclude_uid || !units.alive[uid] || units.persons(UnitId(uid)) == 0 {
-            continue;
+    let mut evaluate_target_candidate = |uid: UnitId| {
+        let u = uid.0;
+        if Some(uid) == exclude_uid || !units.alive[u] || units.persons(uid) == 0 {
+            return;
         }
-        let d_px = ((units.px[uid].0 - target_px.0) as f32).hypot((units.px[uid].1 - target_px.1) as f32);
+        let d_px = ((units.px[u].0 - target_px.0) as f32).hypot((units.px[u].1 - target_px.1) as f32);
         if d_px <= max_cell_dist {
             let gauss = if is_he {
                 (-0.5 * (d_px / frag_px.max(0.5)).powi(2)).exp()
-            } else if units.px[uid] == target_px {
+            } else if units.px[u] == target_px {
                 1.0
             } else {
                 0.0
             };
             if gauss > 0.05 {
-                targets.push((UnitId(uid), gauss));
+                targets.push((uid, gauss));
+            }
+        }
+    };
+
+    // 真实空间桶查询，绝不进行全图无限制扫表
+    if let Some(b) = buckets {
+        b.query_neighbors_within_px(target_px.0, target_px.1, max_cell_i, &mut evaluate_target_candidate);
+    } else {
+        for uid in 0..units.id.len() {
+            let (ur, uc) = units.px[uid];
+            if (ur - target_px.0).abs() <= max_cell_i && (uc - target_px.1).abs() <= max_cell_i {
+                evaluate_target_candidate(UnitId(uid));
             }
         }
     }

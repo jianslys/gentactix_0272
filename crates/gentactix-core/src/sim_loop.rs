@@ -3,7 +3,7 @@
 
 use crate::combat_logistics::{
     apply_registration_to_cells, cast_los_ray_dda, dispatch_logistics_step,
-    resolve_cell_strike, resolve_cell_strike_ex, resolve_registration_bonus, run_air_subtick_1h,
+    resolve_cell_strike, resolve_cell_strike_bucketed, resolve_registration_bonus, run_air_subtick_1h,
     AirWing, Battery, Depot, FireFields,
 };
 use crate::command_log::{
@@ -1435,11 +1435,12 @@ impl SimWorld {
                                     }
                                     let tag = format!("direct{}|u{}", self.subtick, uid.0);
                                     let a_team = self.units.team[uid.0];
-                                    let rep = resolve_cell_strike_ex(
+                                    let rep = resolve_cell_strike_bucketed(
                                         &mut self.grid,
                                         &mut self.units,
                                         &self.commanders,
                                         &mut self.events,
+                                        Some(&self.buckets),
                                         t_px,
                                         a_team,
                                         fire_dt,
@@ -1752,8 +1753,9 @@ impl SimWorld {
                                 }
                                 ammo_used = self.units.consume_soldier_ammo(hq_uid, base_pts * 0.002);
                                 if self.units.ammo_t[hq_uid.0] <= 0.0005 { is_out_of_ammo = true; }
-                                let rep = resolve_cell_strike_ex(
+                                let rep = resolve_cell_strike_bucketed(
                                     &mut self.grid, &mut self.units, &self.commanders, &mut self.events,
+                                    Some(&self.buckets),
                                     t_px, self.commanders.team[cid.0], fire_dt, "rifle", a_pos, true,
                                     &format!("directcmd{}|c{}", self.subtick, cid.0), self.debug_full_friendly_fire, Some(hq_uid),
                                 );

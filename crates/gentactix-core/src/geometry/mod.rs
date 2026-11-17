@@ -4,6 +4,8 @@
 //! 2. 强类型连续米制坐标与离散网格索引 (r, c) 严格隔离
 //! 3. 严禁静默 clamp 或无符号越界回绕
 
+pub mod tactical_instance;
+
 use serde::{Deserialize, Serialize};
 
 /// 核心战术网格基准尺度 (Doctrine 参数，不可由场景或实现覆盖)

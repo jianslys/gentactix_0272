@@ -87,11 +87,11 @@ mod tests {
                 raw[idx + 1] = le[1];
             }
         }
-        let g = WorldGrid::from_r16_bytes(&raw, None, None, 200.0, 100.0, 500.0, false).unwrap();
+        let g = WorldGrid::from_r16_bytes(&raw, None, None, 8.0, 100.0, 500.0, false).unwrap();
         assert_eq!((g.rows, g.cols), (64, 64));
         assert!(g.slope_deg.iter().any(|&s| s > 0.1));
 
-        let syn = WorldGrid::synthetic_grid(64, 64, 200.0);
+        let syn = WorldGrid::synthetic_grid(64, 64, 8.0);
         // Column 32 is WATER everywhere except row 32 which is BRIDGE
         assert!(!syn.is_literal_ground_px(10, 32));
         assert!(!syn.is_literal_ground_px(32, 32)); // Bridge is NOT literal ground!
@@ -177,19 +177,19 @@ mod tests {
 
     #[test]
     fn test_command_hierarchy_ao_rumor_and_recursive_frontlines() {
-        let mut g = WorldGrid::synthetic_grid(64, 64, 200.0);
+        let mut g = WorldGrid::synthetic_grid(128, 128, 8.0);
         let mut units = super::units_ecs::UnitSoA::new();
         let mut cmds = super::units_ecs::CommanderSoA::new();
 
         let co = cmds.spawn_commander("co-1", "1Co", TeamId::Red, (20, 20), Echelon::Company, Rank::Captain, 0);
         let pl1 = cmds.spawn_commander("pl-1", "1Pl", TeamId::Red, (20, 21), Echelon::Platoon, Rank::Lieutenant, 0);
-        let pl2 = cmds.spawn_commander("pl-2", "2Pl", TeamId::Red, (40, 40), Echelon::Platoon, Rank::Lieutenant, 0);
+        let pl2 = cmds.spawn_commander("pl-2", "2Pl", TeamId::Red, (70, 70), Echelon::Platoon, Rank::Lieutenant, 0);
         let pl_other = cmds.spawn_commander("pl-other", "OtherPl", TeamId::Red, (20, 21), Echelon::Platoon, Rank::Lieutenant, 1); // diff channel but within 400m!
         cmds.link_subordinate_cmd(co, pl1);
         cmds.link_subordinate_cmd(co, pl2);
 
         let u1 = units.spawn_unit("u1", "S1", TeamId::Red, (20, 21), Echelon::Squad, "rifle_squad", 10, 1, eq(&[("rifle", 10)]), 0);
-        let u2 = units.spawn_unit("u2", "S2", TeamId::Red, (45, 45), Echelon::Squad, "rifle_squad", 10, 1, eq(&[("rifle", 10), ("radio", 1)]), 0);
+        let u2 = units.spawn_unit("u2", "S2", TeamId::Red, (125, 125), Echelon::Squad, "rifle_squad", 10, 1, eq(&[("rifle", 10), ("radio", 1)]), 0);
         let u_other = units.spawn_unit("u_other", "SOther", TeamId::Red, (20, 20), Echelon::Squad, "rifle_squad", 8, 1, eq(&[("rifle", 8)]), 2);
         cmds.link_subordinate_unit(co, u1, &mut units);
         cmds.link_subordinate_unit(pl2, u2, &mut units);
@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_combat_registration_recon_logistics_conservation_and_determinism() {
-        let mut g = WorldGrid::synthetic_grid(48, 48, 200.0);
+        let mut g = WorldGrid::synthetic_grid(48, 48, 8.0);
         let mut units = super::units_ecs::UnitSoA::new();
         let mut cmds = super::units_ecs::CommanderSoA::new();
         let mut eq_ev = super::units_ecs::EventQueue::default();
@@ -475,7 +475,7 @@ mod tests {
 
         // 2. "Threats belong to commander judgment": connected squad ignores threat avoidance when ordered,
         // and triggers irreversible automatic retreat once org <= ORG_ROUT_THRESHOLD (12.0)
-        let mut g = WorldGrid::synthetic_grid(48, 48, 200.0);
+        let mut g = WorldGrid::synthetic_grid(48, 48, 8.0);
         let mut units = UnitSoA::new();
         let mut cmds = CommanderSoA::new();
         let evs = EventQueue::default();
@@ -631,7 +631,7 @@ mod tests {
         assert_eq!(radio_spec.model, "radio");
 
         // Bug 2 check: heavy weapon preservation on casualty sync
-        let mut sim = SimWorld::new(WorldGrid::synthetic_grid(32, 32, 200.0));
+        let mut sim = SimWorld::new(WorldGrid::synthetic_grid(32, 32, 8.0));
         let mut gun_eq = FxHashMap::default();
         gun_eq.insert("rifle".to_string(), 4);
         gun_eq.insert("at_gun_50".to_string(), 1);
@@ -785,7 +785,7 @@ mod tests {
         use rustc_hash::FxHashMap;
 
         // 1. Model-coupled speed + multi-cell 5m step budget (> 2.4km/h cap) + stealth debuff
-        let mut g = WorldGrid::new_plain(48, 48, 200.0);
+        let mut g = WorldGrid::new_plain(48, 48, 8.0);
         for c in 2..=30 {
             let idx = g.idx(10, c);
             g.terrain[idx] = HIGHWAY;
@@ -886,7 +886,7 @@ mod tests {
         assert_eq!(sim.grid.feature_flags[mine_gi] & mine_bits, 0, "clear_mines must clear minefield flags");
 
         // 5. Unified LOS block on CellModEntry::los_block_m + follow_target stops GPS wallhack
-        let mut blk_grid = WorldGrid::new_plain(16, 16, 200.0);
+        let mut blk_grid = WorldGrid::new_plain(16, 16, 8.0);
         blk_grid.set_cell_modifier(8, 8, CellModEntry { los_block_m: 120.0, ..CellModEntry::neutral("los_blk") });
         let los = cast_los_ray_dda(&blk_grid, (8, 5), (8, 11), false);
         assert!(los.blocked, "los_block_m obstacle must block cast_los_ray_dda");
@@ -920,7 +920,7 @@ mod tests {
         // ========================================================
         // 1. 射弹容器与 ShotPacket 像素寄存结构体落地
         // ========================================================
-        let mut grid = WorldGrid::new_plain(32, 32, 200.0);
+        let mut grid = WorldGrid::new_plain(32, 32, 8.0);
         assert!(grid.pixel_containers.is_empty());
 
         // shots < 1 强制丢弃
