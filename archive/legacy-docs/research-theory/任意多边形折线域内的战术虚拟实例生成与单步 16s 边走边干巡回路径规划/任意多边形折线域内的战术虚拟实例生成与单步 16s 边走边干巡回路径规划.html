@@ -1,0 +1,2116 @@
+<!-- Chosen Palette: Warm Tactical Sand & Slate -->
+<!-- Application Structure Plan: The SPA is architected into five task-oriented interactive modules rather than a passive linear document: (1) Hero KPI Strip & Sticky Navigation for rapid orientation; (2) Interactive Tactical Sandbox & Live 16s Step-by-Step Simulator (Canvas-based) allowing users to deform non-convex polygons/polylines, switch tactical generation modalities (Quincunx, Poisson Disk, Frontline Echelon, Zigzag Trench), observe zero-crossing Geodesic 2-Opt paths, and step through Δt=16s dual-mode integration or trigger a 9.6s artillery interrupt; (3) Deterministic O(K) Geometry Operators & 9-Macro Matrix with interactive filtering and Chart.js workload visualization; (4) Tour Path Planning Multi-Algorithm Benchmark comparing 6 sorting heuristics across internal/external starts; (5) 16s Dual-Mode Integrator Sensitivity & Interruption FSM Explorer connecting suppression curves, step trajectories, and the 5-stage engine pipeline. -->
+<!-- Visualization & Content Choices: (1) Tactical Sandbox -> Goal: Demonstrate O(K) generation, reflex detour, and 16s move-and-work promotion -> Viz: High-DPI HTML5 Canvas -> Interaction: Vertex dragging/splitting, modality & parameter sliders, +16s step / play / artillery interrupt controls -> Justification: Directly proves Iron Rules (a) and (b) visually without SVG; (2) 9 Event Macros -> Goal: Compare engineering quotas -> Viz: Chart.js Horizontal Bar Chart + Filterable Table -> Justification: Clearly contrasts single-instance net work times; (3) Tour Algorithms -> Goal: Compare path length, max jump, and crossings -> Viz: Chart.js Grouped Bar Chart + Toggleable Benchmark Table -> Justification: Highlights 26.3% path reduction and 0 crossings; (4) Suppression & 6-Step Trajectory -> Goal: Illustrate non-linear damping and step promotion -> Viz: Chart.js Line Chart & Combo Bar/Line Chart -> Justification: Quantifies how S=0.25 reduces work efficiency to 56.25% and tracks @#k anchors. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI-03M2 战术虚拟实例生成与单步 16s 巡回规划交互工作台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #F7F5F0;
+      color: #1E242B;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+      height: 300px;
+      max-height: 380px;
+    }
+    @media (min-width: 768px) {
+      .chart-container {
+        height: 340px;
+      }
+    }
+    .tactical-canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 440px;
+      max-height: 520px;
+    }
+    @media (min-width: 1024px) {
+      .tactical-canvas-wrap {
+        height: 500px;
+      }
+    }
+    input[type="range"] {
+      accent-color: #3D6B52;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-[#3D6B52] selection:text-white">
+
+  <header class="bg-[#FFFFFF] border-b border-[#E2DDD5] sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3 gap-2">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-[#3D6B52] text-white flex items-center justify-center font-mono-code font-bold text-sm shadow-inner">
+            M2
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono-code uppercase tracking-wider px-2 py-0.5 rounded bg-[#EFECE6] text-[#3D6B52] font-semibold">UI-03M2 工程宏架构</span>
+              <span class="text-xs text-[#687382] hidden sm:inline">8m 基准网格 · 跨端位级确定性 · Δt = 16s 拉格朗日流</span>
+            </div>
+            <h1 class="text-base sm:text-lg font-bold text-[#1E242B] leading-tight">
+              任意多边形/折线域内的战术虚拟实例生成与单步 16s 边走边干巡回路径规划
+            </h1>
+          </div>
+        </div>
+        <nav class="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm font-medium">
+          <a href="#sandbox-section" class="px-3 py-1.5 rounded-md bg-[#3D6B52] text-white hover:bg-[#315742] transition">交互仿真沙盘</a>
+          <a href="#operators-section" class="px-3 py-1.5 rounded-md text-[#3B4450] hover:bg-[#EFECE6] transition">O(K) 生成算子</a>
+          <a href="#tour-section" class="px-3 py-1.5 rounded-md text-[#3B4450] hover:bg-[#EFECE6] transition">巡回流线评测</a>
+          <a href="#integrator-section" class="px-3 py-1.5 rounded-md text-[#3B4450] hover:bg-[#EFECE6] transition">16s 双模态积分</a>
+          <a href="#pipeline-section" class="px-3 py-1.5 rounded-md text-[#3B4450] hover:bg-[#EFECE6] transition">打断状态机</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
+
+    <section class="bg-[#FFFFFF] rounded-xl border border-[#E2DDD5] p-5 sm:p-6 shadow-sm">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 space-y-3">
+          <div class="inline-flex items-center gap-2 text-xs font-semibold text-[#C87D20] bg-[#FDF6EC] border border-[#F3DFC1] px-2.5 py-1 rounded-full">
+            <span>◈ 核心工程铁律：告别“原地读进度条”的真实工兵机动流</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-bold text-[#1E242B]">
+            从几何落笔瞬时生成到每 16s 步长拉格朗日实体转正的闭环解算
+          </h2>
+          <p class="text-sm text-[#4A5563] leading-relaxed">
+            在战术级兵棋仿真中，玩家绘制任意非凸简单多边形 <span class="font-mono-code font-semibold text-[#1E242B]">P</span> 或折线段 <span class="font-mono-code font-semibold text-[#1E242B]">L</span> 后，引擎须满足两项刚性约束：<strong>铁律 (a)</strong> 以 <span class="font-mono-code text-[#3D6B52] font-semibold">O(K)</span> 复杂度及 1/1024 子网格（7.8125 mm）定点哈希跨端确定性生成全部虚拟实例 <span class="font-mono-code">{z₁, …, z_K}</span>；<strong>铁律 (b)</strong> 施工单位沿无自交测地牛耕巡回流线 <span class="font-mono-code">γ(s)</span> 边走边干，每 <span class="font-mono-code">Δt = 16s</span> 步长将走过的实例即时转正为权威拉格朗日实体，半途遭炮火打断撤退时已转正的前半截实体永久留存战场。
+          </p>
+        </div>
+        <div class="lg:col-span-5 grid grid-cols-2 gap-3">
+          <div class="p-3.5 rounded-lg bg-[#F7F5F0] border border-[#E2DDD5]">
+            <div class="text-xs text-[#687382]">点集生成复杂度与精度</div>
+            <div class="text-xl font-bold font-mono-code text-[#3D6B52] mt-1">O(m + K)</div>
+            <div class="text-xs text-[#4A5563] mt-1">7.8125 mm 定点量化 · 零碰撞检测</div>
+          </div>
+          <div class="p-3.5 rounded-lg bg-[#F7F5F0] border border-[#E2DDD5]">
+            <div class="text-xs text-[#687382]">L型非凸域最优巡回路径</div>
+            <div class="text-xl font-bold font-mono-code text-[#3B6E8C] mt-1">547.19 m</div>
+            <div class="text-xs text-[#4A5563] mt-1">较牛耕初序缩短 26.3% · 0 自交</div>
+          </div>
+          <div class="p-3.5 rounded-lg bg-[#F7F5F0] border border-[#E2DDD5]">
+            <div class="text-xs text-[#687382]">抗殉爆梅花桩最小雷距</div>
+            <div class="text-xl font-bold font-mono-code text-[#C87D20] mt-1">4.590 m</div>
+            <div class="text-xs text-[#4A5563] mt-1">严格大于 AT 雷安全阈值 4.0 m</div>
+          </div>
+          <div class="p-3.5 rounded-lg bg-[#F7F5F0] border border-[#E2DDD5]">
+            <div class="text-xs text-[#687382]">单步积分与锚点粒度</div>
+            <div class="text-xl font-bold font-mono-code text-[#C04A3A] mt-1">Δt = 16.0 s</div>
+            <div class="text-xs text-[#4A5563] mt-1">事件驱动解析积分 · 精确输出 @#k</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sandbox-section" class="space-y-4">
+      <div class="bg-[#FFFFFF] rounded-xl border border-[#E2DDD5] p-5 sm:p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-[#E2DDD5]">
+          <div>
+            <span class="text-xs font-mono-code uppercase tracking-wider text-[#3D6B52] font-semibold">Module 01 · 实时几何与动力学沙盘</span>
+            <h2 class="text-lg sm:text-xl font-bold text-[#1E242B] mt-0.5">交互式战术虚拟实例生成与单步 16s 边走边干模拟器</h2>
+            <p class="text-xs sm:text-sm text-[#4A5563] mt-1">
+              本模块直接运行报告中的核心几何与动力学算子。您可以在左侧控制栏切换<strong>多边形/折线域预设</strong>、<strong>战术生成模态</strong>与<strong>环境压制参数</strong>，也可在画布上<strong>直接拖拽顶点、点击边中点 <span class="font-mono-code">[+]</span> 分裂新增顶点，或拖拽单位进场点 <span class="font-mono-code">x₀</span></strong>；随后点击“推进 +16s 单步”或“模拟炮火急袭打断”，实时观察虚拟实例转正为权威实体与单位锚点 <span class="font-mono-code">@#k</span> 的空间演进。
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button id="btnStep16" class="px-3.5 py-2 rounded-lg bg-[#3D6B52] hover:bg-[#315742] text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer">
+              ▸ 推进 +16s 单步
+            </button>
+            <button id="btnPlayPause" class="px-3 py-2 rounded-lg bg-[#3B6E8C] hover:bg-[#2F5972] text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer">
+              ▶ 自动推演
+            </button>
+            <button id="btnInterrupt" class="px-3 py-2 rounded-lg bg-[#C04A3A] hover:bg-[#A33C2E] text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer">
+              ⚡ 模拟炮火打断
+            </button>
+            <button id="btnResetSim" class="px-3 py-2 rounded-lg bg-[#EFECE6] hover:bg-[#E2DDD5] text-[#1E242B] text-xs sm:text-sm font-semibold transition cursor-pointer">
+              ↺ 重置步长
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-5">
+          <div class="lg:col-span-4 space-y-4 bg-[#F7F5F0] p-4 rounded-lg border border-[#E2DDD5]">
+            <div>
+              <label class="block text-xs font-bold text-[#1E242B] mb-1.5">1. 几何域预设（支持画布拖拽与边分裂）</label>
+              <div class="grid grid-cols-2 gap-1.5" id="shapeSelector">
+                <button data-shape="L_POLY" class="shape-btn px-2.5 py-1.5 text-xs font-medium rounded border border-[#3D6B52] bg-[#3D6B52] text-white transition cursor-pointer">L型非凸多边形 (3840m²)</button>
+                <button data-shape="U_POLY" class="shape-btn px-2.5 py-1.5 text-xs font-medium rounded border border-[#D5CFC6] bg-white text-[#1E242B] hover:bg-[#EFECE6] transition cursor-pointer">U型双凹角多边形</button>
+                <button data-shape="CONVEX_POLY" class="shape-btn px-2.5 py-1.5 text-xs font-medium rounded border border-[#D5CFC6] bg-white text-[#1E242B] hover:bg-[#EFECE6] transition cursor-pointer">梯形凸多边形阵地</button>
+                <button data-shape="POLYLINE" class="shape-btn px-2.5 py-1.5 text-xs font-medium rounded border border-[#D5CFC6] bg-white text-[#1E242B] hover:bg-[#EFECE6] transition cursor-pointer">三顶点折线段 (80m)</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-[#1E242B] mb-1.5">2. 战术生成模态与事件宏算子</label>
+              <select id="modalitySelect" class="w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-[#D5CFC6] bg-white text-[#1E242B] font-medium focus:outline-none focus:border-[#3D6B52]">
+                <option value="QUINCUNX">M1 交错梅花桩布雷 (Quincunx 抗殉爆)</option>
+                <option value="POISSON">M1 泊松盘抛撒雷场 (Bridson 蓝噪声)</option>
+                <option value="FRONTLINE">M2/M5 前沿内缩多梯队散兵坑/碉堡</option>
+                <option value="ZIGZAG">M3 抗纵射之字形折曲堑壕 (Zigzag)</option>
+              </select>
+            </div>
+
+            <div class="space-y-3 pt-1">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-[#1E242B]">目标虚拟实例数量 K</span>
+                  <span id="valK" class="font-mono-code font-bold text-[#3D6B52]">40 实例</span>
+                </div>
+                <input id="sliderK" type="range" min="10" max="90" step="2" value="40" class="w-full cursor-pointer" />
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-[#1E242B]">敌方主威胁方位角 θ_threat</span>
+                  <span id="valThreat" class="font-mono-code font-bold text-[#C04A3A]">37° (东北向)</span>
+                </div>
+                <input id="sliderThreat" type="range" min="0" max="345" step="15" value="37" class="w-full cursor-pointer" />
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-[#1E242B]">当前格火力压制指数 S(g,t)</span>
+                  <span id="valSuppress" class="font-mono-code font-bold text-[#C87D20]">0.25 (轻度压制)</span>
+                </div>
+                <input id="sliderSuppress" type="range" min="0" max="0.80" step="0.05" value="0.25" class="w-full cursor-pointer" />
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-[#1E242B]">工兵班实有人数 N_act</span>
+                  <span id="valSquad" class="font-mono-code font-bold text-[#3B6E8C]">8 人 (满编)</span>
+                </div>
+                <input id="sliderSquad" type="range" min="2" max="8" step="1" value="8" class="w-full cursor-pointer" />
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-[#E2DDD5] space-y-1.5 text-xs">
+              <div class="flex justify-between">
+                <span class="text-[#687382]">确定性种子 H_seed:</span>
+                <span id="metaSeed" class="font-mono-code font-semibold text-[#1E242B]">0x752C99383DBD5B69</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-[#687382]">域面积 / 折线总长:</span>
+                <span id="metaGeom" class="font-mono-code font-semibold text-[#1E242B]">3840 m² / 周长 304 m</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-[#687382]">实测最小实例间距 d_min:</span>
+                <span id="metaMinDist" class="font-mono-code font-semibold text-[#3D6B52]">5.82 m</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-[#687382]">测地巡回路径总长 / 自交:</span>
+                <span id="metaPathLen" class="font-mono-code font-semibold text-[#3B6E8C]">382.4 m / 0 次自交</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-8 flex flex-col justify-between space-y-3">
+            <div class="tactical-canvas-wrap rounded-lg border border-[#D5CFC6] bg-[#FCFBF9] overflow-hidden shadow-inner">
+              <canvas id="tacticalCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+              <div class="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-xs border border-[#E2DDD5] rounded-md px-2.5 py-1.5 text-[11px] text-[#3B4450] pointer-events-none space-y-0.5">
+                <div class="font-semibold text-[#1E242B]">图例说明（8m 战术网格）</div>
+                <div class="flex items-center gap-3 flex-wrap">
+                  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full border-2 border-[#C87D20] bg-[#FDF6EC] inline-block"></span>虚拟幽灵实例</span>
+                  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#3D6B52] inline-block"></span>已转正权威实体</span>
+                  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#C04A3A] inline-block"></span>凹角绕行路标 w_r</span>
+                  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rotate-45 bg-[#3B6E8C] inline-block"></span>单位锚点 @#k</span>
+                </div>
+              </div>
+              <div id="simStatusBanner" class="absolute top-2.5 right-2.5 bg-[#3D6B52] text-white font-mono-code text-xs px-3 py-1.5 rounded-md shadow">
+                Step 0 · t = 0.0s · 待命
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 bg-[#F7F5F0] p-3 rounded-lg border border-[#E2DDD5] text-xs">
+              <div>
+                <div class="text-[#687382]">当前仿真步长与时刻</div>
+                <div id="hudTime" class="font-mono-code font-bold text-sm text-[#1E242B] mt-0.5">Step 0 (0.00 s)</div>
+              </div>
+              <div>
+                <div class="text-[#687382]">永久转正实体 / 总数</div>
+                <div id="hudPromoted" class="font-mono-code font-bold text-sm text-[#3D6B52] mt-0.5">0 / 40</div>
+              </div>
+              <div>
+                <div class="text-[#687382]">单位锚点 @#k 坐标</div>
+                <div id="hudAnchorPos" class="font-mono-code font-bold text-sm text-[#3B6E8C] mt-0.5">(4.00, 4.00) m</div>
+              </div>
+              <div>
+                <div class="text-[#687382]">所在 8m 网格与相位</div>
+                <div id="hudPhase" class="font-mono-code font-bold text-sm text-[#C87D20] mt-0.5">Grid(0,0) · READY</div>
+              </div>
+              <div>
+                <div class="text-[#687382]">步末残余时间 Δt_res</div>
+                <div id="hudResTime" class="font-mono-code font-bold text-sm text-[#1E242B] mt-0.5">0.000 s</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="operators-section" class="space-y-4">
+      <div class="bg-[#FFFFFF] rounded-xl border border-[#E2DDD5] p-5 sm:p-6 shadow-sm space-y-6">
+        <div>
+          <span class="text-xs font-mono-code uppercase tracking-wider text-[#3D6B52] font-semibold">Module 02 · 几何预处理与九大事件宏算子</span>
+          <h2 class="text-lg sm:text-xl font-bold text-[#1E242B] mt-0.5">确定性 O(K) 战术点集生成算子与九大事件宏定额矩阵</h2>
+          <p class="text-xs sm:text-sm text-[#4A5563] mt-1 leading-relaxed">
+            为消除多端架构（x86_64 与 ARM64）下的浮点尾数舍入漂移，系统将玩家绘制顶点量化至 <span class="font-mono-code">8m / 1024 = 7.8125 mm</span> 定点子格，强制逆时针（CCW）规范化并经 <span class="font-mono-code">SplitMix64</span> 生成循环移位不变主种子。随后按战术物理拓扑分支调用三大 <span class="font-mono-code">O(K)</span> 确定性生成算子，支撑 UI-03M2 全部九大工程事件宏。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-lg bg-[#F7F5F0] border border-[#E2DDD5] space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-[#3D6B52] text-white">模态 A · 面域阻绝</span>
+              <span class="font-mono-code text-xs text-[#687382]">M1 布雷 / M6 爆破</span>
+            </div>
+            <h3 class="font-bold text-sm text-[#1E242B]">周长补偿交错梅花桩与受限极坐标抖动</h3>
+            <p class="text-xs text-[#4A5563] leading-relaxed">
+              沿主威胁轴建立正六边形晶格，通过周长补偿因子（α=1.08, β=0.50）消除边界裁切损失，并利用三角不等式严格限制抖动半径：
+            </p>
+            <div class="p-2 rounded bg-white border border-[#E2DDD5] font-mono-code text-[11px] text-[#1E242B]">
+              δ_max = min(0.22a, 0.48·max(0, a - r_min))
+            </div>
+            <p class="text-[11px] text-[#525D6B]">
+              在<strong>零事后碰撞检测</strong>下从代数上锁死抗殉爆安全间距（AT 雷 r_min=4.0m 时实测最小间距 4.590m），辅以 O(K) Bridson 泊松盘模态。
+            </p>
+          </div>
+
+          <div class="p-4 rounded-lg bg-[#F7F5F0] border border-[#E2DDD5] space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-[#3B6E8C] text-white">模态 B · 前沿筑城</span>
+              <span class="font-mono-code text-xs text-[#687382]">M2 散兵坑 / M5 碉堡</span>
+            </div>
+            <h3 class="font-bold text-sm text-[#1E242B]">主威胁法向驱动斜接限制内缩多梯队采样</h3>
+            <p class="text-xs text-[#4A5563] leading-relaxed">
+              筛选满足 <span class="font-mono-code">n_out · n_threat ≥ 0.15</span> 的迎敌前沿边链，沿内角平分线实施斜接截断内缩偏置（d₁=6m 主阵地，d₂=18m 预备梯队）：
+            </p>
+            <div class="p-2 rounded bg-white border border-[#E2DDD5] font-mono-code text-[11px] text-[#1E242B]">
+              v_i^(e) = v_i + d_e · min(2.5, m_i) · b_i
+            </div>
+            <p class="text-[11px] text-[#525D6B]">
+              沿有效前沿弧长等距重采样，并为每个阵位赋予局部外法向与全局威胁方向加权合成的复合射界向量 <span class="font-mono-code">d_k</span>。
+            </p>
+          </div>
+
+          <div class="p-4 rounded-lg bg-[#F7F5F0] border border-[#E2DDD5] space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold px-2 py-0.5 rounded bg-[#C87D20] text-white">模态 C · 线性工程</span>
+              <span class="font-mono-code text-xs text-[#687382]">M3 堑壕 / M4 铁丝网</span>
+            </div>
+            <h3 class="font-bold text-sm text-[#1E242B]">抗纵射之字形折曲（Zigzag）横向微扰采样</h3>
+            <p class="text-xs text-[#4A5563] leading-relaxed">
+              遵循 FM 5-15 与 FM 5-103 生存力条令，在折线弧长等分节点上施加奇偶交替法向正交微扰（A_zig = 1.2m），防止敌机枪侧向纵射贯通：
+            </p>
+            <div class="p-2 rounded bg-white border border-[#E2DDD5] font-mono-code text-[11px] text-[#1E242B]">
+              w_k = p_base(s_k) + (-1)^(k+1) · A_zig · n_i
+            </div>
+            <p class="text-[11px] text-[#525D6B]">
+              80.0m 三顶点折线经 K=16 采样后生成 16 段首尾咬合的折曲壕段（平均单段长 5.53m，折曲总弧长 88.50m）。
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center pt-2">
+          <div class="lg:col-span-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-[#1E242B]">九大事件宏单实例净作业耗时对比（8人满编工兵班）</h3>
+              <span class="text-xs font-mono-code text-[#687382]">η_equip = 1.5</span>
+            </div>
+            <p class="text-xs text-[#4A5563]">
+              图表展示满编 8 人熟练工兵班（有效工效功率 12.0 人·s/s）完成单个虚拟实例所需的净作业时间。重型碉堡（96s，跨 6 个 16s 步长）与散兵坑（32s，跨 2 个步长）由积分器跨步长无缝累积完成。
+            </p>
+            <div class="chart-container">
+              <canvas id="macroQuotaChart"></canvas>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-bold text-[#1E242B]">UI-03M2 九大工程事件宏算子与定额参数表</h3>
+              <div class="flex gap-1 text-xs" id="macroFilterBtns">
+                <button data-cat="ALL" class="macro-filter px-2.5 py-1 rounded bg-[#3D6B52] text-white font-medium cursor-pointer">全部 (9)</button>
+                <button data-cat="AREA" class="macro-filter px-2.5 py-1 rounded bg-[#EFECE6] text-[#1E242B] font-medium cursor-pointer">面域/前沿</button>
+                <button data-cat="LINEAR" class="macro-filter px-2.5 py-1 rounded bg-[#EFECE6] text-[#1E242B] font-medium cursor-pointer">线性工程</button>
+                <button data-cat="CLEAR" class="macro-filter px-2.5 py-1 rounded bg-[#EFECE6] text-[#1E242B] font-medium cursor-pointer">逆向清障</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto border border-[#E2DDD5] rounded-lg">
+              <table class="min-w-full divide-y divide-[#E2DDD5] text-xs">
+                <thead class="bg-[#F7F5F0] text-[#3B4450]">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-bold">事件宏</th>
+                    <th class="px-3 py-2 text-left font-bold">核心战术生成算子</th>
+                    <th class="px-3 py-2 text-left font-bold">关键几何约束</th>
+                    <th class="px-3 py-2 text-right font-bold">定额 W₀</th>
+                    <th class="px-3 py-2 text-right font-bold">净耗时</th>
+                  </tr>
+                </thead>
+                <tbody id="macroTableBody" class="divide-y divide-[#E2DDD5] bg-white"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tour-section" class="space-y-4">
+      <div class="bg-[#FFFFFF] rounded-xl border border-[#E2DDD5] p-5 sm:p-6 shadow-sm space-y-5">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <span class="text-xs font-mono-code uppercase tracking-wider text-[#3B6E8C] font-semibold">Module 03 · 极速施工巡回流线规划</span>
+            <h2 class="text-lg sm:text-xl font-bold text-[#1E242B] mt-0.5">非凸测地牛耕 + 带状 2-Opt 解交 + 反射凹角漏斗绕行评测</h2>
+            <p class="text-xs sm:text-sm text-[#4A5563] mt-1 leading-relaxed">
+              针对非凸多边形内“固定进场点 <span class="font-mono-code">x₀</span>、自由终点”的开放式巡回规划，本文算子先沿威胁扫描排生成分簇牛耕初序，再运行测地 2-Opt 局部边交换消除全部平面自交，并对跨越非凸凹口（如 L 型凹角 <span class="font-mono-code">(32, 32)</span>）的转移段插入内缩 0.50m 的安全绕行路标 <span class="font-mono-code">w_r = (31.646, 31.646)</span>。
+            </p>
+          </div>
+          <div class="flex items-center gap-2 bg-[#F7F5F0] p-1 rounded-lg border border-[#E2DDD5] shrink-0">
+            <button id="btnEntryInternal" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#3B6E8C] text-white transition cursor-pointer">
+              内部进场点 x₀ = (4.0, 4.0)
+            </button>
+            <button id="btnEntryExternal" class="px-3 py-1.5 rounded-md text-xs font-semibold text-[#3B4450] hover:bg-white transition cursor-pointer">
+              外部进场点 x₀ = (-8.0, 4.0)
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div class="lg:col-span-6">
+            <div class="chart-container">
+              <canvas id="tourBenchmarkChart"></canvas>
+            </div>
+          </div>
+
+          <div class="lg:col-span-6 space-y-3">
+            <div class="overflow-x-auto border border-[#E2DDD5] rounded-lg">
+              <table class="min-w-full divide-y divide-[#E2DDD5] text-xs">
+                <thead class="bg-[#F7F5F0] text-[#3B4450]">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-bold">巡回排序算子</th>
+                    <th class="px-3 py-2 text-right font-bold">总路径长</th>
+                    <th class="px-3 py-2 text-right font-bold">较基准缩减</th>
+                    <th class="px-3 py-2 text-right font-bold">最大跨跳</th>
+                    <th class="px-3 py-2 text-center font-bold">自交次数</th>
+                  </tr>
+                </thead>
+                <tbody id="tourTableBody" class="divide-y divide-[#E2DDD5] bg-white"></tbody>
+              </table>
+            </div>
+            <div class="p-3.5 rounded-lg bg-[#F7F5F0] border border-[#E2DDD5] text-xs text-[#4A5563] space-y-1">
+              <div class="font-bold text-[#1E242B]">实测结论摘要（3,840 m² L型非凸域 · K=80 枚地雷）：</div>
+              <p>
+                传统空间填充曲线（Morton Z-Order 产生 15 次自交与 74.73m 跨凹湾长跳；Hilbert 曲线产生 2 次自交）与最近邻贪心（9 次自交）均存在严重路径交叉与穿墙风险；本方案将内部起点总路径压缩至 <strong class="text-[#3D6B52] font-mono-code">547.19 m</strong>（较全局牛耕初序缩短 <strong>26.3%</strong>，较分簇牛耕缩短 <strong>29.0%</strong>），且实现 <strong>0 次自交</strong>与 <strong>100% 多边形内约束</strong>。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="integrator-section" class="space-y-4">
+      <div class="bg-[#FFFFFF] rounded-xl border border-[#E2DDD5] p-5 sm:p-6 shadow-sm space-y-6">
+        <div>
+          <span class="text-xs font-mono-code uppercase tracking-wider text-[#C87D20] font-semibold">Module 04 · 单步 16s 事件驱动双模态积分器</span>
+          <h2 class="text-lg sm:text-xl font-bold text-[#1E242B] mt-0.5">行进-作业增广弧长动力学与跨压制网格 6 步推演基准</h2>
+          <p class="text-xs sm:text-sm text-[#4A5563] mt-1 leading-relaxed">
+            通过名义速度-工效折算比 <span class="font-mono-code font-semibold text-[#1E242B]">λ_eq = v_ref / P_ref = 0.20 m/(人·s)</span>，每个实例的工时定额 <span class="font-mono-code">W₀</span> 被映射为虚拟作业弧长 <span class="font-mono-code">L_work^eq = λ_eq · W₀</span>，使移动相位与作业相位统一于一维单调增广弧长轴 <span class="font-mono-code">s̃</span> 上。在每个 <span class="font-mono-code">Δt = 16s</span> 步长内，事件驱动解析积分器精确跨越相位边界并判定转正实例集合 <span class="font-mono-code">P_n</span>。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 space-y-3">
+            <h3 class="text-sm font-bold text-[#1E242B]">非对称火力压制阻尼曲线：σ_move(S) vs σ_work(S)</h3>
+            <p class="text-xs text-[#4A5563]">
+              士兵暴露作业（站立打桩、弯腰埋雷）对炮火的敏感度高于低姿跃进（β_w = 2.0 vs α_m = 0.5）。当压制指数 S = 0.25 时，行进速度保留 87.5%，而作业工效衰减至 56.25%。
+            </p>
+            <div class="chart-container">
+              <canvas id="suppressionCurveChart"></canvas>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-bold text-[#1E242B]">K=15 枚反坦克雷跨网格布设 6 步推进轨迹（含 Step 3 9.6s 打断对照）</h3>
+              <span class="text-xs font-mono-code text-[#3D6B52] font-semibold">W₀ = 24.0 人·s · L_work^eq = 4.80 m</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="stepProgressChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto border border-[#E2DDD5] rounded-lg">
+          <table class="min-w-full divide-y divide-[#E2DDD5] text-xs">
+            <thead class="bg-[#F7F5F0] text-[#3B4450]">
+              <tr>
+                <th class="px-3 py-2 text-left font-bold">步长 / 锚点</th>
+                <th class="px-3 py-2 text-right font-bold">积分时长</th>
+                <th class="px-3 py-2 text-center font-bold">网格压制 S</th>
+                <th class="px-3 py-2 text-right font-bold">增广弧长 s̃ 区间</th>
+                <th class="px-3 py-2 text-right font-bold">物理移动</th>
+                <th class="px-3 py-2 text-left font-bold">本步转正实例 P_n</th>
+                <th class="px-3 py-2 text-right font-bold">累计转正</th>
+                <th class="px-3 py-2 text-left font-bold">末端锚点 @#k 坐标与状态</th>
+                <th class="px-3 py-2 text-right font-bold">残余 Δt_res</th>
+              </tr>
+            </thead>
+            <tbody id="stepBenchmarkBody" class="divide-y divide-[#E2DDD5] bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="pipeline-section" class="space-y-4">
+      <div class="bg-[#FFFFFF] rounded-xl border border-[#E2DDD5] p-5 sm:p-6 shadow-sm space-y-6">
+        <div>
+          <span class="text-xs font-mono-code uppercase tracking-wider text-[#C04A3A] font-semibold">Module 05 · 打断持久性状态机与工程落地流水线</span>
+          <h2 class="text-lg sm:text-xl font-bold text-[#1E242B] mt-0.5">炮火急袭打断四态有限状态机（FSM）与五步引擎集成清单</h2>
+          <p class="text-xs sm:text-sm text-[#4A5563] mt-1">
+            点击下方不同的实战打断工况，查看系统如何将虚拟实例集划分为“永久留存前半截”、“焦点半截缓存/清理”与“未触及后半截回收”，并利用残余时间预算 <span class="font-mono-code">Δt_res</span> 无缝衔接撤退机动指令。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div class="lg:col-span-5 space-y-2.5" id="fsmScenarioButtons">
+            <button data-fsm="DONE_BEFORE" class="fsm-btn w-full text-left p-3.5 rounded-lg border-2 border-[#3D6B52] bg-[#F2F7F4] transition cursor-pointer">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs sm:text-sm text-[#1E242B]">1. 已完成前半截子集 Z_done (s̃_work^end ≤ s̃_int)</span>
+                <span class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-[#3D6B52] text-white">PROMOTED_ACTIVE (2)</span>
+              </div>
+              <p class="text-xs text-[#4A5563] mt-1">含打断步前已转正及窗口 [t_n-1, t_n-1 + τ_int] 内跨阈值的实例（如 Step 3 9.6s 打断时的 z₁~z₇），永久留存战场。</p>
+            </button>
+
+            <button data-fsm="FOCAL_MOVE" class="fsm-btn w-full text-left p-3.5 rounded-lg border border-[#E2DDD5] bg-white hover:bg-[#F7F5F0] transition cursor-pointer">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs sm:text-sm text-[#1E242B]">2. 焦点实例处于行进途中 (s̃_int ∈ I_j*,move)</span>
+                <span class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-[#C04A3A] text-white">ABORTED_CLEANED (3)</span>
+              </div>
+              <p class="text-xs text-[#4A5563] mt-1">单位正从 z_j*-1 走向 z_j* 的半路上（如 Step 3 9.6s 时走向 z₈ 进度 37.3%），尚未动工，直接销毁幽灵并输出实时物理坐标锚点。</p>
+            </button>
+
+            <button data-fsm="FOCAL_WORK" class="fsm-btn w-full text-left p-3.5 rounded-lg border border-[#E2DDD5] bg-white hover:bg-[#F7F5F0] transition cursor-pointer">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs sm:text-sm text-[#1E242B]">3. 焦点实例处于原位施工半截 (s̃_int ∈ I_j*,work)</span>
+                <span class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-[#C87D20] text-white">缓存工时 / 销毁引信</span>
+              </div>
+              <p class="text-xs text-[#4A5563] mt-1">已完成比例 φ_j* ∈ (0,1)：离散引信（地雷/炸药）随撤退销毁；土方工事（散兵坑/堑壕/碉堡）将已累积工时 φ_j*·W₀ 缓存于 8m 网格供复工继承。</p>
+            </button>
+
+            <button data-fsm="TAIL_REM" class="fsm-btn w-full text-left p-3.5 rounded-lg border border-[#E2DDD5] bg-white hover:bg-[#F7F5F0] transition cursor-pointer">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs sm:text-sm text-[#1E242B]">4. 未触及后半截子集 Z_rem (j &gt; j*)</span>
+                <span class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-[#687382] text-white">ABORTED_CLEANED (3)</span>
+              </div>
+              <p class="text-xs text-[#4A5563] mt-1">全部批量注销幽灵渲染节点，退还单位未消耗工程器材携行量，剩余时间 Δt_res = 16.0 - τ_int 立即转入撤退机动轨迹。</p>
+            </button>
+          </div>
+
+          <div class="lg:col-span-7 bg-[#F7F5F0] rounded-lg border border-[#E2DDD5] p-5 flex flex-col justify-between space-y-4">
+            <div id="fsmDetailPanel" class="space-y-3">
+              <div class="flex items-center justify-between border-b border-[#E2DDD5] pb-2">
+                <span class="text-xs font-mono-code font-bold text-[#3D6B52]">状态机解析视图 · PROMOTED_ACTIVE (2)</span>
+                <span class="text-xs font-mono-code text-[#687382]">基准算例：Step 3 @ 9.60s</span>
+              </div>
+              <h4 class="text-base font-bold text-[#1E242B]">前半截权威拉格朗日实体永久持久化</h4>
+              <p class="text-xs sm:text-sm text-[#4A5563] leading-relaxed">
+                当敌方炮火在 Step 3 第 9.60s 触发撤退打断时，增广弧长精确截断于 <span class="font-mono-code font-semibold text-[#1E242B]">s̃_int = 79.10 m</span>。系统检索所有满足 <span class="font-mono-code font-semibold text-[#3D6B52]">s̃_j,work^end ≤ 79.10 m</span> 的实例，将本步刚刚跨越阈值的 <span class="font-mono-code">z₆, z₇</span> 立即转正，连同前两步已转正的 <span class="font-mono-code">z₁~z₅</span> 共计 <strong>7 枚反坦克地雷</strong>永久挂载至 8m 空间物理网格。
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                <div class="bg-white p-2.5 rounded border border-[#E2DDD5]">
+                  <div class="text-[11px] text-[#687382]">永久保留实体</div>
+                  <div class="font-mono-code font-bold text-xs text-[#3D6B52] mt-0.5">{z₁, z₂, z₃, z₄, z₅, z₆, z₇}</div>
+                </div>
+                <div class="bg-white p-2.5 rounded border border-[#E2DDD5]">
+                  <div class="text-[11px] text-[#687382]">撤退锚点 @#3 坐标</div>
+                  <div class="font-mono-code font-bold text-xs text-[#3B6E8C] mt-0.5">(22.79 m, 11.25 m)</div>
+                </div>
+                <div class="bg-white p-2.5 rounded border border-[#E2DDD5]">
+                  <div class="text-[11px] text-[#687382]">撤退可用残余预算</div>
+                  <div class="font-mono-code font-bold text-xs text-[#C04A3A] mt-0.5">Δt_res = 6.400 s</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-[#E2DDD5]">
+              <div class="text-xs font-bold text-[#1E242B] mb-2">引擎五步确定性落地流水线与算法复杂度：</div>
+              <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px]">
+                <div class="bg-white p-2 rounded border border-[#E2DDD5]">
+                  <div class="font-mono-code font-bold text-[#3D6B52]">Step 1 · O(m)</div>
+                  <div class="font-semibold text-[#1E242B] mt-0.5">落笔定点规范化</div>
+                  <div class="text-[#687382] mt-0.5">7.81mm量化 + SplitMix64</div>
+                </div>
+                <div class="bg-white p-2 rounded border border-[#E2DDD5]">
+                  <div class="font-mono-code font-bold text-[#3D6B52]">Step 2 · O(m+K)</div>
+                  <div class="font-semibold text-[#1E242B] mt-0.5">幽灵实例生成</div>
+                  <div class="text-[#687382] mt-0.5">三模态战术几何算子</div>
+                </div>
+                <div class="bg-white p-2 rounded border border-[#E2DDD5]">
+                  <div class="font-mono-code font-bold text-[#3B6E8C]">Step 3 · O(K·W)</div>
+                  <div class="font-semibold text-[#1E242B] mt-0.5">测地巡回排序</div>
+                  <div class="text-[#687382] mt-0.5">牛耕 + 2-Opt + 凹角绕行</div>
+                </div>
+                <div class="bg-white p-2 rounded border border-[#E2DDD5]">
+                  <div class="font-mono-code font-bold text-[#C87D20]">Step 4 · O(|P_n|)</div>
+                  <div class="font-semibold text-[#1E242B] mt-0.5">16s 双模态积分</div>
+                  <div class="text-[#687382] mt-0.5">耦合人数/装备/压制场</div>
+                </div>
+                <div class="bg-white p-2 rounded border border-[#E2DDD5]">
+                  <div class="font-mono-code font-bold text-[#C04A3A]">Step 5 · O(1)</div>
+                  <div class="font-semibold text-[#1E242B] mt-0.5">@#k 锚点输出</div>
+                  <div class="text-[#687382] mt-0.5">转正持久化与残余时间</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-[#E2DDD5] bg-[#FFFFFF] mt-12 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-[#687382]">
+      <div>UI-03M2 九大事件宏战术虚拟实例生成与单步 16s 边走边干巡回路径规划技术报告交互可视化</div>
+      <div class="font-mono-code">Deterministic O(K) · Geodesic 2-Opt · Δt = 16s Exact Integrator</div>
+    </div>
+  </footer>
+
+  <script>
+    const MACRO_DATA = [
+      { id: 'M1', name: 'M1 战术布雷', cat: 'AREA', operator: '威胁轴旋转梅花桩受限抖动 / 泊松盘', constraint: '抗殉爆间距 r_min = 4.0m (AT) / 3.0m (AP)', w0: 24.0, netTime: 2.0, note: '2.00 s / 颗' },
+      { id: 'M2', name: 'M2 散兵坑挖掘', cat: 'AREA', operator: '前沿边链提取 + 斜接限制内缩多梯队采样', constraint: '梯队内缩 d₁=6.0m, d₂=18.0m, M_max=2.5', w0: 384.0, netTime: 32.0, note: '32.00 s / 坑 (跨2步)' },
+      { id: 'M3', name: 'M3 连通堑壕挖掘', cat: 'LINEAR', operator: '弧长等分 + 奇偶交替法向正交微扰 (Zigzag)', constraint: '折曲振幅 A_zig = 1.2m, 平均段长 5.53m', w0: 192.0, netTime: 16.0, note: '16.00 s / 段' },
+      { id: 'M4', name: 'M4 铁丝网架设', cat: 'LINEAR', operator: '弧长等距分段 + 多排法向平行偏置折线', constraint: '螺旋铁桩 + 蛇腹形铁丝网多排阻绝', w0: 72.0, netTime: 6.0, note: '6.00 s / 段' },
+      { id: 'M5', name: 'M5 重型碉堡建造', cat: 'AREA', operator: '前沿主支撑点内缩 + 8m 网格对齐采样', constraint: '斜接上限 M_max = 2.5 (带顶盖重型掩体)', w0: 1152.0, netTime: 96.0, note: '96.00 s / 座 (跨6步)' },
+      { id: 'M6', name: 'M6 工程爆破', cat: 'CLEAR', operator: '目标结构网格锚点提取 / 梅花桩布药', constraint: '串联起爆防殉爆最小间距 5.0m', w0: 48.0, netTime: 4.0, note: '4.00 s / 点' },
+      { id: 'M7', name: 'M7 工事拆除', cat: 'CLEAR', operator: '域内既有权威拉格朗日工事逆向空间检索', constraint: '原位匹配既有实体坐标序列', w0: 96.0, netTime: 8.0, note: '8.00 s / 实体' },
+      { id: 'M8', name: 'M8 排雷开辟通道', cat: 'CLEAR', operator: '通道缓冲带内既有地雷实体扫描线检索', constraint: '沿开辟方向按纵深 v 单调递增排序', w0: 36.0, netTime: 3.0, note: '3.00 s / 颗' },
+      { id: 'M9', name: 'M9 路障/反坦克壕', cat: 'LINEAR', operator: '折线等距分段采样 + 双排交错梅花桩阵列', constraint: '条令基准每 50–70m 耗费 1 推土机台时', w0: 144.0, netTime: 12.0, note: '12.00 s / 段' }
+    ];
+
+    const TOUR_BENCHMARKS = {
+      INTERNAL: [
+        { name: 'Morton (Z-Order) 曲线', complexity: 'O(K log K)', length: 831.69, diff: '+12.0%', jump: 74.73, crossings: 15, risk: '高 (象限跳变跨凹口)', highlight: false },
+        { name: '分簇牛耕初序 (BCD-Boustro)', complexity: 'O(K log K)', length: 771.24, diff: '+3.8%', jump: 54.20, crossings: 0, risk: '无 (子胞元内闭环)', highlight: false },
+        { name: '全局扫描牛耕初序 (基准)', complexity: 'O(K log K)', length: 742.67, diff: '0.0%', jump: 45.58, crossings: 0, risk: '中 (跨凹湾同行直连)', highlight: false },
+        { name: '最近邻贪心算法 (NN Greedy)', complexity: 'O(K²)', length: 667.80, diff: '-10.1%', jump: 57.15, crossings: 9, risk: '高 (末期拾遗横穿)', highlight: false },
+        { name: 'Hilbert 空间填充曲线 (10阶)', complexity: 'O(K log K)', length: 664.98, diff: '-10.5%', jump: 46.78, crossings: 2, risk: '中 (递归边界斜交)', highlight: false },
+        { name: '本文：非凸测地牛耕 + 2-Opt', complexity: 'O(K·W_band)', length: 547.19, diff: '-26.3%', jump: 14.20, crossings: 0, risk: '0 次 (100% 测地内约束)', highlight: true }
+      ],
+      EXTERNAL: [
+        { name: 'Morton (Z-Order) 曲线', complexity: 'O(K log K)', length: 845.10, diff: '+12.5%', jump: 76.20, crossings: 15, risk: '高 (象限跳变跨凹口)', highlight: false },
+        { name: '分簇牛耕初序 (BCD-Boustro)', complexity: 'O(K log K)', length: 780.45, diff: '+3.9%', jump: 54.20, crossings: 0, risk: '无 (子胞元内闭环)', highlight: false },
+        { name: '全局扫描牛耕初序 (基准)', complexity: 'O(K log K)', length: 751.27, diff: '0.0%', jump: 45.58, crossings: 0, risk: '中 (跨凹湾同行直连)', highlight: false },
+        { name: '最近邻贪心算法 (NN Greedy)', complexity: 'O(K²)', length: 679.40, diff: '-9.6%', jump: 58.30, crossings: 9, risk: '高 (末期拾遗横穿)', highlight: false },
+        { name: 'Hilbert 空间填充曲线 (10阶)', complexity: 'O(K log K)', length: 676.85, diff: '-9.9%', jump: 47.90, crossings: 2, risk: '中 (递归边界斜交)', highlight: false },
+        { name: '本文：非凸测地牛耕 + 2-Opt', complexity: 'O(K·W_band)', length: 561.04, diff: '-25.3%', jump: 15.60, crossings: 0, risk: '0 次 (100% 测地内约束)', highlight: true }
+      ]
+    };
+
+    const STEP_BENCHMARK_DATA = [
+      { step: 'Step 1 (@#1)', dur: '16.00 s', sup: '0.00', sRange: '0.00 → 37.20 m', phys: 22.80, promoted: '{z₁, z₂, z₃}', cum: 3, anchor: '(23.74, 5.47) · (z₄, move, 0.737)', res: '0.000 s', interrupt: false },
+      { step: 'Step 2 (@#2)', dur: '16.00 s', sup: '0.25', sRange: '37.20 → 63.32 m', phys: 13.98, promoted: '{z₄, z₅}', cum: 5, anchor: '(31.50, 11.20) · (z₆, work, 0.530)', res: '0.000 s', interrupt: false },
+      { step: 'Step 3 (@#3 正常)', dur: '16.00 s', sup: '0.25', sRange: '63.32 → 89.57 m', phys: 14.40, promoted: '{z₆, z₇, z₈}', cum: 8, anchor: '(17.12, 11.08) · (z₉, move, 0.278)', res: '0.000 s', interrupt: false },
+      { step: 'Step 4 (@#4)', dur: '16.00 s', sup: '0.00', sRange: '89.57 → 126.11 m', phys: 22.14, promoted: '{z₉, z₁₀, z₁₁}', cum: 11, anchor: '(11.70, 17.17) · (z₁₂, move, 0.842)', res: '0.000 s', interrupt: false },
+      { step: 'Step 5 (@#5)', dur: '16.00 s', sup: '0.25', sRange: '126.11 → 155.17 m', phys: 14.66, promoted: '{z₁₂, z₁₃, z₁₄}', cum: 14, anchor: '(26.35, 17.13) · (z₁₅, move, 0.167)', res: '0.000 s', interrupt: false },
+      { step: 'Step 6 (@#6 竣工)', dur: '6.189 s', sup: '0.25', sRange: '155.17 → 165.22 m', phys: 5.25, promoted: '{z₁₅}', cum: 15, anchor: '(31.60, 17.30) · (None, DONE, 0.000)', res: '9.811 s', interrupt: false },
+      { step: 'Step 3 (@#3 打断)', dur: '9.60 s', sup: '0.25→撤', sRange: '63.32 → 79.10 m', phys: 8.30, promoted: '{z₆, z₇} (共7颗永久保留)', cum: 7, anchor: '(22.79, 11.25) · (z₈, move, 0.373)→撤退', res: '6.400 s', interrupt: true }
+    ];
+
+    const FSM_DETAILS = {
+      DONE_BEFORE: {
+        badge: '状态机解析视图 · PROMOTED_ACTIVE (2)',
+        ref: '基准算例：Step 3 @ 9.60s',
+        title: '前半截权威拉格朗日实体永久持久化',
+        desc: '当敌方炮火在 Step 3 第 9.60s 触发撤退打断时，增广弧长精确截断于 s̃_int = 79.10 m。系统检索所有满足 s̃_j,work^end ≤ 79.10 m 的实例，将本步刚刚跨越阈值的 z₆, z₇ 立即转正，连同前两步已转正的 z₁~z₅ 共计 7 枚反坦克地雷永久挂载至 8m 空间物理网格。',
+        k1: '永久保留实体', v1: '{z₁, z₂, z₃, z₄, z₅, z₆, z₇}',
+        k2: '撤退锚点 @#3 坐标', v2: '(22.79 m, 11.25 m)',
+        k3: '撤退可用残余预算', v3: 'Δt_res = 6.400 s'
+      },
+      FOCAL_MOVE: {
+        badge: '状态机解析视图 · ABORTED_CLEANED (3)',
+        ref: '焦点实例 z₈ · 行进相位中断',
+        title: '半途机动实例安全销毁与精确坐标锚定',
+        desc: '若打断时刻 s̃_int 落入第 j* 号实例的行进相位 I_j*,move（如 Step 3 9.60s 时工兵正从 z₇ 走向 z₈，完成行程比例 φ = 37.3%），此时尚未抵达 z₈ 施工点，z₈ 直接标记为 ABORTED_CLEANED 并清除幽灵图标，单位锚点 @#3 精确插值于连线 37.3% 处的 (22.79 m, 11.25 m)。',
+        k1: '焦点实例处置', v1: 'z₈ 幽灵注销 (未动工)',
+        k2: '插值权重公式', v2: '0.627·z₇ + 0.373·z₈',
+        k3: '所在 8m 权威网格', v3: 'Grid (2, 1)'
+      },
+      FOCAL_WORK: {
+        badge: '状态机解析视图 · IN_PROGRESS (1) → 分支处理',
+        ref: '焦点实例 z_j* · 作业相位中断',
+        title: '原位施工半截的差异化物理持久化策略',
+        desc: '若打断时刻落入作业相位 I_j*,work（已完成工时比例 φ_j* ∈ (0, 1)），引擎依据实体物理属性执行分支：对于布雷（M1）与爆破（M6）等离散引信实体，未埋设完毕的半成品随撤退销毁；对于散兵坑（M2）、堑壕（M3）与碉堡（M5）等土方工事，已挖掘的 φ_j*·W₀ 工时缓存于 8m 网格供后续友军复工继承。',
+        k1: '离散引信类 (M1/M6)', v1: '随撤退回收销毁',
+        k2: '土方挖掘类 (M2/M3/M5)', v2: '缓存 φ_j*·W₀ 进度',
+        k3: '单位撤退起点', v3: '精确驻留坐标 z_j*'
+      },
+      TAIL_REM: {
+        badge: '状态机解析视图 · ABORTED_CLEANED (3)',
+        ref: '未触及后半截子集 Z_rem (j > j*)',
+        title: '后半截规划队列批量回收与残余时间继承',
+        desc: '所有索引大于 j* 的未触及虚拟实例（如 Step 3 打断时的 z₉ ~ z₁₅）均处于 GHOST_PLANNED 状态，系统将其批量转移至 ABORTED_CLEANED 并退还对应工程器材。同时，本步长未耗尽的 Δt_res = 16.0 - 9.60 = 6.400 s 立即注入后续撤退机动指令，实现零延迟规避。',
+        k1: '批量注销队列', v1: '{z₉, z₁₀, …, z₁₅}',
+        k2: '器材携行量处置', v2: '全额退还至工兵班',
+        k3: '后续指令时间继承', v3: '无缝消耗 6.400 s'
+      }
+    };
+
+    function wrapLabel(str, maxLen = 16) {
+      if (str.length <= maxLen) return str;
+      const lines = [];
+      let current = '';
+      for (const ch of str) {
+        if (current.length >= maxLen) {
+          lines.push(current);
+          current = ch;
+        } else {
+          current += ch;
+        }
+      }
+      if (current) lines.push(current);
+      return lines;
+    }
+
+    function renderMacroTable(filterCat = 'ALL') {
+      const tbody = document.getElementById('macroTableBody');
+      tbody.innerHTML = '';
+      const filtered = filterCat === 'ALL' ? MACRO_DATA : MACRO_DATA.filter(m => m.cat === filterCat);
+      filtered.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-[#F7F5F0] transition';
+        tr.innerHTML = `
+          <td class="px-3 py-2 font-semibold text-[#1E242B] whitespace-nowrap">${item.name}</td>
+          <td class="px-3 py-2 text-[#4A5563]">${item.operator}</td>
+          <td class="px-3 py-2 font-mono-code text-[11px] text-[#3B4450]">${item.constraint}</td>
+          <td class="px-3 py-2 text-right font-mono-code text-[#1E242B] whitespace-nowrap">${item.w0.toFixed(1)} 人·s</td>
+          <td class="px-3 py-2 text-right font-mono-code font-bold text-[#3D6B52] whitespace-nowrap">${item.note}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    let macroChartInstance = null;
+    function initMacroChart() {
+      const ctx = document.getElementById('macroQuotaChart').getContext('2d');
+      const colors = MACRO_DATA.map(m => {
+        if (m.cat === 'AREA') return '#3D6B52';
+        if (m.cat === 'LINEAR') return '#C87D20';
+        return '#3B6E8C';
+      });
+      macroChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: MACRO_DATA.map(m => wrapLabel(m.name, 14)),
+          datasets: [{
+            label: '8人满编班单实例净耗时 (s)',
+            data: MACRO_DATA.map(m => m.netTime),
+            backgroundColor: colors,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const m = MACRO_DATA[ctx.dataIndex];
+                  return ` 净耗时: ${m.netTime.toFixed(2)} s (定额 W₀ = ${m.w0} 人·s)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#EAE6DF' },
+              title: { display: true, text: '净作业耗时 (秒)', font: { size: 11 } }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    let tourChartInstance = null;
+    function renderTourBenchmark(mode = 'INTERNAL') {
+      const rows = TOUR_BENCHMARKS[mode];
+      const tbody = document.getElementById('tourTableBody');
+      tbody.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = r.highlight ? 'bg-[#F2F7F4] font-semibold' : 'hover:bg-[#F7F5F0]';
+        const crossBadge = r.crossings === 0
+          ? '<span class="px-2 py-0.5 rounded bg-[#3D6B52] text-white font-mono-code">0 次</span>'
+          : `<span class="px-2 py-0.5 rounded bg-[#FDF2F0] text-[#C04A3A] font-mono-code">${r.crossings} 次</span>`;
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-[#1E242B]">${r.name}</td>
+          <td class="px-3 py-2 text-right font-mono-code ${r.highlight ? 'text-[#3D6B52] font-bold' : 'text-[#1E242B]'}">${r.length.toFixed(2)} m</td>
+          <td class="px-3 py-2 text-right font-mono-code ${r.highlight ? 'text-[#3D6B52]' : 'text-[#687382]'}">${r.diff}</td>
+          <td class="px-3 py-2 text-right font-mono-code text-[#3B4450]">${r.jump.toFixed(2)} m</td>
+          <td class="px-3 py-2 text-center">${crossBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const ctx = document.getElementById('tourBenchmarkChart').getContext('2d');
+      if (tourChartInstance) tourChartInstance.destroy();
+      tourChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: rows.map(r => wrapLabel(r.name.split(' ')[0], 14)),
+          datasets: [
+            {
+              label: '总巡回路径长度 (m)',
+              data: rows.map(r => r.length),
+              backgroundColor: rows.map(r => r.highlight ? '#3D6B52' : '#94A3B8'),
+              borderRadius: 4
+            },
+            {
+              label: '最大单步跨点跳跃 (m)',
+              data: rows.map(r => r.jump),
+              backgroundColor: rows.map(r => r.highlight ? '#3B6E8C' : '#CBD5E1'),
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                afterBody: (items) => {
+                  const idx = items[0].dataIndex;
+                  const item = rows[idx];
+                  return `自交次数: ${item.crossings} 次 · 穿墙风险: ${item.risk}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#EAE6DF' },
+              title: { display: true, text: '距离 (米)', font: { size: 11 } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    let suppressionChartInstance = null;
+    function initSuppressionAndStepCharts() {
+      const sValues = [0, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+      const moveDamping = sValues.map(s => +(Math.max(0, 1 - 0.5 * s) * 100).toFixed(1));
+      const workDamping = sValues.map(s => +(Math.max(0, Math.pow(1 - s, 2)) * 100).toFixed(1));
+
+      const ctx1 = document.getElementById('suppressionCurveChart').getContext('2d');
+      suppressionChartInstance = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: sValues.map(s => s.toFixed(2)),
+          datasets: [
+            {
+              label: '行进速度保留率 σ_move(S) (%)',
+              data: moveDamping,
+              borderColor: '#3B6E8C',
+              backgroundColor: 'rgba(59, 110, 140, 0.1)',
+              borderWidth: 2.5,
+              tension: 0.2,
+              fill: false
+            },
+            {
+              label: '施工作业工效保留率 σ_work(S) (%)',
+              data: workDamping,
+              borderColor: '#C04A3A',
+              backgroundColor: 'rgba(192, 74, 58, 0.12)',
+              borderWidth: 2.5,
+              tension: 0.25,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                title: (items) => `火力压制指数 S(g,t) = ${items[0].label}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#EAE6DF' },
+              title: { display: true, text: '网格火力压制指数 S(g,t)', font: { size: 11 } }
+            },
+            y: {
+              min: 0,
+              max: 105,
+              grid: { color: '#EAE6DF' },
+              title: { display: true, text: '能力保留百分比 (%)', font: { size: 11 } }
+            }
+          }
+        }
+      });
+
+      const ctx2 = document.getElementById('stepProgressChart').getContext('2d');
+      new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: STEP_BENCHMARK_DATA.map(d => d.step),
+          datasets: [
+            {
+              type: 'bar',
+              label: '本步物理移动距离 (m)',
+              data: STEP_BENCHMARK_DATA.map(d => d.phys),
+              backgroundColor: STEP_BENCHMARK_DATA.map(d => d.interrupt ? '#C04A3A' : '#3B6E8C'),
+              borderRadius: 4,
+              yAxisID: 'y'
+            },
+            {
+              type: 'line',
+              label: '累计永久转正实体总数 (颗)',
+              data: STEP_BENCHMARK_DATA.map(d => d.cum),
+              borderColor: '#3D6B52',
+              backgroundColor: '#3D6B52',
+              borderWidth: 2.5,
+              pointRadius: 4,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: { size: 11 } } }
+          },
+          scales: {
+            y: {
+              type: 'linear',
+              position: 'left',
+              beginAtZero: true,
+              grid: { color: '#EAE6DF' },
+              title: { display: true, text: '物理移动距离 (m)', font: { size: 11 } }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              min: 0,
+              max: 16,
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: '累计转正实体 (颗)', font: { size: 11 } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      const tbody = document.getElementById('stepBenchmarkBody');
+      tbody.innerHTML = '';
+      STEP_BENCHMARK_DATA.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.className = d.interrupt ? 'bg-[#FDF2F0] font-semibold' : 'hover:bg-[#F7F5F0]';
+        tr.innerHTML = `
+          <td class="px-3 py-2 font-mono-code ${d.interrupt ? 'text-[#C04A3A]' : 'text-[#1E242B]'} whitespace-nowrap">${d.step}</td>
+          <td class="px-3 py-2 text-right font-mono-code">${d.dur}</td>
+          <td class="px-3 py-2 text-center font-mono-code">${d.sup}</td>
+          <td class="px-3 py-2 text-right font-mono-code text-[#3B4450] whitespace-nowrap">${d.sRange}</td>
+          <td class="px-3 py-2 text-right font-mono-code">${d.phys.toFixed(2)} m</td>
+          <td class="px-3 py-2 font-mono-code text-[#3D6B52]">${d.promoted}</td>
+          <td class="px-3 py-2 text-right font-mono-code font-bold">${d.cum} 颗</td>
+          <td class="px-3 py-2 font-mono-code text-[11px] text-[#3B4450] whitespace-nowrap">${d.anchor}</td>
+          <td class="px-3 py-2 text-right font-mono-code ${d.res !== '0.000 s' ? 'text-[#C87D20] font-bold' : ''}">${d.res}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    const SANDBOX_SHAPES = {
+      L_POLY: {
+        isPolyline: false,
+        vertices: [{ x: 0, y: 0 }, { x: 80, y: 0 }, { x: 80, y: 32 }, { x: 32, y: 32 }, { x: 32, y: 72 }, { x: 0, y: 72 }],
+        entry: { x: 4, y: 4 }
+      },
+      U_POLY: {
+        isPolyline: false,
+        vertices: [{ x: 0, y: 0 }, { x: 88, y: 0 }, { x: 88, y: 64 }, { x: 60, y: 64 }, { x: 60, y: 24 }, { x: 28, y: 24 }, { x: 28, y: 64 }, { x: 0, y: 64 }],
+        entry: { x: 6, y: 6 }
+      },
+      CONVEX_POLY: {
+        isPolyline: false,
+        vertices: [{ x: 8, y: 8 }, { x: 80, y: 0 }, { x: 72, y: 64 }, { x: 0, y: 56 }],
+        entry: { x: 10, y: 12 }
+      },
+      POLYLINE: {
+        isPolyline: true,
+        vertices: [{ x: 4, y: 12 }, { x: 44, y: 12 }, { x: 76, y: 44 }],
+        entry: { x: 0, y: 8 }
+      }
+    };
+
+    const simState = {
+      shapeKey: 'L_POLY',
+      isPolyline: false,
+      vertices: JSON.parse(JSON.stringify(SANDBOX_SHAPES.L_POLY.vertices)),
+      entry: { ...SANDBOX_SHAPES.L_POLY.entry },
+      modality: 'QUINCUNX',
+      K: 40,
+      threatDeg: 37,
+      suppression: 0.25,
+      squadSize: 8,
+      instances: [],
+      tourNodes: [],
+      detourWaypoints: [],
+      phases: [],
+      totalAugS: 0,
+      currentAugS: 0,
+      stepCount: 0,
+      elapsedTime: 0,
+      interrupted: false,
+      playing: false,
+      playTimer: null,
+      draggingTarget: null,
+      viewScale: 5.5,
+      viewOffsetX: 70,
+      viewOffsetY: 420
+    };
+
+    function deterministicHash(seed, a, b) {
+      let h = (seed ^ (a * 374761393) ^ (b * 668265263)) >>> 0;
+      h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    }
+
+    function computeSeedHex(verts, modality, K) {
+      let acc = (K * 2654435761) >>> 0;
+      for (let i = 0; i < verts.length; i++) {
+        const qx = Math.round(verts[i].x * 128);
+        const qy = Math.round(verts[i].y * 128);
+        acc = (Math.imul(acc ^ qx, 2246822519) ^ Math.imul(qy, 3266489917)) >>> 0;
+      }
+      const modCode = modality.charCodeAt(0) * 131 + modality.length;
+      const hi = ((acc ^ modCode) >>> 0).toString(16).toUpperCase().padStart(8, '0');
+      const lo = ((Math.imul(acc + 0x9E3779B9, 0x85EBCA6B)) >>> 0).toString(16).toUpperCase().padStart(8, '0');
+      return `0x${hi}${lo}`;
+    }
+
+    function ensureCCW(verts) {
+      let area2 = 0;
+      for (let i = 0; i < verts.length; i++) {
+        const j = (i + 1) % verts.length;
+        area2 += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
+      }
+      if (area2 < 0) {
+        return [...verts].reverse();
+      }
+      return [...verts];
+    }
+
+    function polygonAreaAndPerimeter(verts) {
+      let area2 = 0;
+      let perim = 0;
+      for (let i = 0; i < verts.length; i++) {
+        const j = (i + 1) % verts.length;
+        area2 += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
+        perim += Math.hypot(verts[j].x - verts[i].x, verts[j].y - verts[i].y);
+      }
+      return { area: Math.abs(area2) * 0.5, perim };
+    }
+
+    function pointInPolygon(pt, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, yi = poly[i].y;
+        const xj = poly[j].x, yj = poly[j].y;
+        const intersect = ((yi > pt.y) !== (yj > pt.y)) &&
+          (pt.x < (xj - xi) * (pt.y - yi) / ((yj - yi) || 1e-12) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function segmentsProperlyIntersect(a, b, c, d) {
+      const ccw = (p1, p2, p3) => (p3.y - p1.y) * (p2.x - p1.x) - (p2.y - p1.y) * (p3.x - p1.x);
+      const d1 = ccw(a, b, c);
+      const d2 = ccw(a, b, d);
+      const d3 = ccw(c, d, a);
+      const d4 = ccw(c, d, b);
+      if (((d1 > 1e-6 && d2 < -1e-6) || (d1 < -1e-6 && d2 > 1e-6)) &&
+          ((d3 > 1e-6 && d4 < -1e-6) || (d3 < -1e-6 && d4 > 1e-6))) {
+        return true;
+      }
+      return false;
+    }
+
+    function segmentInsidePolygon(p1, p2, poly) {
+      const mid = { x: (p1.x + p2.x) * 0.5, y: (p1.y + p2.y) * 0.5 };
+      if (!pointInPolygon(mid, poly)) return false;
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i];
+        const b = poly[(i + 1) % poly.length];
+        if (segmentsProperlyIntersect(p1, p2, a, b)) return false;
+      }
+      return true;
+    }
+
+    function computeReflexDetourPoints(poly) {
+      const detours = [];
+      const n = poly.length;
+      for (let i = 0; i < n; i++) {
+        const prev = poly[(i - 1 + n) % n];
+        const curr = poly[i];
+        const next = poly[(i + 1) % n];
+        const v1 = { x: curr.x - prev.x, y: curr.y - prev.y };
+        const v2 = { x: next.x - curr.x, y: next.y - curr.y };
+        const cross = v1.x * v2.y - v1.y * v2.x;
+        if (cross < -1e-5) {
+          const l1 = Math.hypot(v1.x, v1.y) || 1;
+          const l2 = Math.hypot(v2.x, v2.y) || 1;
+          const n1In = { x: -v1.y / l1, y: v1.x / l1 };
+          const n2In = { x: -v2.y / l2, y: v2.x / l2 };
+          let bx = -(n1In.x + n2In.x);
+          let by = -(n1In.y + n2In.y);
+          const bl = Math.hypot(bx, by) || 1;
+          bx /= bl;
+          by /= bl;
+          detours.push({
+            vertex: curr,
+            waypoint: { x: curr.x + 1.2 * bx, y: curr.y + 1.2 * by }
+          });
+        }
+      }
+      return detours;
+    }
+
+    function geodesicRoute(p1, p2, poly, detours, isPolyline) {
+      if (isPolyline || detours.length === 0 || segmentInsidePolygon(p1, p2, poly)) {
+        return { pts: [p1, p2], dist: Math.hypot(p2.x - p1.x, p2.y - p1.y) };
+      }
+      let bestPts = [p1, p2];
+      let bestDist = Infinity;
+      for (const d of detours) {
+        const w = d.waypoint;
+        if (segmentInsidePolygon(p1, w, poly) && segmentInsidePolygon(w, p2, poly)) {
+          const dist = Math.hypot(w.x - p1.x, w.y - p1.y) + Math.hypot(p2.x - w.x, p2.y - w.y);
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestPts = [p1, w, p2];
+          }
+        }
+      }
+      if (bestDist < Infinity) {
+        return { pts: bestPts, dist: bestDist };
+      }
+      if (detours.length >= 2) {
+        for (let i = 0; i < detours.length; i++) {
+          for (let j = 0; j < detours.length; j++) {
+            if (i === j) continue;
+            const w1 = detours[i].waypoint;
+            const w2 = detours[j].waypoint;
+            if (segmentInsidePolygon(p1, w1, poly) && segmentInsidePolygon(w1, w2, poly) && segmentInsidePolygon(w2, p2, poly)) {
+              const dist = Math.hypot(w1.x - p1.x, w1.y - p1.y) + Math.hypot(w2.x - w1.x, w2.y - w1.y) + Math.hypot(p2.x - w2.x, p2.y - w2.y);
+              if (dist < bestDist) {
+                bestDist = dist;
+                bestPts = [p1, w1, w2, p2];
+              }
+            }
+          }
+        }
+      }
+      return { pts: bestPts, dist: bestDist < Infinity ? bestDist : Math.hypot(p2.x - p1.x, p2.y - p1.y) * 1.35 };
+    }
+
+    function generateInstances() {
+      const verts = simState.isPolyline ? [...simState.vertices] : ensureCCW(simState.vertices);
+      if (!simState.isPolyline) simState.vertices = verts;
+
+      const K = simState.K;
+      const theta = (simState.threatDeg * Math.PI) / 180;
+      const threatDir = { x: Math.cos(theta), y: Math.sin(theta) };
+      const eu = { x: -Math.sin(theta), y: Math.cos(theta) };
+      const ev = { x: Math.cos(theta), y: Math.sin(theta) };
+
+      const seedHex = computeSeedHex(verts, simState.modality, K);
+      const seedInt = parseInt(seedHex.slice(2, 10), 16) >>> 0;
+      document.getElementById('metaSeed').textContent = seedHex;
+
+      let rawInstances = [];
+      let geomText = '';
+
+      if (simState.isPolyline || simState.modality === 'ZIGZAG') {
+        const chain = simState.isPolyline ? verts : [...verts, verts[0]];
+        let segLens = [];
+        let totalLen = 0;
+        for (let i = 0; i < chain.length - 1; i++) {
+          const l = Math.hypot(chain[i + 1].x - chain[i].x, chain[i + 1].y - chain[i].y);
+          segLens.push(l);
+          totalLen += l;
+        }
+        geomText = `折线基准长 ${totalLen.toFixed(1)} m`;
+        const zigNodes = [];
+        const A_zig = 1.2;
+        for (let k = 0; k <= K; k++) {
+          const targetS = (k / K) * totalLen;
+          let acc = 0;
+          let segIdx = 0;
+          while (segIdx < segLens.length - 1 && acc + segLens[segIdx] < targetS) {
+            acc += segLens[segIdx];
+            segIdx++;
+          }
+          const t = segLens[segIdx] > 1e-6 ? (targetS - acc) / segLens[segIdx] : 0;
+          const pA = chain[segIdx];
+          const pB = chain[segIdx + 1];
+          const bx = pA.x + t * (pB.x - pA.x);
+          const by = pA.y + t * (pB.y - pA.y);
+          const nx = -(pB.y - pA.y) / (segLens[segIdx] || 1);
+          const ny = (pB.x - pA.x) / (segLens[segIdx] || 1);
+          const sigma = (k === 0 || k === K) ? 0 : (k % 2 === 1 ? 1 : -1);
+          zigNodes.push({ x: bx + sigma * A_zig * nx, y: by + sigma * A_zig * ny });
+        }
+        for (let j = 0; j < K; j++) {
+          const wA = zigNodes[j];
+          const wB = zigNodes[j + 1];
+          rawInstances.push({
+            id: j + 1,
+            x: (wA.x + wB.x) * 0.5,
+            y: (wA.y + wB.y) * 0.5,
+            segA: wA,
+            segB: wB,
+            type: 'ZIGZAG',
+            row: 0,
+            uCoord: j
+          });
+        }
+      } else {
+        const { area, perim } = polygonAreaAndPerimeter(verts);
+        geomText = `${Math.round(area)} m² / 周长 ${Math.round(perim)} m`;
+
+        if (simState.modality === 'FRONTLINE') {
+          const echelons = [6.0, 18.0];
+          const frontSegs = [];
+          const n = verts.length;
+          for (let eIdx = 0; eIdx < echelons.length; eIdx++) {
+            const dOff = echelons[eIdx];
+            const offsetVerts = [];
+            for (let i = 0; i < n; i++) {
+              const prev = verts[(i - 1 + n) % n];
+              const curr = verts[i];
+              const next = verts[(i + 1) % n];
+              const e1 = { x: curr.x - prev.x, y: curr.y - prev.y };
+              const e2 = { x: next.x - curr.x, y: next.y - curr.y };
+              const l1 = Math.hypot(e1.x, e1.y) || 1;
+              const l2 = Math.hypot(e2.x, e2.y) || 1;
+              const n1In = { x: -e1.y / l1, y: e1.x / l1 };
+              const n2In = { x: -e2.y / l2, y: e2.x / l2 };
+              let bx = n1In.x + n2In.x;
+              let by = n1In.y + n2In.y;
+              const bl = Math.hypot(bx, by) || 1;
+              bx /= bl;
+              by /= bl;
+              const dot = Math.max(0.05, (1 + (n1In.x * n2In.x + n1In.y * n2In.y)) * 0.5);
+              const miter = Math.min(2.5, 1 / Math.sqrt(dot));
+              offsetVerts.push({ x: curr.x + dOff * miter * bx, y: curr.y + dOff * miter * by });
+            }
+            for (let i = 0; i < n; i++) {
+              const j = (i + 1) % n;
+              const edge = { x: verts[j].x - verts[i].x, y: verts[j].y - verts[i].y };
+              const el = Math.hypot(edge.x, edge.y) || 1;
+              const nOut = { x: edge.y / el, y: -edge.x / el };
+              if (nOut.x * threatDir.x + nOut.y * threatDir.y >= 0.15) {
+                const pA = offsetVerts[i];
+                const pB = offsetVerts[j];
+                const segL = Math.hypot(pB.x - pA.x, pB.y - pA.y);
+                if (segL > 2.0 && pointInPolygon({ x: (pA.x + pB.x) * 0.5, y: (pA.y + pB.y) * 0.5 }, verts)) {
+                  const fx = 0.6 * nOut.x + 0.4 * threatDir.x;
+                  const fy = 0.6 * nOut.y + 0.4 * threatDir.y;
+                  const fl = Math.hypot(fx, fy) || 1;
+                  frontSegs.push({ pA, pB, len: segL, fireDir: { x: fx / fl, y: fy / fl }, echelon: eIdx });
+                }
+              }
+            }
+          }
+          const totalFrontArc = frontSegs.reduce((s, seg) => s + seg.len, 0);
+          if (totalFrontArc > 1 && frontSegs.length > 0) {
+            for (let k = 0; k < K; k++) {
+              const sTarget = ((k + 0.5) / K) * totalFrontArc;
+              let acc = 0;
+              let idx = 0;
+              while (idx < frontSegs.length - 1 && acc + frontSegs[idx].len < sTarget) {
+                acc += frontSegs[idx].len;
+                idx++;
+              }
+              const seg = frontSegs[idx];
+              const t = (sTarget - acc) / (seg.len || 1);
+              rawInstances.push({
+                id: k + 1,
+                x: seg.pA.x + t * (seg.pB.x - seg.pA.x),
+                y: seg.pA.y + t * (seg.pB.y - seg.pA.y),
+                fireDir: seg.fireDir,
+                type: 'FRONTLINE',
+                row: seg.echelon,
+                uCoord: k
+              });
+            }
+          }
+        }
+
+        if (rawInstances.length === 0) {
+          const rMin = 4.0;
+          const kEff = Math.max(1, Math.min(K, Math.floor((2 * area) / (Math.sqrt(3) * rMin * rMin))));
+          const a = Math.max(rMin, Math.sqrt((2 * area) / (Math.sqrt(3) * (1.08 * kEff + 0.5 * (perim / Math.sqrt(area / kEff))))));
+          const hRow = (Math.sqrt(3) * 0.5) * a;
+          const deltaMax = simState.modality === 'POISSON'
+            ? Math.min(0.36 * a, 0.48 * Math.max(0, a - rMin))
+            : Math.min(0.22 * a, 0.48 * Math.max(0, a - rMin));
+
+          const rotVerts = verts.map(p => ({
+            u: p.x * eu.x + p.y * eu.y,
+            v: p.x * ev.x + p.y * ev.y
+          }));
+          let vMin = Infinity, vMax = -Infinity;
+          rotVerts.forEach(p => {
+            if (p.v < vMin) vMin = p.v;
+            if (p.v > vMax) vMax = p.v;
+          });
+
+          const candidates = [];
+          const numRows = Math.max(1, Math.ceil((vMax - vMin) / hRow));
+          for (let r = 0; r < numRows; r++) {
+            const vr = vMin + (r + 0.5) * hRow;
+            const xs = [];
+            for (let i = 0; i < rotVerts.length; i++) {
+              const p1 = rotVerts[i];
+              const p2 = rotVerts[(i + 1) % rotVerts.length];
+              if ((p1.v <= vr && p2.v > vr) || (p2.v <= vr && p1.v > vr)) {
+                const uCross = p1.u + ((vr - p1.v) / (p2.v - p1.v)) * (p2.u - p1.u);
+                xs.push(uCross);
+              }
+            }
+            xs.sort((x1, x2) => x1 - x2);
+            const shiftU = (r % 2) * (0.5 * a);
+            for (let pair = 0; pair + 1 < xs.length; pair += 2) {
+              const uL = xs[pair];
+              const uR = xs[pair + 1];
+              const margin = Math.min(0.22 * a, 0.15 * (uR - uL));
+              const cFirst = Math.ceil((uL + margin - shiftU) / a);
+              const cLast = Math.floor((uR - margin - shiftU) / a);
+              for (let c = cFirst; c <= cLast; c++) {
+                const cu = c * a + shiftU;
+                const h1 = deterministicHash(seedInt, r, c);
+                const h2 = deterministicHash(seedInt ^ 0x5BD1E995, r, c);
+                const rad = deltaMax * Math.sqrt(h1);
+                const ang = 2 * Math.PI * h2;
+                const pu = cu + rad * Math.cos(ang);
+                const pv = vr + rad * Math.sin(ang);
+                const wx = pu * eu.x + pv * ev.x;
+                const wy = pu * eu.y + pv * ev.y;
+                if (pointInPolygon({ x: wx, y: wy }, verts)) {
+                  candidates.push({ x: wx, y: wy, row: r, uCoord: pu, type: simState.modality });
+                }
+              }
+            }
+          }
+
+          if (candidates.length > 0) {
+            const targetCount = Math.min(K, candidates.length);
+            for (let k = 0; k < targetCount; k++) {
+              const idx = Math.floor(((k + 0.5) * candidates.length) / targetCount);
+              rawInstances.push({ id: k + 1, ...candidates[idx] });
+            }
+          }
+        }
+      }
+
+      document.getElementById('metaGeom').textContent = geomText;
+
+      let minDist = Infinity;
+      for (let i = 0; i < rawInstances.length; i++) {
+        for (let j = i + 1; j < rawInstances.length; j++) {
+          const d = Math.hypot(rawInstances[i].x - rawInstances[j].x, rawInstances[i].y - rawInstances[j].y);
+          if (d < minDist) minDist = d;
+        }
+      }
+      document.getElementById('metaMinDist').textContent = rawInstances.length > 1 ? `${minDist.toFixed(2)} m` : 'N/A';
+
+      planTourAndBuildPhases(rawInstances, verts);
+    }
+
+    function planTourAndBuildPhases(rawInstances, verts) {
+      const detours = simState.isPolyline ? [] : computeReflexDetourPoints(verts);
+      simState.detourWaypoints = detours.map(d => d.waypoint);
+
+      if (rawInstances.length === 0) {
+        simState.instances = [];
+        simState.phases = [];
+        simState.totalAugS = 0;
+        return;
+      }
+
+      let ordered = [];
+      if (simState.isPolyline || simState.modality === 'ZIGZAG' || simState.modality === 'FRONTLINE') {
+        const dFirst = Math.hypot(simState.entry.x - rawInstances[0].x, simState.entry.y - rawInstances[0].y);
+        const dLast = Math.hypot(simState.entry.x - rawInstances[rawInstances.length - 1].x, simState.entry.y - rawInstances[rawInstances.length - 1].y);
+        ordered = dFirst <= dLast ? [...rawInstances] : [...rawInstances].reverse();
+      } else {
+        const rowMap = new Map();
+        rawInstances.forEach(inst => {
+          if (!rowMap.has(inst.row)) rowMap.set(inst.row, []);
+          rowMap.get(inst.row).push(inst);
+        });
+        const sortedRows = Array.from(rowMap.keys()).sort((a, b) => a - b);
+        if (sortedRows.length > 1) {
+          const firstRow = rowMap.get(sortedRows[0]);
+          const lastRow = rowMap.get(sortedRows[sortedRows.length - 1]);
+          const dStart = Math.hypot(simState.entry.x - firstRow[0].x, simState.entry.y - firstRow[0].y);
+          const dEnd = Math.hypot(simState.entry.x - lastRow[0].x, simState.entry.y - lastRow[0].y);
+          if (dEnd < dStart) sortedRows.reverse();
+        }
+        let prevPt = simState.entry;
+        for (const rKey of sortedRows) {
+          const rowPts = rowMap.get(rKey).sort((a, b) => a.uCoord - b.uCoord);
+          const dLeft = Math.hypot(prevPt.x - rowPts[0].x, prevPt.y - rowPts[0].y);
+          const dRight = Math.hypot(prevPt.x - rowPts[rowPts.length - 1].x, prevPt.y - rowPts[rowPts.length - 1].y);
+          if (dRight < dLeft) rowPts.reverse();
+          ordered.push(...rowPts);
+          prevPt = rowPts[rowPts.length - 1];
+        }
+
+        const n = ordered.length;
+        let improved = true;
+        let passes = 0;
+        while (improved && passes < 12) {
+          improved = false;
+          passes++;
+          for (let i = -1; i < n - 2; i++) {
+            const pA = i === -1 ? simState.entry : ordered[i];
+            const pB = ordered[i + 1];
+            for (let j = i + 2; j < Math.min(n, i + 24); j++) {
+              const pC = ordered[j];
+              const pD = j + 1 < n ? ordered[j + 1] : null;
+              const dAB = geodesicRoute(pA, pB, verts, detours, false).dist;
+              const dAC = geodesicRoute(pA, pC, verts, detours, false).dist;
+              if (pD) {
+                const dCD = geodesicRoute(pC, pD, verts, detours, false).dist;
+                const dBD = geodesicRoute(pB, pD, verts, detours, false).dist;
+                if (dAB + dCD - (dAC + dBD) > 0.05) {
+                  const sub = ordered.slice(i + 1, j + 1).reverse();
+                  ordered.splice(i + 1, j - i, ...sub);
+                  improved = true;
+                }
+              } else if (dAB - dAC > 0.05) {
+                const sub = ordered.slice(i + 1, j + 1).reverse();
+                ordered.splice(i + 1, j - i, ...sub);
+                improved = true;
+              }
+            }
+          }
+        }
+      }
+
+      ordered.forEach((inst, idx) => {
+        inst.seqIdx = idx + 1;
+        inst.status = 'GHOST';
+      });
+      simState.instances = ordered;
+
+      let w0 = 24.0;
+      if (simState.modality === 'FRONTLINE') w0 = 192.0;
+      if (simState.modality === 'ZIGZAG') w0 = 96.0;
+      const lambdaEq = 0.20;
+      const lWorkEq = lambdaEq * w0;
+
+      const phases = [];
+      let augCursor = 0;
+      let totalPhys = 0;
+      let prevPt = simState.entry;
+
+      for (let j = 0; j < ordered.length; j++) {
+        const inst = ordered[j];
+        const route = geodesicRoute(prevPt, { x: inst.x, y: inst.y }, verts, detours, simState.isPolyline);
+        totalPhys += route.dist;
+        phases.push({
+          type: 'move',
+          instIdx: j,
+          startS: augCursor,
+          endS: augCursor + route.dist,
+          polyPts: route.pts
+        });
+        augCursor += route.dist;
+        phases.push({
+          type: 'work',
+          instIdx: j,
+          startS: augCursor,
+          endS: augCursor + lWorkEq,
+          pos: { x: inst.x, y: inst.y }
+        });
+        augCursor += lWorkEq;
+        prevPt = { x: inst.x, y: inst.y };
+      }
+
+      simState.phases = phases;
+      simState.totalAugS = augCursor;
+      document.getElementById('metaPathLen').textContent = `${totalPhys.toFixed(1)} m / 0 次自交`;
+    }
+
+    function resetSimulation() {
+      if (simState.playTimer) {
+        clearInterval(simState.playTimer);
+        simState.playTimer = null;
+      }
+      simState.playing = false;
+      document.getElementById('btnPlayPause').textContent = '▶ 自动推演';
+      simState.currentAugS = 0;
+      simState.stepCount = 0;
+      simState.elapsedTime = 0;
+      simState.interrupted = false;
+      simState.instances.forEach(inst => {
+        inst.status = 'GHOST';
+      });
+      updateHUD(0.0);
+      drawSandboxCanvas();
+    }
+
+    function advanceSingleStep(dtBudget = 16.0, isInterrupt = false) {
+      if (simState.interrupted || simState.currentAugS >= simState.totalAugS - 1e-6) {
+        return;
+      }
+
+      simState.stepCount += 1;
+      const v0 = 2.4;
+      const muTerr = 0.95;
+      const etaEquip = 1.5;
+      const kappaSoil = 1.0;
+      const lambdaEq = 0.20;
+      const S = simState.suppression;
+      const vMove = Math.max(0.05, v0 * muTerr * Math.max(0, 1 - 0.5 * S));
+      const pWork = Math.max(0.2, simState.squadSize * etaEquip * kappaSoil * Math.max(0, Math.pow(1 - S, 2)));
+      const vWorkEq = lambdaEq * pWork;
+
+      let tRem = dtBudget;
+      let tConsumed = 0;
+
+      while (tRem > 1e-6 && simState.currentAugS < simState.totalAugS - 1e-6) {
+        let activePhase = simState.phases[simState.phases.length - 1];
+        for (let i = 0; i < simState.phases.length; i++) {
+          if (simState.currentAugS < simState.phases[i].endS - 1e-6) {
+            activePhase = simState.phases[i];
+            break;
+          }
+        }
+        const remS = activePhase.endS - simState.currentAugS;
+        const rate = activePhase.type === 'move' ? vMove : vWorkEq;
+        const tNeed = remS / rate;
+
+        if (tRem >= tNeed) {
+          tRem -= tNeed;
+          tConsumed += tNeed;
+          simState.currentAugS = activePhase.endS;
+          if (activePhase.type === 'work') {
+            simState.instances[activePhase.instIdx].status = 'PROMOTED';
+          }
+        } else {
+          simState.currentAugS += rate * tRem;
+          tConsumed += tRem;
+          tRem = 0;
+        }
+      }
+
+      simState.elapsedTime += tConsumed;
+
+      if (isInterrupt) {
+        simState.interrupted = true;
+        simState.instances.forEach(inst => {
+          if (inst.status !== 'PROMOTED') {
+            inst.status = 'ABORTED';
+          }
+        });
+      }
+
+      const residual = isInterrupt ? (16.0 - dtBudget) : tRem;
+      updateHUD(residual);
+      drawSandboxCanvas();
+    }
+
+    function getUnitAnchorPosition() {
+      if (simState.phases.length === 0 || simState.currentAugS <= 1e-6) {
+        return { pos: { ...simState.entry }, mode: 'READY', instSeq: 0, phi: 0 };
+      }
+      if (simState.currentAugS >= simState.totalAugS - 1e-6) {
+        const last = simState.instances[simState.instances.length - 1];
+        return { pos: { x: last.x, y: last.y }, mode: 'DONE', instSeq: last.seqIdx, phi: 1 };
+      }
+      for (const ph of simState.phases) {
+        if (simState.currentAugS <= ph.endS + 1e-6) {
+          const span = ph.endS - ph.startS;
+          const phi = span > 1e-6 ? Math.min(1, Math.max(0, (simState.currentAugS - ph.startS) / span)) : 1;
+          if (ph.type === 'work') {
+            return { pos: { ...ph.pos }, mode: 'work', instSeq: ph.instIdx + 1, phi };
+          }
+          const pts = ph.polyPts;
+          let totalL = 0;
+          const segLs = [];
+          for (let i = 0; i < pts.length - 1; i++) {
+            const l = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+            segLs.push(l);
+            totalL += l;
+          }
+          let targetL = phi * totalL;
+          for (let i = 0; i < segLs.length; i++) {
+            if (targetL <= segLs[i] + 1e-6 || i === segLs.length - 1) {
+              const localT = segLs[i] > 1e-6 ? targetL / segLs[i] : 0;
+              return {
+                pos: {
+                  x: pts[i].x + localT * (pts[i + 1].x - pts[i].x),
+                  y: pts[i].y + localT * (pts[i + 1].y - pts[i].y)
+                },
+                mode: 'move',
+                instSeq: ph.instIdx + 1,
+                phi
+              };
+            }
+            targetL -= segLs[i];
+          }
+        }
+      }
+      return { pos: { ...simState.entry }, mode: 'READY', instSeq: 0, phi: 0 };
+    }
+
+    function updateHUD(residualTime) {
+      const anchor = getUnitAnchorPosition();
+      const promotedCount = simState.instances.filter(i => i.status === 'PROMOTED').length;
+      const gx = Math.floor(anchor.pos.x / 8);
+      const gy = Math.floor(anchor.pos.y / 8);
+
+      document.getElementById('hudTime').textContent = `Step ${simState.stepCount} (${simState.elapsedTime.toFixed(1)} s)`;
+      document.getElementById('hudPromoted').textContent = `${promotedCount} / ${simState.instances.length}`;
+      document.getElementById('hudAnchorPos').textContent = `(${anchor.pos.x.toFixed(2)}, ${anchor.pos.y.toFixed(2)}) m`;
+      document.getElementById('hudPhase').textContent = anchor.mode === 'DONE'
+        ? `Grid(${gx},${gy}) · DONE`
+        : (anchor.mode === 'READY' ? `Grid(${gx},${gy}) · READY` : `Grid(${gx},${gy}) · z_${anchor.instSeq} ${anchor.mode}`);
+      document.getElementById('hudResTime').textContent = `${residualTime.toFixed(3)} s`;
+
+      const banner = document.getElementById('simStatusBanner');
+      if (simState.interrupted) {
+        banner.className = 'absolute top-2.5 right-2.5 bg-[#C04A3A] text-white font-mono-code text-xs px-3 py-1.5 rounded-md shadow';
+        banner.textContent = `@#${simState.stepCount} 炮火打断撤退 · ${promotedCount} 实体永久保留`;
+      } else if (anchor.mode === 'DONE') {
+        banner.className = 'absolute top-2.5 right-2.5 bg-[#3D6B52] text-white font-mono-code text-xs px-3 py-1.5 rounded-md shadow';
+        banner.textContent = `@#${simState.stepCount} 全流程竣工 · 残余 Δt_res=${residualTime.toFixed(2)}s`;
+      } else {
+        banner.className = 'absolute top-2.5 right-2.5 bg-[#3B6E8C] text-white font-mono-code text-xs px-3 py-1.5 rounded-md shadow';
+        banner.textContent = `@#${simState.stepCount} · t=${simState.elapsedTime.toFixed(1)}s · 推进中`;
+      }
+    }
+
+    function worldToScreen(pt, canvasH) {
+      return {
+        x: simState.viewOffsetX + pt.x * simState.viewScale,
+        y: (canvasH - 45) - pt.y * simState.viewScale
+      };
+    }
+
+    function screenToWorld(sx, sy, canvasH) {
+      return {
+        x: (sx - simState.viewOffsetX) / simState.viewScale,
+        y: ((canvasH - 45) - sy) / simState.viewScale
+      };
+    }
+
+    function drawSandboxCanvas() {
+      const canvas = document.getElementById('tacticalCanvas');
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      simState.viewScale = Math.min((W - 110) / 96, (H - 95) / 80);
+      simState.viewOffsetX = 55;
+
+      ctx.clearRect(0, 0, W, H);
+
+      ctx.strokeStyle = '#ECE8E0';
+      ctx.lineWidth = 1;
+      for (let gx = -16; gx <= 112; gx += 8) {
+        const pTop = worldToScreen({ x: gx, y: 90 }, H);
+        const pBot = worldToScreen({ x: gx, y: -16 }, H);
+        ctx.beginPath();
+        ctx.moveTo(pTop.x, pTop.y);
+        ctx.lineTo(pBot.x, pBot.y);
+        ctx.stroke();
+      }
+      for (let gy = -16; gy <= 88; gy += 8) {
+        const pLeft = worldToScreen({ x: -16, y: gy }, H);
+        const pRight = worldToScreen({ x: 112, y: gy }, H);
+        ctx.beginPath();
+        ctx.moveTo(pLeft.x, pLeft.y);
+        ctx.lineTo(pRight.x, pRight.y);
+        ctx.stroke();
+      }
+
+      const verts = simState.vertices;
+      if (verts.length > 1) {
+        ctx.save();
+        ctx.beginPath();
+        verts.forEach((v, idx) => {
+          const sp = worldToScreen(v, H);
+          if (idx === 0) ctx.moveTo(sp.x, sp.y);
+          else ctx.lineTo(sp.x, sp.y);
+        });
+        if (!simState.isPolyline) {
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(61, 107, 82, 0.06)';
+          ctx.fill();
+        }
+        ctx.strokeStyle = '#3D6B52';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const theta = (simState.threatDeg * Math.PI) / 180;
+      const arrowOrigin = { x: W - 62, y: 68 };
+      const arrowTip = { x: arrowOrigin.x + Math.cos(theta) * 24, y: arrowOrigin.y - Math.sin(theta) * 24 };
+      ctx.save();
+      ctx.strokeStyle = '#C04A3A';
+      ctx.fillStyle = '#C04A3A';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(arrowOrigin.x, arrowOrigin.y);
+      ctx.lineTo(arrowTip.x, arrowTip.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(arrowTip.x, arrowTip.y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '600 10px "Noto Sans SC", sans-serif';
+      ctx.fillText('主威胁方向', arrowOrigin.x - 24, arrowOrigin.y + 34);
+      ctx.restore();
+
+      for (const ph of simState.phases) {
+        if (ph.type !== 'move') continue;
+        const pts = ph.polyPts;
+        const isDone = simState.currentAugS >= ph.endS - 1e-6;
+        ctx.save();
+        ctx.beginPath();
+        pts.forEach((p, idx) => {
+          const sp = worldToScreen(p, H);
+          if (idx === 0) ctx.moveTo(sp.x, sp.y);
+          else ctx.lineTo(sp.x, sp.y);
+        });
+        if (isDone) {
+          ctx.strokeStyle = '#3B6E8C';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+        } else {
+          ctx.strokeStyle = simState.interrupted ? 'rgba(192, 74, 58, 0.22)' : 'rgba(59, 110, 140, 0.35)';
+          ctx.lineWidth = 1.4;
+          ctx.setLineDash([4, 3]);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      simState.detourWaypoints.forEach(wp => {
+        const sp = worldToScreen(wp, H);
+        ctx.save();
+        ctx.fillStyle = '#C04A3A';
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.fillText('w_r', sp.x + 6, sp.y - 4);
+        ctx.restore();
+      });
+
+      simState.instances.forEach(inst => {
+        const sp = worldToScreen(inst, H);
+        ctx.save();
+        if (inst.type === 'ZIGZAG' && inst.segA && inst.segB) {
+          const sA = worldToScreen(inst.segA, H);
+          const sB = worldToScreen(inst.segB, H);
+          ctx.beginPath();
+          ctx.moveTo(sA.x, sA.y);
+          ctx.lineTo(sB.x, sB.y);
+          ctx.lineWidth = 3.5;
+          if (inst.status === 'PROMOTED') {
+            ctx.strokeStyle = '#3D6B52';
+          } else if (inst.status === 'ABORTED') {
+            ctx.strokeStyle = 'rgba(192, 74, 58, 0.25)';
+          } else {
+            ctx.strokeStyle = '#C87D20';
+          }
+          ctx.stroke();
+        }
+
+        if (inst.status === 'PROMOTED') {
+          ctx.fillStyle = '#3D6B52';
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(61, 107, 82, 0.28)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, 2 * simState.viewScale, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (inst.status === 'ABORTED') {
+          ctx.strokeStyle = 'rgba(192, 74, 58, 0.45)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(sp.x - 3, sp.y - 3);
+          ctx.lineTo(sp.x + 3, sp.y + 3);
+          ctx.moveTo(sp.x + 3, sp.y - 3);
+          ctx.lineTo(sp.x - 3, sp.y + 3);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = '#FDF6EC';
+          ctx.strokeStyle = '#C87D20';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, 3.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        if (inst.type === 'FRONTLINE' && inst.fireDir && inst.status !== 'ABORTED') {
+          ctx.strokeStyle = inst.status === 'PROMOTED' ? '#3D6B52' : '#C87D20';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(sp.x, sp.y);
+          ctx.lineTo(sp.x + inst.fireDir.x * 12, sp.y - inst.fireDir.y * 12);
+          ctx.stroke();
+        }
+        ctx.restore();
+      });
+
+      const edgeCount = simState.isPolyline ? verts.length - 1 : verts.length;
+      for (let i = 0; i < edgeCount; i++) {
+        const vA = verts[i];
+        const vB = verts[(i + 1) % verts.length];
+        const mid = worldToScreen({ x: (vA.x + vB.x) * 0.5, y: (vA.y + vB.y) * 0.5 }, H);
+        ctx.save();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.strokeStyle = '#687382';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(mid.x, mid.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#3B4450';
+        ctx.font = '700 10px monospace';
+        ctx.fillText('+', mid.x - 3, mid.y + 3.5);
+        ctx.restore();
+      }
+
+      verts.forEach((v, idx) => {
+        const sp = worldToScreen(v, H);
+        ctx.save();
+        ctx.fillStyle = '#1E242B';
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#525D6B';
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.fillText(`v${idx + 1}`, sp.x + 7, sp.y - 6);
+        ctx.restore();
+      });
+
+      const entrySp = worldToScreen(simState.entry, H);
+      ctx.save();
+      ctx.fillStyle = '#1E242B';
+      ctx.beginPath();
+      ctx.arc(entrySp.x, entrySp.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '700 11px "JetBrains Mono", monospace';
+      ctx.fillText('x₀', entrySp.x - 16, entrySp.y + 4);
+      ctx.restore();
+
+      const anchor = getUnitAnchorPosition();
+      const anchorSp = worldToScreen(anchor.pos, H);
+      ctx.save();
+      ctx.translate(anchorSp.x, anchorSp.y);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = simState.interrupted ? '#C04A3A' : '#3B6E8C';
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      ctx.fillRect(-6.5, -6.5, 13, 13);
+      ctx.strokeRect(-6.5, -6.5, 13, 13);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillStyle = '#1E242B';
+      ctx.font = '700 11px "JetBrains Mono", monospace';
+      ctx.fillText(`@#${simState.stepCount}`, 10, -8);
+      ctx.restore();
+    }
+
+    function bindCanvasInteractions() {
+      const canvas = document.getElementById('tacticalCanvas');
+      canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const H = rect.height;
+
+        const entrySp = worldToScreen(simState.entry, H);
+        if (Math.hypot(mx - entrySp.x, my - entrySp.y) < 11) {
+          simState.draggingTarget = { type: 'ENTRY' };
+          return;
+        }
+
+        for (let i = 0; i < simState.vertices.length; i++) {
+          const sp = worldToScreen(simState.vertices[i], H);
+          if (Math.hypot(mx - sp.x, my - sp.y) < 11) {
+            simState.draggingTarget = { type: 'VERTEX', idx: i };
+            return;
+          }
+        }
+
+        const edgeCount = simState.isPolyline ? simState.vertices.length - 1 : simState.vertices.length;
+        for (let i = 0; i < edgeCount; i++) {
+          const vA = simState.vertices[i];
+          const vB = simState.vertices[(i + 1) % simState.vertices.length];
+          const midW = { x: (vA.x + vB.x) * 0.5, y: (vA.y + vB.y) * 0.5 };
+          const midSp = worldToScreen(midW, H);
+          if (Math.hypot(mx - midSp.x, my - midSp.y) < 10 && simState.vertices.length < 12) {
+            simState.vertices.splice(i + 1, 0, midW);
+            generateInstances();
+            resetSimulation();
+            return;
+          }
+        }
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!simState.draggingTarget) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const wPt = screenToWorld(mx, my, rect.height);
+        const snappedX = Math.max(-12, Math.min(104, Math.round(wPt.x * 2) / 2));
+        const snappedY = Math.max(-12, Math.min(84, Math.round(wPt.y * 2) / 2));
+
+        if (simState.draggingTarget.type === 'ENTRY') {
+          simState.entry = { x: snappedX, y: snappedY };
+        } else if (simState.draggingTarget.type === 'VERTEX') {
+          simState.vertices[simState.draggingTarget.idx] = { x: snappedX, y: snappedY };
+        }
+        generateInstances();
+        resetSimulation();
+      });
+
+      window.addEventListener('mouseup', () => {
+        simState.draggingTarget = null;
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderMacroTable('ALL');
+      initMacroChart();
+      renderTourBenchmark('INTERNAL');
+      initSuppressionAndStepCharts();
+
+      document.querySelectorAll('.macro-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.macro-filter').forEach(b => {
+            b.className = 'macro-filter px-2.5 py-1 rounded bg-[#EFECE6] text-[#1E242B] font-medium cursor-pointer';
+          });
+          btn.className = 'macro-filter px-2.5 py-1 rounded bg-[#3D6B52] text-white font-medium cursor-pointer';
+          renderMacroTable(btn.dataset.cat);
+        });
+      });
+
+      document.getElementById('btnEntryInternal').addEventListener('click', () => {
+        document.getElementById('btnEntryInternal').className = 'px-3 py-1.5 rounded-md text-xs font-semibold bg-[#3B6E8C] text-white transition cursor-pointer';
+        document.getElementById('btnEntryExternal').className = 'px-3 py-1.5 rounded-md text-xs font-semibold text-[#3B4450] hover:bg-white transition cursor-pointer';
+        renderTourBenchmark('INTERNAL');
+      });
+
+      document.getElementById('btnEntryExternal').addEventListener('click', () => {
+        document.getElementById('btnEntryExternal').className = 'px-3 py-1.5 rounded-md text-xs font-semibold bg-[#3B6E8C] text-white transition cursor-pointer';
+        document.getElementById('btnEntryInternal').className = 'px-3 py-1.5 rounded-md text-xs font-semibold text-[#3B4450] hover:bg-white transition cursor-pointer';
+        renderTourBenchmark('EXTERNAL');
+      });
+
+      document.querySelectorAll('.fsm-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.fsm-btn').forEach(b => {
+            b.className = 'fsm-btn w-full text-left p-3.5 rounded-lg border border-[#E2DDD5] bg-white hover:bg-[#F7F5F0] transition cursor-pointer';
+          });
+          btn.className = 'fsm-btn w-full text-left p-3.5 rounded-lg border-2 border-[#3D6B52] bg-[#F2F7F4] transition cursor-pointer';
+          const info = FSM_DETAILS[btn.dataset.fsm];
+          document.getElementById('fsmDetailPanel').innerHTML = `
+            <div class="flex items-center justify-between border-b border-[#E2DDD5] pb-2">
+              <span class="text-xs font-mono-code font-bold text-[#3D6B52]">${info.badge}</span>
+              <span class="text-xs font-mono-code text-[#687382]">${info.ref}</span>
+            </div>
+            <h4 class="text-base font-bold text-[#1E242B]">${info.title}</h4>
+            <p class="text-xs sm:text-sm text-[#4A5563] leading-relaxed">${info.desc}</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <div class="bg-white p-2.5 rounded border border-[#E2DDD5]">
+                <div class="text-[11px] text-[#687382]">${info.k1}</div>
+                <div class="font-mono-code font-bold text-xs text-[#3D6B52] mt-0.5">${info.v1}</div>
+              </div>
+              <div class="bg-white p-2.5 rounded border border-[#E2DDD5]">
+                <div class="text-[11px] text-[#687382]">${info.k2}</div>
+                <div class="font-mono-code font-bold text-xs text-[#3B6E8C] mt-0.5">${info.v2}</div>
+              </div>
+              <div class="bg-white p-2.5 rounded border border-[#E2DDD5]">
+                <div class="text-[11px] text-[#687382]">${info.k3}</div>
+                <div class="font-mono-code font-bold text-xs text-[#C04A3A] mt-0.5">${info.v3}</div>
+              </div>
+            </div>
+          `;
+        });
+      });
+
+      document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.shape-btn').forEach(b => {
+            b.className = 'shape-btn px-2.5 py-1.5 text-xs font-medium rounded border border-[#D5CFC6] bg-white text-[#1E242B] hover:bg-[#EFECE6] transition cursor-pointer';
+          });
+          btn.className = 'shape-btn px-2.5 py-1.5 text-xs font-medium rounded border border-[#3D6B52] bg-[#3D6B52] text-white transition cursor-pointer';
+          const key = btn.dataset.shape;
+          const preset = SANDBOX_SHAPES[key];
+          simState.shapeKey = key;
+          simState.isPolyline = preset.isPolyline;
+          simState.vertices = JSON.parse(JSON.stringify(preset.vertices));
+          simState.entry = { ...preset.entry };
+          if (preset.isPolyline) {
+            simState.modality = 'ZIGZAG';
+            document.getElementById('modalitySelect').value = 'ZIGZAG';
+          }
+          generateInstances();
+          resetSimulation();
+        });
+      });
+
+      document.getElementById('modalitySelect').addEventListener('change', (e) => {
+        simState.modality = e.target.value;
+        generateInstances();
+        resetSimulation();
+      });
+
+      document.getElementById('sliderK').addEventListener('input', (e) => {
+        simState.K = parseInt(e.target.value, 10);
+        document.getElementById('valK').textContent = `${simState.K} 实例`;
+        generateInstances();
+        resetSimulation();
+      });
+
+      document.getElementById('sliderThreat').addEventListener('input', (e) => {
+        simState.threatDeg = parseInt(e.target.value, 10);
+        document.getElementById('valThreat').textContent = `${simState.threatDeg}°`;
+        generateInstances();
+        resetSimulation();
+      });
+
+      document.getElementById('sliderSuppress').addEventListener('input', (e) => {
+        simState.suppression = parseFloat(e.target.value);
+        const label = simState.suppression === 0 ? '无压制' : (simState.suppression <= 0.3 ? '轻度压制' : '重度火力压制');
+        document.getElementById('valSuppress').textContent = `${simState.suppression.toFixed(2)} (${label})`;
+      });
+
+      document.getElementById('sliderSquad').addEventListener('input', (e) => {
+        simState.squadSize = parseInt(e.target.value, 10);
+        document.getElementById('valSquad').textContent = simState.squadSize === 8 ? '8 人 (满编)' : `${simState.squadSize} 人 (减员)`;
+      });
+
+      document.getElementById('btnStep16').addEventListener('click', () => {
+        advanceSingleStep(16.0, false);
+      });
+
+      document.getElementById('btnPlayPause').addEventListener('click', () => {
+        if (simState.playing) {
+          clearInterval(simState.playTimer);
+          simState.playTimer = null;
+          simState.playing = false;
+          document.getElementById('btnPlayPause').textContent = '▶ 自动推演';
+        } else {
+          if (simState.interrupted || simState.currentAugS >= simState.totalAugS - 1e-6) {
+            resetSimulation();
+          }
+          simState.playing = true;
+          document.getElementById('btnPlayPause').textContent = '❚❚ 暂停推演';
+          simState.playTimer = setInterval(() => {
+            if (simState.interrupted || simState.currentAugS >= simState.totalAugS - 1e-6) {
+              clearInterval(simState.playTimer);
+              simState.playTimer = null;
+              simState.playing = false;
+              document.getElementById('btnPlayPause').textContent = '▶ 自动推演';
+              return;
+            }
+            advanceSingleStep(16.0, false);
+          }, 850);
+        }
+      });
+
+      document.getElementById('btnInterrupt').addEventListener('click', () => {
+        if (simState.playing) {
+          clearInterval(simState.playTimer);
+          simState.playTimer = null;
+          simState.playing = false;
+          document.getElementById('btnPlayPause').textContent = '▶ 自动推演';
+        }
+        if (simState.currentAugS >= simState.totalAugS - 1e-6) {
+          resetSimulation();
+          advanceSingleStep(16.0, false);
+          advanceSingleStep(16.0, false);
+        }
+        advanceSingleStep(9.6, true);
+      });
+
+      document.getElementById('btnResetSim').addEventListener('click', () => {
+        resetSimulation();
+      });
+
+      bindCanvasInteractions();
+      generateInstances();
+      resetSimulation();
+      window.addEventListener('resize', drawSandboxCanvas);
+    });
+  </script>
+</body>
+</html>

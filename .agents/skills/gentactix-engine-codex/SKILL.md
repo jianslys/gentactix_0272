@@ -6,7 +6,11 @@ description: >-
 
 # Gentactix 确定性世界事务内核施工法典 (Engine Codex)
 
-本技能锁死 `crates/gentactix-core` 与 `crates/gentactix-server` 的底层物理、数学与事务边界。一切代码实现必须与 [SPEC_FINAL_GENTACTIX_CORE_ENGINE.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_FINAL_GENTACTIX_CORE_ENGINE.md) 保持 100% 严丝合缝。
+本技能锁死 `crates/gentactix-core` 与 `crates/gentactix-server` 的底层物理、数学与事务边界。一切代码实现必须与 [SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md](file:///D:/tools/gentactix/docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md)（权威总规，整合历史架构基线 [SPEC_FINAL_GENTACTIX_CORE_ENGINE.md](file:///D:/tools/gentactix/archive/legacy-docs/specs-v5-v7/SPEC_FINAL_GENTACTIX_CORE_ENGINE.md)）保持 100% 严丝合缝。
+
+> **【绝对禁令 · 反懒计算与反孤岛】**：
+> 1. 在集团军级（数万拉格朗日粒子）本地基准验证通过前，严禁任何“懒计算/连级阉割代理”，所有单位与粒子 100% 全量执行真实计算；
+> 2. 严禁只把数学算子留在 `fields/mod.rs` 供单元测试自嗨，却不接入 `sim_loop.rs`；严禁出现 `combat_logistics.rs` 中 `let _consumed_packets = std::mem::take(...)` 式的假消费与线性全表扫，以及测试里残留 `200.0 m` 网格假基准。
 
 ---
 
@@ -63,27 +67,37 @@ description: >-
 
 ---
 
-## 四 · 双场四重防伪代数铁律（严禁粗放线性加减）
+## 四 · V5.0 剪枝定型四大数学算子与防伪铁律（全量入核闭环）
 
-1. **铁律一 · $G$ 场“在途预扣 (`Committed`)”与“到场实扣 (`Actual`)”分离**：
-   - 单位生成队列锁定目标的瞬间即挂载在途预扣 $\hat{\phi}_v$，待分配残差场 $G_{\text{alloc}} = \max(0, G_0 - \sum \phi_u^{\text{on\_site}} - \sum \hat{\phi}_v^{\text{en\_route}})$，确保同帧多个班组在起点即自动分流，杜绝全员冲向同一点再 90° 急转弯鬼畜；半路队列取消则释放预扣。
-2. **铁律二 · “状态占坑场 ($G^{\text{state}}$)”与“积分做功场 ($G^{\text{work}}$)”严格分流**：
-   - `防御 / 警戒扇区 / 集合` 走状态占坑 $G^{\text{state}}$（人在账消，人死/撤离则 $\phi_u \to 0$ 账回）；
-   - `排雷与破障 / 战地救护 / 弹药补给与搜刮 / 架设与拉线 / 筑城` 走不可逆积分销账 $G^{\text{work}}$，每完成一处直接永久削减基底 $G_0(t+\Delta t) = \max(0, G_0(t) - \Delta W)$，工兵撤离后 $G_0$ 依然为 `0`，杜绝“地雷复活 Bug”。
-3. **铁律三 · “落点瞬态爆炸危险 ($H_{\text{blast}}$)”与“敌方火力辐射源项压制 ($S_k \to 0$)”分离**：
-   - 严禁拿我方火力直接去减目标格威胁值！炮火落点格自身的瞬态爆炸危险 $H_{\text{blast}}$ 必为正累加（防止己方步兵冲进自家炮火弹坑）；
-   - 我方炮火通过拉高敌方阵地格的 `suppression_density` 将敌射手炸死或打进 Prone 压制态，使敌方向外辐射威胁的源项 $S_k \to 0$，从而令敌方封锁线上的辐射威胁场 $I_{\text{threat}}$ 自然坍塌。
-4. **铁律四 · `UI-03M4` 电台乘数 $\eta$ 场同步滤波与 30% 迟滞死区 (`Hysteresis`)**：
-   - 严禁将 $\eta$ 直接乘在 $G_0$ 总额上！$\eta$ 控制下属本地感知场向指挥部场的插值同步率 $\hat{G}_{\text{local}}(t+\Delta t) = (1-\eta)\hat{G}_{\text{local}}(t) + \eta G_{\text{HQ}}(t)$；
-   - 仅当新旧残差场分布偏差超过 **30% 迟滞死区**（或原目标格已彻底失效）时，才触发底层队列取消并进入 $N_{\text{rethink}} = \lceil N_{\max}(1-\eta)\rceil$ 步长重寻思，彻底根除 $\eta$ 轻微抖动引发的全军帕金森抽搐。
+1. **铁律一 · $G$ 场在途预扣、占功二分与确定性 Auction 分流**：
+   - **空间裁剪与核卷积**：采用 Cut-cell Radon 几何投影与 9 点各向同性高斯核 $K_{\text{iso}}$；
+   - **占坑 vs 做功严格分层**：`β_mode = 0`（守备/警戒/集合）为状态约束，人走/死则恢复；`β_mode = 1`（排雷/筑城/救护/布线）为不可逆积分做功，永久削减权威 `WorldState` 的格点基底 $G_0$（哪怕工兵半途撤退，已施工进度依然按网格单元持久化，绝不保存在瞬态 `TickScratch` 中或弹回 100）；
+   - **确定性离散最优传输**：用**在途预扣弛豫池 $R_{\text{pool}}$ + $\Delta C_{\text{hyst}}$ + Tier-B 多容量最小堆拍卖（Multi-Capacity Min-Heap Auction）**替代浮点敏感的 `exp/log` 熵正则 Sinkhorn，保证逐位跨平台确定性。
+2. **铁律二 · $I$ 场正交双通道、双时间尺度压制窗口与真 P2G/G2P 输运**：
+   - **三元正交场**：$I = I_{\text{intel}} \oplus (H_{\text{blast}}, I_{\text{threat}})$；侦察衰减 $T_{1/2}=64\text{ s}$（$\alpha_{\text{intel}} \approx 0.8409$）；
+   - **双时间尺度涌现突击窗口**：落点爆炸危害 $\tau_{\text{blast}}=9\text{ s}$ 远快于人员压制恢复 $\tau_{\text{supp}}=36\text{ s}$，自然涌现停炮后约 `32s` 步兵突击窗口；
+   - **3 态施密特源项坍塌**：我方火力推高目标格 $H_{\text{blast}}$，将敌发射点打入 `Active -> Pinned -> Prone` 使向外辐射源项 $S_k \to 0$，严禁拿我方火力直接去减目标格自身威胁；
+   - **正交绕行与标定**：$P_\perp(d)\nabla G_{\text{safe}}$ + Scharr 梯度 + RK2 $\lambda$-流线 + Wendland C2 双点测距标定核 $K_{\text{reg}}$；
+   - **真 P2G/G2P 闭环**：在 `combat_logistics.rs` 与 `sim_loop.rs` 中彻底消灭 `_consumed_packets = std::mem::take(...)` 弃置代码与 `for uid in 0..units.id.len()` 线性扫表，实现真实粒子-网格互换。
+3. **铁律三 · 电台物理调谐与 128 字节稀疏 ZOH 迟滞死区**：
+   - **物理链路因子**：无开方地形脊线比 $\xi_k$、3 阶有理衍射透射 $T_{\text{diff}}(\nu)$、点积心形天线方向图、洛伦兹失谐因子 $L(\Delta f)$；
+   - **内存剪枝红线（≤128B/单位）**：绝对禁止为每个单位分配 2D 全图场数组！必须采用稀疏指令权值向量 `Vec<(u32, f32, f32)>` 执行二阶临界阻尼 Exact ZOH；
+   - **施密特抗抽搐死区**：锁定 $\Theta_{\text{cancel}}=3.5, \Theta_{\text{commit}}=1.8, N_{\text{dwell}}=4$（及 30% 场偏门槛），电台乘数 $\eta$ 仅调节本地视野/同步滞后率，绝不删减上级总额 $G_0$ 或令部队原地震颤重置。
+4. **铁律四 · 任意多边形实例、增广弧长 `s_tilde` 与爆破开关实体**：
+   - 7.8125 mm 量化基座 + `SplitMix64` 确定性生成：梅花桩雷场（Quincunx）、斜接偏置防线（Miter-offset）、锯齿堑壕（Zigzag $A_{\text{zig}}=1.2\text{ m}$）；
+   - 测地线牛耕扫掠 + 2-Opt + 凹点绕障，单步 $\Delta t=16\text{ s}$ 增广弧长 $\tilde{s}$ 边走边干积分及 4 态中断恢复 FSM；
+   - 爆破实体闭环：强制撤离安全点 + 铺设导线折线 + `DetonatorSwitch` 开关实体。
 
 ---
 
-## 五 · 并行确定性与验证命令
+## 五 · Server HTTP 契约闭环与验证命令
 
+- **`crates/gentactix-server` 契约严密化**：
+  - `POST /api/commit_turn` 必须全量消费前端下发的 `planned_actions`、`planned_events`、`staging_ops`、`field_directives`（含多边形与电台参数），绝不静默丢弃；
+  - `POST /api/unit_op` 严格收口规范操作枚举（`split_squad`、`merge_squad`、`trigger_detonator` 等）及 `piece_id` / `player_commander_id` 校验；
+  - `POST /api/preview_plan` 基于 `DerivedReadModel` 输出无副作用规划预览；`GET /api/state` 严格执行 `is_direct_subordinate` 与 `vis_tier` 迷雾裁剪。
 - **严禁无序归约**：任何多线程并行阶段只能写线程本地缓冲，合并时必须按键稳定排序后再归约；严禁遍历 `HashMap` 直接修改权威状态。
 - **必跑验证命令**：
   ```powershell
-  cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" -p gentactix-core
-  cargo check --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace
+  cargo test --manifest-path "D:\tools\gentactix\Cargo.toml" --workspace
   ```

@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI-03M4 军用电台物理调谐算子与迟滞重寻思稳定性实验室</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      background-color: #F7F6F2;
+      color: #1E293B;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+      height: 290px;
+      max-height: 360px;
+    }
+    @media (min-width: 768px) {
+      .chart-container {
+        height: 320px;
+      }
+    }
+    .canvas-box {
+      position: relative;
+      width: 100%;
+      height: 270px;
+      max-height: 320px;
+    }
+    .math-block {
+      background-color: #FAF9F6;
+      border-left: 3px solid #3F6212;
+      padding: 0.75rem 1rem;
+      border-radius: 0.375rem;
+      font-family: "Cambria Math", "Times New Roman", serif;
+      overflow-x: auto;
+    }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      margin: 0 0.2rem;
+      font-size: 0.92em;
+    }
+    .frac > span:first-child {
+      border-bottom: 1px solid #334155;
+      padding: 0 0.25rem;
+      line-height: 1.2;
+    }
+    .frac > span:last-child {
+      padding: 0 0.25rem;
+      line-height: 1.2;
+    }
+    input[type="range"] {
+      accent-color: #3F6212;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-lime-200 selection:text-slate-900">
+  <!-- Chosen Palette: Warm Tactical Alabaster (Background #F7F6F2, Surface #FFFFFF, Primary Slate #1E293B, Tactical Olive #3F6212, RF Teal #0F766E, Signal Amber #D97706, EW Crimson #B91C1C) -->
+  <!-- Application Structure Plan: Designed as a three-pillar interactive engineering workbench rather than a linear document: (1) Executive Overview & Architectural KPIs summarizing the deterministic zero-transcendental physics and anti-chattering control breakthroughs; (2) Interactive Physical Channel & EW Exposure Lab allowing real-time manipulation of VHF/HF bands, P_tx, Lorentzian Δf detuning, cardioid antenna azimuth ψ, wire_edges, and 8m DEM terrain profiles with live diffraction/polar canvases; (3) Interactive 120-Step Anti-Chattering & Schmitt Hysteresis Simulator comparing Naive direct multiplication (35 cancellations) against the 2nd-order critically damped ZOH + Schmitt deadband state machine (1 cancellation), accompanied by frequency-domain filter benchmarks and Theorem 1 formal mathematical proofs. This task-driven structure lets engineers and game designers immediately experience the trade-offs and stability theorems. -->
+  <!-- Visualization & Content Choices: 1. 8m DEM Elevation & Deygout/Bullington Diffraction Canvas (HTML5 Canvas) -> Goal: Illustrate frequency-independent square-free gap ratio ξ_k and 3-edge Deygout vs Bullington geometry -> Interaction: Band switch (VHF 45MHz vs HF 6MHz) & Terrain preset selector -> Justification: Custom Canvas renders terrain ridges, canopy layer, LoS ray, and Fresnel knife-edges clearly without SVG. 2. Polar Antenna Pattern & EW Direction-Finding Canvas (HTML5 Canvas) -> Goal: Demonstrate dot-product cardioid pattern G_ant(θ-ψ) and directional concealment vs subordinate gain -> Interaction: Antenna type buttons & Azimuth ψ slider -> Justification: Real-time polar plot immediately clarifies how main-lobe alignment boosts η while back-lobe nulls suppress E_radio. 3. Rational Approximation Error Chart (Chart.js Line) -> Goal: Validate J_rat(ν) (max error 0.1391 dB) and T_diff(ν) (max error 0.0381) against ITU-R P.526 -> Interaction: Toggle dB vs Linear Power mode -> Justification: Chart.js line chart cleanly shows tight error bounds across ν ∈ [-0.78, 10]. 4. 120-Step Time-Series Trajectory & Chattering Comparison (Chart.js Line + Bar/Timeline) -> Goal: Prove Theorem 1 anti-chattering stability during edge jitter & 2-step fade (k=25,26) and reliable convergence after Step 50 command shift -> Interaction: Live sliders for mean η, jitter ε_η, Schmitt thresholds (Θ_commit, Θ_cancel), and N_dwell -> Justification: Dynamic simulation lets users test stability boundaries firsthand. 5. Filter Frequency Attenuation Chart (Chart.js Bar) -> Goal: Show 7.3x (-32.9 dB) Nyquist jitter suppression of 2nd-order critically damped filter over 1st-order -> Interaction: Filter time-constant selector -> Justification: Direct visual comparison of |H_1| vs |H_2|. -->
+  <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+  <header class="sticky top-0 z-30 bg-[#F7F6F2]/95 backdrop-blur border-b border-stone-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[#3F6212] text-white font-bold text-lg shadow-sm">📡</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight">UI-03M4 军用电台物理调谐算子与迟滞重寻思稳定性分析</h1>
+            <span class="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold rounded bg-lime-100 text-lime-900 border border-lime-300">确定性实时仿真架构</span>
+          </div>
+          <p class="text-xs text-slate-600">8m 网格无超越函数衍射 · 洛伦兹谐振与测向博弈 · 二阶临界阻尼 ZOH 滤波与施密特迟滞定理</p>
+        </div>
+      </div>
+      <nav class="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+        <button onclick="scrollToSection('sec-overview')" class="nav-btn px-3 py-1.5 rounded-md bg-slate-800 text-white transition">总览与指标</button>
+        <button onclick="scrollToSection('sec-physics')" class="nav-btn px-3 py-1.5 rounded-md text-slate-700 hover:bg-stone-200 transition">物理调谐实验室</button>
+        <button onclick="scrollToSection('sec-stability')" class="nav-btn px-3 py-1.5 rounded-md text-slate-700 hover:bg-stone-200 transition">迟滞防抽搐仿真</button>
+        <button onclick="scrollToSection('sec-theorem')" class="nav-btn px-3 py-1.5 rounded-md text-slate-700 hover:bg-stone-200 transition">算子与定理证明</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
+
+    <section id="sec-overview" class="space-y-5">
+      <div class="bg-white rounded-xl border border-stone-200 p-5 sm:p-6 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-stone-100 pb-4 mb-5">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-[#0F766E]">系统架构摘要 · EXECUTIVE ARCHITECTURE</span>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">从电磁物理传播到认知队列稳定的全链路闭环</h2>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span class="px-2.5 py-1 rounded-full bg-stone-100 text-slate-700 font-medium">步长 Δt = 16 s</span>
+            <span class="px-2.5 py-1 rounded-full bg-stone-100 text-slate-700 font-medium">高程网格 Δs = 8 m</span>
+            <span class="px-2.5 py-1 rounded-full bg-lime-50 text-lime-900 border border-lime-200 font-medium">传导乘数 η ∈ [0, 1.2]</span>
+          </div>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed mb-6">
+          在 <strong>UI-03M4</strong> 战术指挥仿真引擎中，玩家手动调谐电台波段（VHF 超短波视距 vs HF 中短波绕射）、谐振频偏 Δf、发射功率 P<sub>tx</sub>、定向天线方位角 ψ 与有线电话回路（<code>wire_edges</code>）。本报告构建了两套深度耦合的确定性数学机制：在<strong>物理信道层</strong>，通过无开方间隙平方比算子 ξ<sub>k</sub> 与三阶有理分式逼近消除内循环超越函数瓶颈，精确刻画地形衍射、林地饱和衰减与测向暴露源项 E<sub>radio</sub>；在<strong>认知控制层</strong>，将 η(t) 重构为非对称二阶临界阻尼（ζ = 1）低通滤波器的同步频率调制器，并引入施密特双阈值迟滞死区与最小驻留步长，彻底根除电磁边缘地带的“帕金森抽搐”（Zeno/Chattering）现象。
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-4 rounded-lg bg-[#FAF9F6] border border-stone-200">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1">
+              <span>有理衍射逼近精度</span>
+              <span class="text-[#0F766E]">ITU-R P.526</span>
+            </div>
+            <div class="text-2xl font-extrabold text-slate-900">0.1391 <span class="text-sm font-normal text-slate-600">dB 最大误差</span></div>
+            <p class="text-xs text-slate-600 mt-1.5">全战术区间 ν ∈ [-0.78, 10.0] 零 sqrt/log10，线性透过率误差 ≤ 0.0381。</p>
+          </div>
+
+          <div class="p-4 rounded-lg bg-[#FAF9F6] border border-stone-200">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1">
+              <span>HF 相对 VHF 山地绕射增益</span>
+              <span class="text-[#3F6212]">3刃 Deygout</span>
+            </div>
+            <div class="text-2xl font-extrabold text-[#3F6212]">+12.44 <span class="text-sm font-normal text-slate-600">dB 链路优势</span></div>
+            <p class="text-xs text-slate-600 mt-1.5">4000m 双山脊剖面下 HF(6MHz) 衍射损耗 28.48 dB，显著优于 VHF(45MHz) 的 40.92 dB。</p>
+          </div>
+
+          <div class="p-4 rounded-lg bg-[#FAF9F6] border border-stone-200">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1">
+              <span>奈奎斯特边缘抖动抑制</span>
+              <span class="text-amber-700">ζ = 1 临界阻尼</span>
+            </div>
+            <div class="text-2xl font-extrabold text-amber-700">7.3 × <span class="text-sm font-normal text-slate-600">(-32.9 dB)</span></div>
+            <p class="text-xs text-slate-600 mt-1.5">τ<sub>f</sub> = 48 s 时步长级抖动增益压低至 0.0226，断联记忆衰减常数 τ<sub>decay</sub> = 480 s。</p>
+          </div>
+
+          <div class="p-4 rounded-lg bg-[#FAF9F6] border border-stone-200">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1">
+              <span>120步边缘测试误取消次数</span>
+              <span class="text-rose-700">施密特死区保护</span>
+            </div>
+            <div class="text-2xl font-extrabold text-slate-900">35 次 <span class="text-base font-normal text-slate-400">→</span> <span class="text-[#3F6212]">1 次</span></div>
+            <p class="text-xs text-slate-600 mt-1.5">两步深衰落(k=25,26)零误取消；第 50 步真实改令后经可控延迟可靠锁定新队列。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-physics" class="space-y-6">
+      <div class="bg-white rounded-xl border border-stone-200 p-5 sm:p-6 shadow-sm">
+        <div class="border-b border-stone-100 pb-4 mb-5">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#3F6212]">模块一 · PHYSICAL CHANNEL & EW TRADE-OFF LAB</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">物理信道传输算子 η(x<sub>HQ</sub>, x<sub>sub</sub>) 与电磁暴露博弈实验室</h2>
+          <p class="text-sm text-slate-700 mt-2 leading-relaxed">
+            本交互模块完整实现了报告第一章的 8 m 网格 DDA 高程剖面提取与无超越函数物理链路预算管线。您可以实时切换<strong>VHF/HF 波段</strong>、调节<strong>发射功率 P<sub>tx</sub></strong>、<strong>谐振频偏 Δf</strong>、<strong>天线构型与方位角 ψ</strong>以及<strong>有线回路状态</strong>，观察地形刀刃衍射、方向图内积增益、传导乘数 η ∈ [0, 1.2] 与敌方测向暴露源项 E<sub>radio</sub> 之间的核心战术权衡（例如“失谐频偏导致 η 暴跌但 E<sub>radio</sub> 依然高企”的纯亏损陷阱）。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-4 space-y-4 bg-[#FAF9F6] p-4 rounded-xl border border-stone-200">
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span>🎛️</span> 电台硬件与拓扑调谐控制台
+            </h3>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1.5">1. 工作波段与传播机制 (Band)</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button id="btn-band-vhf" onclick="setBand('VHF')" class="py-2 px-3 rounded-lg text-xs font-bold border transition bg-[#3F6212] text-white border-[#3F6212]">
+                  VHF 超短波 (45 MHz)<br><span class="font-normal opacity-90">λ=6.67m · 视距/多径惩罚</span>
+                </button>
+                <button id="btn-band-hf" onclick="setBand('HF')" class="py-2 px-3 rounded-lg text-xs font-bold border transition bg-white text-slate-700 border-stone-300 hover:bg-stone-100">
+                  HF 中短波 (6 MHz)<br><span class="font-normal opacity-80">λ=50.0m · 强绕射/高测向</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1.5">2. 发射功率档位 P<sub>tx</sub> (Watts)</label>
+              <div class="grid grid-cols-4 gap-1.5">
+                <button onclick="setPower(0)" data-pwr="0" class="pwr-btn py-1.5 rounded text-xs font-bold border bg-white text-slate-700 border-stone-300">0 W</button>
+                <button onclick="setPower(1)" data-pwr="1" class="pwr-btn py-1.5 rounded text-xs font-bold border bg-white text-slate-700 border-stone-300">1 W</button>
+                <button onclick="setPower(5)" data-pwr="5" class="pwr-btn py-1.5 rounded text-xs font-bold border bg-[#3F6212] text-white border-[#3F6212]">5 W</button>
+                <button onclick="setPower(20)" data-pwr="20" class="pwr-btn py-1.5 rounded text-xs font-bold border bg-white text-slate-700 border-stone-300">20 W</button>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                <span>3. 谐振微调频偏 Δf</span>
+                <span id="lbl-df" class="font-mono text-[#0F766E]">0.0 kHz (L = 1.000)</span>
+              </div>
+              <input id="slider-df" type="range" min="-20" max="20" step="0.5" value="0" oninput="updatePhysicsUI()" class="w-full cursor-pointer" />
+              <div class="flex justify-between text-[11px] text-slate-500 mt-0.5">
+                <span>-20 kHz</span>
+                <span>0 kHz 谐振峰</span>
+                <span>+20 kHz</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1.5">4. 天线构型 (Antenna Config)</label>
+              <div class="grid grid-cols-3 gap-1.5">
+                <button onclick="setAnt('Whip')" data-ant="Whip" class="ant-btn py-1.5 px-2 rounded text-xs font-bold border bg-white text-slate-700 border-stone-300">鞭状 (2m)</button>
+                <button onclick="setAnt('Omni')" data-ant="Omni" class="ant-btn py-1.5 px-2 rounded text-xs font-bold border bg-white text-slate-700 border-stone-300">全向高架 (10m)</button>
+                <button onclick="setAnt('Sector')" data-ant="Sector" class="ant-btn py-1.5 px-2 rounded text-xs font-bold border bg-[#3F6212] text-white border-[#3F6212]">定向扇区 (6m)</button>
+              </div>
+            </div>
+
+            <div id="azimuth-control-box">
+              <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                <span>5. 定向主瓣方位角 ψ (下属在 45°, 敌测向台在 215°)</span>
+                <span id="lbl-psi" class="font-mono text-[#3F6212]">45°</span>
+              </div>
+              <input id="slider-psi" type="range" min="0" max="360" step="5" value="45" oninput="updatePhysicsUI()" class="w-full cursor-pointer" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">6. 8m 地形剖面预设</label>
+                <select id="sel-terrain" onchange="updatePhysicsUI()" class="w-full text-xs rounded-lg border border-stone-300 bg-white py-1.5 px-2 text-slate-800">
+                  <option value="double_ridge">双山脊阻挡 (4000m 基准)</option>
+                  <option value="dense_forest">深林峡谷冠层衰减</option>
+                  <option value="los_ridge">高地视距畅通 (LoS)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">7. 野战有线回路 (wire_edges)</label>
+                <select id="sel-wire" onchange="updatePhysicsUI()" class="w-full text-xs rounded-lg border border-stone-300 bg-white py-1.5 px-2 text-slate-800">
+                  <option value="none">无连通有线回路</option>
+                  <option value="intact">有线回路完好 (4.2 km)</option>
+                  <option value="cut">被复线遭炮火切断</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="tactical-advice-box" class="p-3 rounded-lg bg-white border border-stone-200 text-xs text-slate-700 leading-relaxed">
+              当前处于最佳定向调谐状态：主瓣精确对准 45° 下属单元，后瓣抑制有效遮蔽了 215° 敌方测向站。
+            </div>
+          </div>
+
+          <div class="lg:col-span-8 space-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="p-3.5 rounded-xl bg-white border border-stone-200 shadow-xs">
+                <div class="text-xs text-slate-500 font-medium">综合传导乘数 η</div>
+                <div id="kpi-eta" class="text-2xl font-black text-[#3F6212] mt-0.5">1.08</div>
+                <div id="kpi-eta-sub" class="text-[11px] text-slate-500 mt-0.5">无线 1.08 / 有线 0.00</div>
+              </div>
+              <div class="p-3.5 rounded-xl bg-white border border-stone-200 shadow-xs">
+                <div class="text-xs text-slate-500 font-medium">敌方测向暴露源项 E<sub>radio</sub></div>
+                <div id="kpi-ew" class="text-2xl font-black text-rose-700 mt-0.5">0.08</div>
+                <div id="kpi-ew-sub" class="text-[11px] text-slate-500 mt-0.5">低暴露 (反瓣隐蔽)</div>
+              </div>
+              <div class="p-3.5 rounded-xl bg-white border border-stone-200 shadow-xs">
+                <div class="text-xs text-slate-500 font-medium">3刃 Deygout 衍射损耗</div>
+                <div id="kpi-diff" class="text-2xl font-black text-slate-900 mt-0.5">40.92 dB</div>
+                <div id="kpi-diff-sub" class="text-[11px] text-slate-500 mt-0.5">Bullington: 25.20 dB</div>
+              </div>
+              <div class="p-3.5 rounded-xl bg-white border border-stone-200 shadow-xs">
+                <div class="text-xs text-slate-500 font-medium">林地与谐振附加损耗</div>
+                <div id="kpi-veg" class="text-2xl font-black text-[#0F766E] mt-0.5">4.8 dB</div>
+                <div id="kpi-veg-sub" class="text-[11px] text-slate-500 mt-0.5">L(Δf) = 1.000 (0.0 dB)</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div class="md:col-span-7 bg-[#FAF9F6] rounded-xl border border-stone-200 p-3.5">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-900">🏔️ 8m 网格高程剖面与 Deygout 三刃 / Bullington 衍射几何</h4>
+                    <p class="text-[11px] text-slate-500">基于无开方间隙平方比 ξ<sub>k</sub> 定位主导山脊（橙色三角形标记）</p>
+                  </div>
+                </div>
+                <div class="canvas-box">
+                  <canvas id="canvas-terrain"></canvas>
+                </div>
+              </div>
+
+              <div class="md:col-span-5 bg-[#FAF9F6] rounded-xl border border-stone-200 p-3.5">
+                <div class="mb-2">
+                  <h4 class="text-xs font-bold text-slate-900">🧭 升余弦心形方向图 G<sub>ant</sub>(θ - ψ) 与战场方位</h4>
+                  <p class="text-[11px] text-slate-500">零反三角函数内积计算 · 下属 45° (绿) vs 敌测向台 215° (红)</p>
+                </div>
+                <div class="canvas-box">
+                  <canvas id="canvas-polar"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-[#FAF9F6] rounded-xl border border-stone-200 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div>
+                  <h4 class="text-xs sm:text-sm font-bold text-slate-900">📐 无超越函数有理分式逼近精度验证（ITU-R P.526 基准对比）</h4>
+                  <p class="text-xs text-slate-600">验证分贝域三阶有理算子 J<sub>rat</sub>(ν)（全区间最大误差 0.1391 dB）与线性功率透过率 T<sub>diff</sub>(ν)（最大误差 0.0381）</p>
+                </div>
+                <div class="flex gap-1.5 text-xs">
+                  <button id="btn-rat-db" onclick="toggleRationalChart('db')" class="px-2.5 py-1 rounded font-semibold bg-slate-800 text-white">分贝损耗 J(ν) [dB]</button>
+                  <button id="btn-rat-lin" onclick="toggleRationalChart('lin')" class="px-2.5 py-1 rounded font-semibold bg-white text-slate-700 border border-stone-300">线性透过率 T<sub>diff</sub>(ν)</button>
+                </div>
+              </div>
+              <div class="chart-container">
+                <canvas id="chart-rational"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-stability" class="space-y-6">
+      <div class="bg-white rounded-xl border border-stone-200 p-5 sm:p-6 shadow-sm">
+        <div class="border-b border-stone-100 pb-4 mb-5">
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-700">模块二 · ANTI-CHATTERING & SCHMITT HYSTERESIS SIMULATOR</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">杜绝“帕金森抽搐”：二阶临界阻尼 ZOH 滤波与施密特迟滞重寻思仿真</h2>
+          <p class="text-sm text-slate-700 mt-2 leading-relaxed">
+            在电磁覆盖边缘地带（如 η̄ ≈ 0.35），若直接计算 G̃ = η·G<sub>0</sub> 并采用单点阈值取消队列，风摆与地形微遮蔽会导致部队每十几秒无限循环“取消队列 → 发呆 → 重建队列”。本仿真器复现了报告第 2.5 节的 <strong>120 步（1920 秒，步长 16 s）复合战场基准测试</strong>：包含常规边缘抖动、第 25–26 步两步深度黑障（η = 0.02）以及第 50 步上级真实战役改令（目标 0 → 目标 2）。您可以调节滤波与施密特死区参数，实时观察定理 1 的抗抖动稳定边界与有限步收敛特性。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-4 space-y-4 bg-[#FAF9F6] p-4 rounded-xl border border-stone-200">
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span>⚙️</span> 滤波器与施密特迟滞 deadband 参数
+            </h3>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">预设战术检验场景</label>
+              <select id="sel-sim-preset" onchange="applySimPreset()" class="w-full text-xs rounded-lg border border-stone-300 bg-white py-2 px-2.5 text-slate-800 font-medium">
+                <option value="benchmark">报告基准：边缘抖动 + 2步黑障(k=25,26) + 第50步改令</option>
+                <option value="pure_jitter">极端边缘强抖动（无战役改令，检验零误取消）</option>
+                <option value="high_tune">精确电台调谐 (η̄ = 1.05，检验极速改令响应)</option>
+              </select>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                <span>边缘信道标称均值 η̄</span>
+                <span id="lbl-eta-mean" class="font-mono text-[#3F6212]">0.35</span>
+              </div>
+              <input id="slider-eta-mean" type="range" min="0.15" max="1.15" step="0.05" value="0.35" oninput="runStabilitySimulation()" class="w-full cursor-pointer" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                <span>边缘高频抖动幅值 ε<sub>η</sub></span>
+                <span id="lbl-eta-jit" class="font-mono text-amber-700">0.18</span>
+              </div>
+              <input id="slider-eta-jit" type="range" min="0.00" max="0.28" step="0.02" value="0.18" oninput="runStabilitySimulation()" class="w-full cursor-pointer" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                  <span>取消上阈值 Θ<sub>cancel</sub></span>
+                  <span id="lbl-th-cancel" class="font-mono text-rose-700">3.5</span>
+                </div>
+                <input id="slider-th-cancel" type="range" min="1.5" max="6.0" step="0.1" value="3.5" oninput="runStabilitySimulation()" class="w-full cursor-pointer" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                  <span>锁定下阈值 Θ<sub>commit</sub></span>
+                  <span id="lbl-th-commit" class="font-mono text-[#0F766E]">1.8</span>
+                </div>
+                <input id="slider-th-commit" type="range" min="0.5" max="3.2" step="0.1" value="1.8" oninput="runStabilitySimulation()" class="w-full cursor-pointer" />
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                <span>最小驻留步长 N<sub>dwell</sub> (每步 16s)</span>
+                <span id="lbl-ndwell" class="font-mono text-slate-800">4 步 (64 s)</span>
+              </div>
+              <input id="slider-ndwell" type="range" min="1" max="8" step="1" value="4" oninput="runStabilitySimulation()" class="w-full cursor-pointer" />
+            </div>
+
+            <div class="p-3.5 rounded-lg bg-white border border-stone-200 space-y-2 text-xs">
+              <div class="font-bold text-slate-900 border-b border-stone-100 pb-1">📊 定理 1 闭环稳定性实时诊断</div>
+              <div class="flex justify-between">
+                <span class="text-slate-600">朴素直乘系统队列取消次数：</span>
+                <span id="stat-naive-cancels" class="font-bold text-rose-700">35 次 (严重抽搐)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-600">二阶施密特迟滞系统取消次数：</span>
+                <span id="stat-hyst-cancels" class="font-bold text-[#3F6212]">1 次 (仅真实改令)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-600">定理 1 临界防抖动下界 Θ<sub>crit</sub>：</span>
+                <span id="stat-th-crit" class="font-mono font-semibold text-slate-800">0.83</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-600">改令后总认知收敛时间：</span>
+                <span id="stat-conv-time" class="font-mono font-semibold text-[#0F766E]">10 步 (160 s)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-8 space-y-4">
+            <div class="bg-[#FAF9F6] rounded-xl border border-stone-200 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div>
+                  <h4 class="text-xs sm:text-sm font-bold text-slate-900">📈 120 步（1920s）失配泛函 Δ𝒥(t<sub>k</sub>)、施密特双阈值死区与瞬时信道 η(t<sub>k</sub>)</h4>
+                  <p class="text-xs text-slate-600">观察第 25–26 步深衰落期间 Δ𝒥 仅微升至 0.26（远低于 Θ<sub>cancel</sub>），而第 50 步改令后单调穿越上阈值触发唯一重构</p>
+                </div>
+              </div>
+              <div class="chart-container">
+                <canvas id="chart-trajectory"></canvas>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="bg-[#FAF9F6] rounded-xl border border-stone-200 p-4">
+                <h4 class="text-xs font-bold text-slate-900 mb-1">🔄 离散状态机队列切换对比（朴素直乘 vs 二阶施密特迟滞）</h4>
+                <p class="text-[11px] text-slate-600 mb-2">纵轴表示当前执行的主导目标索引（0 或 2）及状态（-1 代表 RETHINKING 发呆重寻思）</p>
+                <div class="chart-container" style="height: 230px;">
+                  <canvas id="chart-states"></canvas>
+                </div>
+              </div>
+
+              <div class="bg-[#FAF9F6] rounded-xl border border-stone-200 p-4">
+                <h4 class="text-xs font-bold text-slate-900 mb-1">📉 一阶滤波 vs 二阶临界阻尼（ζ=1）ZOH 频域抖动衰减</h4>
+                <p class="text-[11px] text-slate-600 mb-2">二阶临界阻尼提供 -40 dB/dec 滚降，在 τ<sub>f</sub>=48s 下对 32s 奈奎斯特抖动衰减达 7.3 倍</p>
+                <div class="chart-container" style="height: 230px;">
+                  <canvas id="chart-filter-freq"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-theorem" class="space-y-6">
+      <div class="bg-white rounded-xl border border-stone-200 p-5 sm:p-6 shadow-sm">
+        <div class="border-b border-stone-100 pb-4 mb-5">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-600">模块三 · MATHEMATICAL FORMULATION & LYAPUNOV PROOF</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">核心数学算子定义与迟滞重寻思稳定性定理证明导览</h2>
+          <p class="text-sm text-slate-700 mt-2 leading-relaxed">
+            本节完整汇总报告中用于 UI-03M4 引擎落地的核心封闭解析公式与控制理论证明，涵盖物理层无开方间隙平方比与有理分式算子、非对称二阶临界阻尼精确零阶保持（ZOH）离散更新方程，以及基于多李雅普诺夫函数与平均驻留时间（ADT）的<strong>定理 1</strong> 严谨推导。
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mb-5 border-b border-stone-200 pb-3">
+          <button onclick="switchDocTab('tab-phys-math')" data-doctab="tab-phys-math" class="doc-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold bg-[#3F6212] text-white">1. 物理传播与有理算子公式</button>
+          <button onclick="switchDocTab('tab-zoh-math')" data-doctab="tab-zoh-math" class="doc-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold bg-stone-100 text-slate-700 hover:bg-stone-200">2. 二阶临界阻尼 ZOH 与泛函</button>
+          <button onclick="switchDocTab('tab-theorem-proof')" data-doctab="tab-theorem-proof" class="doc-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold bg-stone-100 text-slate-700 hover:bg-stone-200">3. 定理 1 稳定性与有限步收敛证明</button>
+          <button onclick="switchDocTab('tab-benchmark-table')" data-doctab="tab-benchmark-table" class="doc-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold bg-stone-100 text-slate-700 hover:bg-stone-200">4. 仿真关键步长轨迹数据表</button>
+        </div>
+
+        <div id="tab-phys-math" class="doc-tab-panel space-y-4 text-sm text-slate-800">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl border border-stone-200 bg-[#FAF9F6] space-y-2.5">
+              <h3 class="font-bold text-slate-900">（1）无开方间隙平方比主刃搜索算子 ξ<sub>k</sub>(a, b)</h3>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                在 8 m 网格 DDA 遍历中，由于 √(2(s<sub>b</sub> - s<sub>a</sub>)/λ) 为区间正常数且 x ↦ x|x| 严格单调递增，最大化菲涅耳参数 ν<sub>k</sub> 等价于最大化纯四则运算有符号间隙平方比：
+              </p>
+              <div class="math-block text-xs sm:text-sm">
+                ξ<sub>k</sub>(a, b) = <span class="frac"><span>h<sub>k</sub>(a, b) · |h<sub>k</sub>(a, b)|</span><span>(s<sub>k</sub> - s<sub>a</sub>)(s<sub>b</sub> - s<sub>k</sub>)</span></span>, &nbsp; k* = arg max<sub>a&lt;k&lt;b</sub> ξ<sub>k</sub>(a, b)
+              </div>
+              <p class="text-xs text-slate-600">内循环零 <code>sqrt</code> 开销，仅在锁定临界峰值 k* 后执行单次开方求取 ν<sub>k*</sub>。</p>
+            </div>
+
+            <div class="p-4 rounded-xl border border-stone-200 bg-[#FAF9F6] space-y-2.5">
+              <h3 class="font-bold text-slate-900">（2）三阶有理衍射逼近 J<sub>rat</sub>(ν) 与直接透过率 T<sub>diff</sub>(ν)</h3>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                令平移变量 u = max(0, ν + 0.78)，消除 ITU-R P.526 中的 <code>sqrt</code> 与 <code>log10</code> 超越函数：
+              </p>
+              <div class="math-block text-xs sm:text-sm space-y-1.5">
+                <div>J<sub>rat</sub>(ν) = <span class="frac"><span>5.02146u + 8.99070u² + 0.19166u³</span><span>1 + 0.46858u + 0.29784u²</span></span> [dB]</div>
+                <div>T<sub>diff</sub>(ν) = <span class="frac"><span>1 + 0.2512u</span><span>1 + 1.5048u + 5.9201u³</span></span> ∈ (0, 1]</div>
+              </div>
+              <p class="text-xs text-slate-600">保持 O(u⁻²) 渐近衰减阶数，全区间最大分贝误差 0.1391 dB。</p>
+            </div>
+
+            <div class="p-4 rounded-xl border border-stone-200 bg-[#FAF9F6] space-y-2.5">
+              <h3 class="font-bold text-slate-900">（3）林地饱和衰减与洛伦兹谐振选择性</h3>
+              <div class="math-block text-xs sm:text-sm space-y-1.5">
+                <div>L<sub>veg</sub>(f, d<sub>veg</sub>) = <span class="frac"><span>γ<sub>veg</sub>(f) d<sub>veg</sub></span><span>1 + γ<sub>veg</sub>(f) d<sub>veg</sub> / A<sub>m</sub>(f)</span></span>, &nbsp; L(Δf) = <span class="frac"><span>1</span><span>1 + (Δf / B<sub>1/2</sub>)²</span></span></div>
+              </div>
+              <p class="text-xs text-slate-600">林地损耗在深林区平滑渐近于树冠表面波绕射上限 A<sub>m</sub>(f)（HF: 12 dB, VHF: 28 dB）。</p>
+            </div>
+
+            <div class="p-4 rounded-xl border border-stone-200 bg-[#FAF9F6] space-y-2.5">
+              <h3 class="font-bold text-slate-900">（4）内积定向方向图与并联传导乘数 η ∈ [0, 1.2]</h3>
+              <div class="math-block text-xs sm:text-sm space-y-1.5">
+                <div>G<sub>ant</sub>(θ - ψ) = G<sub>back</sub> + (G<sub>max</sub> - G<sub>back</sub>)<span class="frac"><span>1 + d̂<sub>tr</sub> · û(ψ)</span><span>2</span></span><sup>2</sup></div>
+                <div>η = max(η<sub>radio</sub>, η<sub>wire</sub>), &nbsp; η<sub>radio</sub> = 1.2 · <span class="frac"><span>Γ<sub>radio</sub>²</span><span>Γ<sub>1/2</sub>² + Γ<sub>radio</sub>²</span></span></div>
+              </div>
+              <p class="text-xs text-slate-600">敌测向暴露源项 E<sub>radio</sub>(x<sub>HQ</sub>) 仅响应无线辐射 P<sub>tx</sub>，纯有线模式下 E<sub>radio</sub> = 0。</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-zoh-math" class="doc-tab-panel hidden space-y-4 text-sm text-slate-800">
+          <div class="p-4 rounded-xl border border-stone-200 bg-[#FAF9F6] space-y-3">
+            <h3 class="font-bold text-slate-900">非对称二阶临界阻尼（ζ = 1）精确零阶保持（Exact ZOH）状态更新方程</h3>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              设同步自然角频率 ω<sub>n</sub>(η) = ω<sub>0</sub> · η / (η + η<sub>1/2</sub>)（τ<sub>sync</sub> = 24 s），断联慢遗忘因子 γ<sub>leak</sub>(η) = exp(-Δt/τ<sub>decay</sub> · (1 - η/η<sub>cut</sub>))（当 η &lt; 0.05 时，τ<sub>decay</sub> = 480 s）。令无量纲相位步长 φ<sub>k</sub> = ω<sub>n</sub>(η<sub>k</sub>)Δt，误差向量 e<sub>k</sub> = Ĝ<sub>local</sub>(t<sub>k</sub>) - μ(η<sub>k</sub>)G<sub>0</sub>(t<sub>k</sub>)，则单步闭式精确更新为：
+            </p>
+            <div class="math-block text-xs sm:text-sm space-y-2">
+              <div>Ĝ<sub>local</sub>(t<sub>k</sub> + Δt) = γ<sub>leak</sub>(η<sub>k</sub>) [ μ(η<sub>k</sub>)G<sub>0</sub>(t<sub>k</sub>) + e<sup>-φ<sub>k</sub></sup> ((1 + φ<sub>k</sub>)e<sub>k</sub> + Δt · V<sub>local</sub>(t<sub>k</sub>)) ]</div>
+              <div>V<sub>local</sub>(t<sub>k</sub> + Δt) = γ<sub>leak</sub>(η<sub>k</sub>) e<sup>-φ<sub>k</sub></sup> [ -ω<sub>n</sub>²(η<sub>k</sub>)Δt · e<sub>k</sub> + (1 - φ<sub>k</sub>)V<sub>local</sub>(t<sub>k</sub>) ]</div>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl border border-stone-200 bg-[#FAF9F6] space-y-3">
+            <h3 class="font-bold text-slate-900">战术遗憾与场漂移复合失配泛函 Δ𝒥(t<sub>k</sub>) 与施密特迟滞转移律</h3>
+            <div class="math-block text-xs sm:text-sm space-y-2">
+              <div>Δ𝒥(t<sub>k</sub>) = 0.6 · (max<sub>m</sub> Ĝ<sub>local, m</sub>(t<sub>k</sub>) - Ĝ<sub>local, Q<sub>curr</sub></sub>(t<sub>k</sub>)) + 0.4 · ||Ĝ<sub>local</sub>(t<sub>k</sub>) - G<sub>commit</sub>||<sub>2</sub></div>
+              <div>队列取消 (EXECUTING → RETHINKING)： n<sub>dwell</sub>(t<sub>k</sub>) ≥ N<sub>dwell</sub> &nbsp;且&nbsp; Δ𝒥(t<sub>k</sub>) ≥ Θ<sub>cancel</sub></div>
+              <div>认知寻思步长： N<sub>rethink</sub>(η<sub>k</sub>) = ⌈ 2 + 3(1 - min(η<sub>k</sub>, 1.0))<sup>1.5</sup> ⌉</div>
+              <div>队列锁定 (RETHINKING → EXECUTING)： n<sub>rethink</sub> ≤ 0 &nbsp;且&nbsp; τ<sub>sync</sub> ||V<sub>local</sub>(t<sub>k</sub>)||<sub>2</sub> ≤ Θ<sub>commit</sub></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-theorem-proof" class="doc-tab-panel hidden space-y-4 text-sm text-slate-800">
+          <div class="p-4 rounded-xl border border-lime-200 bg-lime-50/50 space-y-2.5">
+            <h3 class="font-bold text-slate-900">【定理 1：二阶滤波-施密特迟滞重寻思系统的抗抖动稳定与战役改令收敛定理】</h3>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              <strong>（I）常规抖动与短暂黑障下的零误取消判据：</strong> 当上级命令恒定为 G<sub>0</sub>*，信道在均值 η̄ 附近存在幅值 ε<sub>η</sub>、主频 ω<sub>jit</sub> 的常规抖动，且遭遇不超过 N<sub>fade</sub> 步的深度黑障时，只要施密特上阈值满足：
+            </p>
+            <div class="math-block text-xs sm:text-sm">
+              Θ<sub>cancel</sub> &gt; Θ<sub>crit</sub>(ε<sub>η</sub>, N<sub>fade</sub>) ≜ (1 + β<sub>regret</sub>(√2 - 1)) [ |H<sub>2</sub>(e<sup>jω<sub>jit</sub>Δt</sup>; φ(η̄))| ε̃<sub>η</sub> + (1 - e<sup>-N<sub>fade</sub>Δt/τ<sub>decay</sub></sup>)μ(η̄) ] ||G<sub>0</sub>*||<sub>2</sub>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              则全时域内恒有 Δ𝒥(t<sub>k</sub>) &lt; Θ<sub>cancel</sub>，误取消次数严格为零；且任意强干扰下混合自动机满足平均驻留时间（ADT）上界 τ<sub>a</sub> = ½(N<sub>dwell</sub> + N<sub>min</sub>)Δt &gt; 0，彻底消除 Zeno 抽搐。
+            </p>
+            <p class="text-xs text-slate-700 leading-relaxed pt-2 border-t border-lime-200">
+              <strong>（II）真实战役改令下的有限步单调收敛性：</strong> 当 t<sub>k₀</sub> 发生阶跃改令 ΔG<sub>0</sub> 且渐近失配 Δ𝒥<sub>∞</sub> &gt; Θ<sub>cancel</sub> &gt; Θ<sub>commit</sub> 时，由若尔当块幂次恒等式，二阶响应包络 ψ(n) = 1 - e<sup>-nφ̄</sup>(1 + nφ̄) 严格单调递增无超调，系统必在总迟滞步数 N<sub>total</sub>(η̄) = max(N<sub>detect</sub>, N<sub>dwell</sub> - n<sub>dwell</sub>) + N<sub>rethink</sub>(η̄) + N<sub>settle</sub>(η̄) 后可靠锁定新最优队列 Q<sub>new</sub>。
+            </p>
+          </div>
+        </div>
+
+        <div id="tab-benchmark-table" class="doc-tab-panel hidden overflow-x-auto">
+          <table class="min-w-full text-xs text-left border border-stone-200 rounded-lg overflow-hidden">
+            <thead class="bg-stone-100 text-slate-800 font-bold">
+              <tr>
+                <th class="py-2.5 px-3 border-b">仿真步长 (时刻)</th>
+                <th class="py-2.5 px-3 border-b">瞬时 η(t<sub>k</sub>)</th>
+                <th class="py-2.5 px-3 border-b">朴素直乘状态</th>
+                <th class="py-2.5 px-3 border-b">二阶迟滞系统状态</th>
+                <th class="py-2.5 px-3 border-b">失配泛函 Δ𝒥</th>
+                <th class="py-2.5 px-3 border-b">动态物理机制解析</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-200 bg-white">
+              <tr>
+                <td class="py-2 px-3 font-mono">Step 0 (0s)</td>
+                <td class="py-2 px-3 font-mono">0.32</td>
+                <td class="py-2 px-3">EXECUTING (Q=0)</td>
+                <td class="py-2 px-3 font-semibold text-[#3F6212]">EXECUTING (Q=0)</td>
+                <td class="py-2 px-3 font-mono">0.00</td>
+                <td class="py-2 px-3 text-slate-600">初始稳态，双方均锁定目标 0</td>
+              </tr>
+              <tr class="bg-amber-50/40">
+                <td class="py-2 px-3 font-mono">Step 25 (400s)</td>
+                <td class="py-2 px-3 font-mono font-bold text-rose-700">0.02</td>
+                <td class="py-2 px-3 text-rose-700">RETHINKING (取消)</td>
+                <td class="py-2 px-3 font-semibold text-[#3F6212]">EXECUTING (Q=0)</td>
+                <td class="py-2 px-3 font-mono">0.13</td>
+                <td class="py-2 px-3 text-slate-600">突遇深衰落黑障，朴素系统取消队列；本系统进入 τ<sub>decay</sub>=480s 慢记忆保持</td>
+              </tr>
+              <tr class="bg-amber-50/40">
+                <td class="py-2 px-3 font-mono">Step 26 (416s)</td>
+                <td class="py-2 px-3 font-mono font-bold text-rose-700">0.02</td>
+                <td class="py-2 px-3 text-rose-700">RETHINKING</td>
+                <td class="py-2 px-3 font-semibold text-[#3F6212]">EXECUTING (Q=0)</td>
+                <td class="py-2 px-3 font-mono">0.26</td>
+                <td class="py-2 px-3 text-slate-600">黑障第 2 步，Δ𝒥 = 0.26 ≪ Θ<sub>cancel</sub>(3.50)，原队列绝对稳定</td>
+              </tr>
+              <tr class="bg-lime-50/50">
+                <td class="py-2 px-3 font-mono font-bold">Step 50 (800s)</td>
+                <td class="py-2 px-3 font-mono">0.48</td>
+                <td class="py-2 px-3">EXECUTING (Q=2)</td>
+                <td class="py-2 px-3 font-semibold text-[#3F6212]">EXECUTING (Q=0)</td>
+                <td class="py-2 px-3 font-mono">0.39</td>
+                <td class="py-2 px-3 text-slate-600">上级真实改令（目标 0 → 2），二阶滤波器开始无超调积分吸收新场</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-3 font-mono">Step 54 (864s)</td>
+                <td class="py-2 px-3 font-mono">0.40</td>
+                <td class="py-2 px-3">EXECUTING (Q=2)</td>
+                <td class="py-2 px-3 font-bold text-amber-700">RETHINKING (Q=0)</td>
+                <td class="py-2 px-3 font-mono font-bold text-amber-700">4.49</td>
+                <td class="py-2 px-3 text-slate-600">Δ𝒥 = 4.49 ≥ 3.50，触发唯一一次队列取消（N<sub>detect</sub> = 4 步）</td>
+              </tr>
+              <tr class="bg-lime-50/50">
+                <td class="py-2 px-3 font-mono font-bold">Step 60 (960s)</td>
+                <td class="py-2 px-3 font-mono">0.50</td>
+                <td class="py-2 px-3">EXECUTING (Q=2)</td>
+                <td class="py-2 px-3 font-bold text-[#0F766E]">EXECUTING (Q=2)</td>
+                <td class="py-2 px-3 font-mono">0.33</td>
+                <td class="py-2 px-3 text-slate-600">寻思完成且波动率低于 Θ<sub>commit</sub>(1.80)，正式锁定目标 2 新队列</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-stone-300 bg-[#EFECE6] mt-12 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
+      <div>UI-03M4 军用电台物理调谐算子、场同步低通滤波与迟滞死区重寻思稳定性分析</div>
+      <div>全确定性零超越函数物理内核 · 二阶临界阻尼 ZOH 施密特切换控制</div>
+    </div>
+  </footer>
+
+  <script>
+    const radioState = {
+      band: 'VHF',
+      power: 5,
+      df: 0.0,
+      antenna: 'Sector',
+      psi: 45,
+      terrain: 'double_ridge',
+      wire: 'none',
+      ratMode: 'db'
+    };
+
+    let chartRational = null;
+    let chartTrajectory = null;
+    let chartStates = null;
+    let chartFilterFreq = null;
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function wrapLabel(str) {
+      if (typeof str !== 'string' || str.length <= 16) return str;
+      const lines = [];
+      for (let i = 0; i < str.length; i += 16) {
+        lines.push(str.slice(i, i + 16));
+      }
+      return lines;
+    }
+
+    function evalJITU(nu) {
+      if (nu <= -0.78) return 0.0;
+      const v = nu - 0.1;
+      return 6.9 + 20.0 * Math.log10(Math.sqrt(v * v + 1.0) + v);
+    }
+
+    function evalJRat(nu) {
+      if (nu <= -0.78) return 0.0;
+      const u = nu + 0.78;
+      const num = 5.02146 * u + 8.99070 * u * u + 0.19166 * u * u * u;
+      const den = 1.0 + 0.46858 * u + 0.29784 * u * u;
+      return num / den;
+    }
+
+    function evalTDiff(nu) {
+      if (nu <= -0.78) return 1.0;
+      const u = nu + 0.78;
+      const num = 1.0 + 0.2512 * u;
+      const den = 1.0 + 1.5048 * u + 5.9201 * u * u * u;
+      return num / den;
+    }
+
+    function buildTerrainProfile(preset) {
+      const K = 500;
+      const D = 4000.0;
+      const ds = D / K;
+      const sArr = new Float64Array(K + 1);
+      const zTerr = new Float64Array(K + 1);
+      const rhoVeg = new Float64Array(K + 1);
+      const hCanopy = new Float64Array(K + 1);
+
+      for (let k = 0; k <= K; k++) {
+        const s = k * ds;
+        sArr[k] = s;
+        if (preset === 'double_ridge') {
+          zTerr[k] = 40.0 + 120.0 * Math.exp(-Math.pow((s - 1200.0) / 280.0, 2))
+                          + 105.0 * Math.exp(-Math.pow((s - 2800.0) / 320.0, 2))
+                          + 15.0 * Math.sin((2.0 * Math.PI * s) / 600.0);
+          rhoVeg[k] = (s > 1500 && s < 2400) ? 0.45 : 0.15;
+          hCanopy[k] = 12.0;
+        } else if (preset === 'dense_forest') {
+          zTerr[k] = 50.0 + 58.0 * Math.exp(-Math.pow((s - 2000.0) / 620.0, 2))
+                          + 10.0 * Math.cos((2.0 * Math.PI * s) / 500.0);
+          rhoVeg[k] = (s > 400 && s < 3600) ? 0.88 : 0.2;
+          hCanopy[k] = 22.0;
+        } else {
+          zTerr[k] = 165.0 - 0.03 * s + 12.0 * Math.sin((2.0 * Math.PI * s) / 900.0);
+          rhoVeg[k] = 0.12;
+          hCanopy[k] = 10.0;
+        }
+      }
+      return { K, D, ds, sArr, zTerr, rhoVeg, hCanopy };
+    }
+
+    function findDominantEdge(sArr, zEff, a, b) {
+      let bestK = -1;
+      let maxXi = -1e18;
+      const sbMinusSa = sArr[b] - sArr[a];
+      const slope = (zEff[b] - zEff[a]) / sbMinusSa;
+      for (let k = a + 1; k < b; k++) {
+        const d1 = sArr[k] - sArr[a];
+        const d2 = sArr[b] - sArr[k];
+        const h = zEff[k] - (zEff[a] + slope * d1);
+        const xi = (h * Math.abs(h)) / (d1 * d2);
+        if (xi > maxXi) {
+          maxXi = xi;
+          bestK = k;
+        }
+      }
+      return { kStar: bestK, xiStar: maxXi };
+    }
+
+    function computeChannelPhysics() {
+      const prof = buildTerrainProfile(radioState.terrain);
+      const { K, D, ds, sArr, zTerr, rhoVeg, hCanopy } = prof;
+      const Reff = 8500000.0;
+      const isVHF = radioState.band === 'VHF';
+      const freqMHz = isVHF ? 45.0 : 6.0;
+      const lambda = 299.792458 / freqMHz;
+
+      let hAntTx = 2.0;
+      if (radioState.antenna === 'Omni') hAntTx = 10.0;
+      if (radioState.antenna === 'Sector') hAntTx = 6.0;
+      const hAntRx = 2.0;
+
+      const zEff = new Float64Array(K + 1);
+      for (let k = 0; k <= K; k++) {
+        const s = sArr[k];
+        zEff[k] = zTerr[k] - (s * (D - s)) / (2.0 * Reff);
+      }
+      zEff[0] += hAntTx;
+      zEff[K] += hAntRx;
+
+      const Str = (zEff[K] - zEff[0]) / D;
+      let Stim = -1e18;
+      let Srim = -1e18;
+      let dVeg = 0.0;
+
+      for (let k = 1; k < K; k++) {
+        const s = sArr[k];
+        const st = (zEff[k] - zEff[0]) / s;
+        const sr = (zEff[k] - zEff[K]) / (D - s);
+        if (st > Stim) Stim = st;
+        if (sr > Srim) Srim = sr;
+
+        const zLos = zEff[0] + Str * s;
+        const pen = Math.max(0.0, Math.min(1.0, (zTerr[k] + hCanopy[k] - zLos) / hCanopy[k]));
+        dVeg += ds * rhoVeg[k] * pen;
+      }
+
+      const domP = findDominantEdge(sArr, zEff, 0, K);
+      const nuP = (domP.xiStar >= 0 ? 1 : -1) * Math.sqrt((2.0 * D / lambda) * Math.abs(domP.xiStar));
+      let nuL = -2.0;
+      let nuR = -2.0;
+      let kL = -1;
+      let kR = -1;
+
+      if (nuP > -0.78) {
+        if (domP.kStar > 1) {
+          const domL = findDominantEdge(sArr, zEff, 0, domP.kStar);
+          kL = domL.kStar;
+          nuL = (domL.xiStar >= 0 ? 1 : -1) * Math.sqrt((2.0 * sArr[domP.kStar] / lambda) * Math.abs(domL.xiStar));
+        }
+        if (domP.kStar < K - 1) {
+          const domR = findDominantEdge(sArr, zEff, domP.kStar, K);
+          kR = domR.kStar;
+          nuR = (domR.xiStar >= 0 ? 1 : -1) * Math.sqrt((2.0 * (D - sArr[domP.kStar]) / lambda) * Math.abs(domR.xiStar));
+        }
+      }
+
+      let jDeygout = evalJRat(nuP) + (nuP > -0.78 ? (evalJRat(nuL) + evalJRat(nuR)) : 0.0);
+      const isNLoS = Stim > Str;
+      if (isVHF && isNLoS) {
+        jDeygout += 12.0;
+      }
+
+      let sb = D * 0.5;
+      let zb = zEff[0] + Str * sb;
+      let nuB = nuP;
+      if (isNLoS) {
+        sb = (zEff[K] - zEff[0] + Srim * D) / (Stim + Srim);
+        sb = Math.max(ds, Math.min(D - ds, sb));
+        const hb = (Stim - Str) * sb;
+        zb = zEff[0] + Str * sb + hb;
+        nuB = hb * Math.sqrt((2.0 * D) / (lambda * sb * (D - sb)));
+      }
+      const jBull = evalJRat(nuB);
+
+      const gammaVeg = isVHF ? 0.08 : 0.015;
+      const amVeg = isVHF ? 28.0 : 12.0;
+      const lVeg = (gammaVeg * dVeg) / (1.0 + (gammaVeg * dVeg) / amVeg);
+
+      const bHalf = isVHF ? 12.5 : 1.5;
+      const lorentz = 1.0 / (1.0 + Math.pow(radioState.df / bHalf, 2));
+      const lDetuneDb = -10.0 * Math.log10(Math.max(1e-6, lorentz));
+
+      const thetaSubRad = (45.0 * Math.PI) / 180.0;
+      const thetaDfRad = (215.0 * Math.PI) / 180.0;
+      const psiRad = (radioState.psi * Math.PI) / 180.0;
+
+      function calcAntGain(targetRad) {
+        if (radioState.antenna === 'Whip') return 0.8;
+        if (radioState.antenna === 'Omni') return 2.0;
+        const dot = Math.cos(targetRad) * Math.cos(psiRad) + Math.sin(targetRad) * Math.sin(psiRad);
+        return 0.15 + (5.0 - 0.15) * Math.pow(0.5 * (1.0 + dot), 2);
+      }
+
+      const gTxSub = calcAntGain(thetaSubRad);
+      const gTxDf = calcAntGain(thetaDfRad);
+      const gRxSub = 0.8;
+
+      const tDiff = Math.pow(10.0, -jDeygout / 10.0);
+      const tVeg = Math.pow(10.0, -lVeg / 10.0);
+      const tPath = isVHF ? 0.36 : 0.52;
+
+      const gammaRadio = (radioState.power / 5.0) * gTxSub * gRxSub * lorentz * tPath * tDiff * tVeg * 28.0;
+      const gammaHalf = 0.42;
+      const etaRadio = radioState.power === 0 ? 0.0 : 1.2 * ((gammaRadio * gammaRadio) / (gammaHalf * gammaHalf + gammaRadio * gammaRadio));
+
+      let etaWire = 0.0;
+      if (radioState.wire === 'intact') {
+        etaWire = 1.2 / (1.0 + 0.012 * 4.2);
+      }
+
+      const etaTotal = Math.max(etaRadio, etaWire);
+
+      const mBand = isVHF ? 1.0 : 1.65;
+      const tDiffDf = isVHF ? 0.09 : 0.38;
+      const eRadio = 0.65 * mBand * (radioState.power / 5.0) * gTxDf * 0.42 * tDiffDf * tVeg;
+
+      return {
+        prof, zEff, Str, isNLoS,
+        kP: domP.kStar, kL, kR, nuP, nuL, nuR,
+        sb, zb, jDeygout, jBull, lVeg, lorentz, lDetuneDb,
+        gTxSub, gTxDf, etaRadio, etaWire, etaTotal, eRadio
+      };
+    }
+
+    function drawTerrainCanvas(phys) {
+      const canvas = document.getElementById('canvas-terrain');
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      const padL = 38, padR = 16, padT = 18, padB = 26;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, W, H);
+
+      const { K, D, sArr, zTerr, hCanopy } = phys.prof;
+      const { zEff, kP, kL, kR, sb, zb, isNLoS } = phys;
+      const maxZ = 210.0;
+
+      const toX = (s) => padL + (s / D) * plotW;
+      const toY = (z) => padT + plotH - (Math.max(0, Math.min(maxZ, z)) / maxZ) * plotH;
+
+      ctx.strokeStyle = '#E7E5E4';
+      ctx.lineWidth = 1;
+      for (let z = 0; z <= 200; z += 50) {
+        const y = toY(z);
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(W - padR, y);
+        ctx.stroke();
+        ctx.fillStyle = '#78716C';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(z + 'm', 4, y + 3);
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(toX(0), toY(0));
+      for (let k = 0; k <= K; k++) {
+        ctx.lineTo(toX(sArr[k]), toY(zTerr[k] + hCanopy[k] * 0.7));
+      }
+      ctx.lineTo(toX(D), toY(0));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(63, 98, 18, 0.16)';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(toX(0), toY(0));
+      for (let k = 0; k <= K; k++) {
+        ctx.lineTo(toX(sArr[k]), toY(zTerr[k]));
+      }
+      ctx.lineTo(toX(D), toY(0));
+      ctx.closePath();
+      ctx.fillStyle = '#D6D3D1';
+      ctx.fill();
+      ctx.strokeStyle = '#57534E';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = isNLoS ? '#B91C1C' : '#0F766E';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(toX(0), toY(zEff[0]));
+      ctx.lineTo(toX(D), toY(zEff[K]));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (kP > 0) {
+        ctx.strokeStyle = '#D97706';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(toX(0), toY(zEff[0]));
+        if (kL > 0) ctx.lineTo(toX(sArr[kL]), toY(zEff[kL]));
+        ctx.lineTo(toX(sArr[kP]), toY(zEff[kP]));
+        if (kR > 0) ctx.lineTo(toX(sArr[kR]), toY(zEff[kR]));
+        ctx.lineTo(toX(D), toY(zEff[K]));
+        ctx.stroke();
+      }
+
+      const drawMarker = (x, y, color, label) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(label, x - 14, y - 8);
+      };
+
+      drawMarker(toX(0), toY(zEff[0]), '#0F766E', 'HQ');
+      drawMarker(toX(D), toY(zEff[K]), '#3F6212', 'SUB');
+      if (kP > 0) drawMarker(toX(sArr[kP]), toY(zEff[kP]), '#D97706', '主刃 k_p');
+      if (isNLoS) {
+        ctx.fillStyle = '#7C3AED';
+        ctx.fillRect(toX(sb) - 3.5, toY(zb) - 3.5, 7, 7);
+      }
+
+      ctx.fillStyle = '#57534E';
+      ctx.font = '10px sans-serif';
+      ctx.fillText('0m', padL, H - 8);
+      ctx.fillText('2000m', padL + plotW * 0.46, H - 8);
+      ctx.fillText('4000m', W - padR - 30, H - 8);
+    }
+
+    function drawPolarCanvas() {
+      const canvas = document.getElementById('canvas-polar');
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      const cx = W * 0.5;
+      const cy = H * 0.52;
+      const maxR = Math.min(W, H) * 0.37;
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = '#E7E5E4';
+      ctx.lineWidth = 1;
+      [0.33, 0.66, 1.0].forEach((f) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, maxR * f, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      ctx.beginPath();
+      ctx.moveTo(cx - maxR - 8, cy);
+      ctx.lineTo(cx + maxR + 8, cy);
+      ctx.moveTo(cx, cy - maxR - 8);
+      ctx.lineTo(cx, cy + maxR + 8);
+      ctx.stroke();
+
+      const psiRad = (radioState.psi * Math.PI) / 180.0;
+      ctx.beginPath();
+      for (let deg = 0; deg <= 360; deg += 2) {
+        const rad = (deg * Math.PI) / 180.0;
+        let g = 0.8;
+        if (radioState.antenna === 'Omni') g = 2.0;
+        if (radioState.antenna === 'Sector') {
+          const dot = Math.cos(rad) * Math.cos(psiRad) + Math.sin(rad) * Math.sin(psiRad);
+          g = 0.15 + 4.85 * Math.pow(0.5 * (1.0 + dot), 2);
+        }
+        const r = (g / 5.0) * maxR;
+        const px = cx + r * Math.sin(rad);
+        const py = cy - r * Math.cos(rad);
+        if (deg === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(63, 98, 18, 0.22)';
+      ctx.fill();
+      ctx.strokeStyle = '#3F6212';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      const drawRay = (deg, color, label) => {
+        const rad = (deg * Math.PI) / 180.0;
+        const ex = cx + (maxR + 6) * Math.sin(rad);
+        const ey = cy - (maxR + 6) * Math.cos(rad);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(label, ex + (Math.sin(rad) >= 0 ? 5 : -42), ey + 4);
+      };
+
+      drawRay(45, '#0F766E', '下属 45°');
+      drawRay(215, '#B91C1C', '敌DF 215°');
+
+      ctx.fillStyle = '#57534E';
+      ctx.font = '10px sans-serif';
+      ctx.fillText('N 0°', cx - 10, cy - maxR - 11);
+      ctx.fillText('E 90°', cx + maxR + 10, cy + 3);
+    }
+
+    function updatePhysicsUI() {
+      radioState.df = parseFloat(document.getElementById('slider-df').value);
+      radioState.psi = parseFloat(document.getElementById('slider-psi').value);
+      radioState.terrain = document.getElementById('sel-terrain').value;
+      radioState.wire = document.getElementById('sel-wire').value;
+
+      const phys = computeChannelPhysics();
+
+      document.getElementById('lbl-df').textContent = `${radioState.df.toFixed(1)} kHz (L = ${phys.lorentz.toFixed(3)})`;
+      document.getElementById('lbl-psi').textContent = `${radioState.psi}°`;
+      document.getElementById('azimuth-control-box').style.opacity = radioState.antenna === 'Sector' ? '1' : '0.45';
+
+      const kpiEta = document.getElementById('kpi-eta');
+      kpiEta.textContent = phys.etaTotal.toFixed(2);
+      kpiEta.className = 'text-2xl font-black mt-0.5 ' + (phys.etaTotal >= 0.85 ? 'text-[#3F6212]' : (phys.etaTotal >= 0.35 ? 'text-amber-700' : 'text-rose-700'));
+      document.getElementById('kpi-eta-sub').textContent = `无线 ${phys.etaRadio.toFixed(2)} / 有线 ${phys.etaWire.toFixed(2)}`;
+
+      const kpiEw = document.getElementById('kpi-ew');
+      kpiEw.textContent = phys.eRadio.toFixed(2);
+      kpiEw.className = 'text-2xl font-black mt-0.5 ' + (phys.eRadio >= 0.65 ? 'text-rose-700' : (phys.eRadio >= 0.25 ? 'text-amber-700' : 'text-[#0F766E]'));
+      document.getElementById('kpi-ew-sub').textContent = radioState.power === 0 ? '电磁静默 (E=0)' : (phys.eRadio >= 0.65 ? '高暴露风险 (易遭测向定位)' : '可控暴露水平');
+
+      document.getElementById('kpi-diff').textContent = `${phys.jDeygout.toFixed(2)} dB`;
+      document.getElementById('kpi-diff-sub').textContent = `Bullington: ${phys.jBull.toFixed(2)} dB`;
+
+      document.getElementById('kpi-veg').textContent = `${phys.lVeg.toFixed(1)} dB`;
+      document.getElementById('kpi-veg-sub').textContent = `L(Δf) = ${phys.lorentz.toFixed(3)} (-${phys.lDetuneDb.toFixed(1)} dB)`;
+
+      let advice = '';
+      if (radioState.wire === 'intact' && radioState.power === 0) {
+        advice = '🛡️ 完美阵地隐蔽模式：依托完好野战被复线获得 η = ' + phys.etaWire.toFixed(2) + ' 高质量传导，同时保持 0 W 电磁静默（E_radio = 0.00）。';
+      } else if (Math.abs(radioState.df) > 4.0 && radioState.power > 0) {
+        advice = '⚠️ 失谐“纯亏损”陷阱：频偏 Δf 导致洛伦兹接收因子跌至 ' + phys.lorentz.toFixed(2) + '，下属传导恶化（η=' + phys.etaTotal.toFixed(2) + '），但敌方宽带测向台仍截获全部辐射（E_radio=' + phys.eRadio.toFixed(2) + '）！';
+      } else if (radioState.band === 'VHF' && phys.isNLoS && radioState.wire !== 'intact') {
+        advice = '🏔️ VHF 视距受阻警告：双山脊截断几何视距（Deygout 损耗 ' + phys.jDeygout.toFixed(1) + ' dB），建议切换至 HF 中短波绕射或架设全向高架天线。';
+      } else if (radioState.band === 'HF' && radioState.power >= 5) {
+        advice = '📡 HF 强绕射贯通模式：50m 长波成功绕越山脊背面（η=' + phys.etaTotal.toFixed(2) + '），但 HF 频段测向脆弱度高（E_radio=' + phys.eRadio.toFixed(2) + '），注意防范敌方测向。';
+      } else {
+        advice = '✓ 链路参数均衡：当前物理信道传输乘数 η = ' + phys.etaTotal.toFixed(2) + '，电磁暴露源项 E_radio = ' + phys.eRadio.toFixed(2) + '。';
+      }
+      document.getElementById('tactical-advice-box').textContent = advice;
+
+      drawTerrainCanvas(phys);
+      drawPolarCanvas();
+    }
+
+    function setBand(b) {
+      radioState.band = b;
+      const vhfBtn = document.getElementById('btn-band-vhf');
+      const hfBtn = document.getElementById('btn-band-hf');
+      if (b === 'VHF') {
+        vhfBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold border transition bg-[#3F6212] text-white border-[#3F6212]';
+        hfBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold border transition bg-white text-slate-700 border-stone-300 hover:bg-stone-100';
+      } else {
+        hfBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold border transition bg-[#3F6212] text-white border-[#3F6212]';
+        vhfBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold border transition bg-white text-slate-700 border-stone-300 hover:bg-stone-100';
+      }
+      updatePhysicsUI();
+    }
+
+    function setPower(p) {
+      radioState.power = p;
+      document.querySelectorAll('.pwr-btn').forEach((btn) => {
+        const val = parseInt(btn.getAttribute('data-pwr'), 10);
+        btn.className = val === p
+          ? 'pwr-btn py-1.5 rounded text-xs font-bold border bg-[#3F6212] text-white border-[#3F6212]'
+          : 'pwr-btn py-1.5 rounded text-xs font-bold border bg-white text-slate-700 border-stone-300';
+      });
+      updatePhysicsUI();
+    }
+
+    function setAnt(a) {
+      radioState.antenna = a;
+      document.querySelectorAll('.ant-btn').forEach((btn) => {
+        const val = btn.getAttribute('data-ant');
+        btn.className = val === a
+          ? 'ant-btn py-1.5 px-2 rounded text-xs font-bold border bg-[#3F6212] text-white border-[#3F6212]'
+          : 'ant-btn py-1.5 px-2 rounded text-xs font-bold border bg-white text-slate-700 border-stone-300';
+      });
+      updatePhysicsUI();
+    }
+
+    function initRationalChart() {
+      const nuLabels = [];
+      const ituData = [];
+      const ratData = [];
+      const errData = [];
+
+      for (let nu = -0.8; nu <= 10.01; nu += 0.3) {
+        const nVal = parseFloat(nu.toFixed(2));
+        nuLabels.push(nVal);
+        if (radioState.ratMode === 'db') {
+          const j1 = evalJITU(nVal);
+          const j2 = evalJRat(nVal);
+          ituData.push(parseFloat(j1.toFixed(3)));
+          ratData.push(parseFloat(j2.toFixed(3)));
+          errData.push(parseFloat(Math.abs(j1 - j2).toFixed(4)));
+        } else {
+          const j1 = evalJITU(nVal);
+          const t1 = Math.pow(10.0, -j1 / 10.0);
+          const t2 = evalTDiff(nVal);
+          ituData.push(parseFloat(t1.toFixed(4)));
+          ratData.push(parseFloat(t2.toFixed(4)));
+          errData.push(parseFloat(Math.abs(t1 - t2).toFixed(4)));
+        }
+      }
+
+      const ctx = document.getElementById('chart-rational').getContext('2d');
+      if (chartRational) chartRational.destroy();
+
+      chartRational = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: nuLabels,
+          datasets: [
+            {
+              label: radioState.ratMode === 'db' ? 'ITU-R P.526 标准解析式 J_ITU(ν)' : '精确对数功率透过率 10^(-J/10)',
+              data: ituData,
+              borderColor: '#64748B',
+              borderWidth: 2,
+              borderDash: [5, 4],
+              pointRadius: 0,
+              yAxisID: 'y'
+            },
+            {
+              label: radioState.ratMode === 'db' ? '无超越函数三阶有理算子 J_rat(ν)' : '直接有理透过率算子 T_diff(ν)',
+              data: ratData,
+              borderColor: '#3F6212',
+              borderWidth: 2.5,
+              pointRadius: 0,
+              yAxisID: 'y'
+            },
+            {
+              label: radioState.ratMode === 'db' ? '绝对逼近误差 |J_ITU - J_rat| [dB]' : '线性功率逼近绝对误差',
+              data: errData,
+              borderColor: '#D97706',
+              backgroundColor: 'rgba(217, 119, 6, 0.14)',
+              borderWidth: 1.5,
+              fill: true,
+              pointRadius: 0,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: { enabled: true }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '菲涅耳-基尔霍夫衍射参数 ν', font: { size: 11 } },
+              ticks: { maxTicksLimit: 12, font: { size: 10 } }
+            },
+            y: {
+              type: 'linear',
+              position: 'left',
+              title: { display: true, text: radioState.ratMode === 'db' ? '衍射损耗 [dB]' : '线性功率透过率', font: { size: 11 } },
+              ticks: { font: { size: 10 } }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              suggestedMax: radioState.ratMode === 'db' ? 0.25 : 0.06,
+              title: { display: true, text: '绝对误差', font: { size: 11 } },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function toggleRationalChart(mode) {
+      radioState.ratMode = mode;
+      document.getElementById('btn-rat-db').className = mode === 'db'
+        ? 'px-2.5 py-1 rounded font-semibold bg-slate-800 text-white'
+        : 'px-2.5 py-1 rounded font-semibold bg-white text-slate-700 border border-stone-300';
+      document.getElementById('btn-rat-lin').className = mode === 'lin'
+        ? 'px-2.5 py-1 rounded font-semibold bg-slate-800 text-white'
+        : 'px-2.5 py-1 rounded font-semibold bg-white text-slate-700 border border-stone-300';
+      initRationalChart();
+    }
+
+    function applySimPreset() {
+      const preset = document.getElementById('sel-sim-preset').value;
+      if (preset === 'benchmark') {
+        document.getElementById('slider-eta-mean').value = 0.35;
+        document.getElementById('slider-eta-jit').value = 0.18;
+        document.getElementById('slider-th-cancel').value = 3.5;
+        document.getElementById('slider-th-commit').value = 1.8;
+        document.getElementById('slider-ndwell').value = 4;
+      } else if (preset === 'pure_jitter') {
+        document.getElementById('slider-eta-mean').value = 0.32;
+        document.getElementById('slider-eta-jit').value = 0.24;
+        document.getElementById('slider-th-cancel').value = 3.5;
+        document.getElementById('slider-th-commit').value = 1.8;
+        document.getElementById('slider-ndwell').value = 4;
+      } else {
+        document.getElementById('slider-eta-mean').value = 1.05;
+        document.getElementById('slider-eta-jit').value = 0.06;
+        document.getElementById('slider-th-cancel').value = 3.5;
+        document.getElementById('slider-th-commit').value = 1.8;
+        document.getElementById('slider-ndwell').value = 4;
+      }
+      runStabilitySimulation();
+    }
+
+    function runStabilitySimulation() {
+      const preset = document.getElementById('sel-sim-preset').value;
+      const etaMean = parseFloat(document.getElementById('slider-eta-mean').value);
+      const etaJit = parseFloat(document.getElementById('slider-eta-jit').value);
+      let thCancel = parseFloat(document.getElementById('slider-th-cancel').value);
+      let thCommit = parseFloat(document.getElementById('slider-th-commit').value);
+      if (thCommit >= thCancel - 0.2) {
+        thCommit = Math.max(0.4, parseFloat((thCancel - 0.3).toFixed(1)));
+        document.getElementById('slider-th-commit').value = thCommit;
+      }
+      const nDwellReq = parseInt(document.getElementById('slider-ndwell').value, 10);
+
+      document.getElementById('lbl-eta-mean').textContent = etaMean.toFixed(2);
+      document.getElementById('lbl-eta-jit').textContent = etaJit.toFixed(2);
+      document.getElementById('lbl-th-cancel').textContent = thCancel.toFixed(1);
+      document.getElementById('lbl-th-commit').textContent = thCommit.toFixed(1);
+      document.getElementById('lbl-ndwell').textContent = `${nDwellReq} 步 (${nDwellReq * 16} s)`;
+
+      const steps = 120;
+      const dt = 16.0;
+      const tauSync = 24.0;
+      const omega0 = 1.0 / tauSync;
+      const etaHalf = 0.25;
+      const etaCut = 0.05;
+      const tauDecay = 480.0;
+
+      const labels = [];
+      const etaArr = [];
+      const deltaJArr = [];
+      const thCancelArr = [];
+      const thCommitArr = [];
+      const naiveStateArr = [];
+      const hystStateArr = [];
+
+      const gOld = [10.0, 2.0, 1.0, 0.5];
+      const gNew = [1.0, 2.0, 11.0, 1.0];
+
+      const muInit = Math.min(1.2, Math.max(1.0, etaMean));
+      let gLocal = gOld.map((v) => v * muInit);
+      let vLocal = [0.0, 0.0, 0.0, 0.0];
+      let gCommit = gLocal.slice();
+      let qCurr = 0;
+      let state = 'EXECUTING';
+      let nDwell = nDwellReq;
+      let nRethink = 0;
+      let hystCancels = 0;
+      let convergeStep = -1;
+
+      let naiveState = 'EXECUTING';
+      let naiveQ = 0;
+      let naiveRethink = 0;
+      let naiveCancels = 0;
+
+      for (let k = 0; k < steps; k++) {
+        labels.push(k);
+        const hasShift = preset !== 'pure_jitter' && k >= 50;
+        const g0 = hasShift ? gNew : gOld;
+
+        const osc = Math.sin((2.0 * Math.PI * k) / 3.5) * 0.72 + Math.cos((2.0 * Math.PI * k) / 2.1) * 0.28;
+        let eta = Math.max(0.06, Math.min(1.2, etaMean + etaJit * osc));
+        if (preset !== 'pure_jitter' && (k === 25 || k === 26)) {
+          eta = 0.02;
+        }
+        etaArr.push(parseFloat(eta.toFixed(3)));
+
+        const gNaive = g0.map((v) => v * eta);
+        let maxNaiveIdx = 0;
+        for (let m = 1; m < 4; m++) {
+          if (gNaive[m] > gNaive[maxNaiveIdx]) maxNaiveIdx = m;
+        }
+        if (naiveState === 'EXECUTING') {
+          if (eta < 0.28 || maxNaiveIdx !== naiveQ) {
+            naiveState = 'RETHINKING';
+            naiveRethink = 2;
+            naiveCancels++;
+          }
+        } else {
+          naiveRethink--;
+          if (naiveRethink <= 0 && eta >= 0.28) {
+            naiveState = 'EXECUTING';
+            naiveQ = maxNaiveIdx;
+          }
+        }
+        naiveStateArr.push(naiveState === 'RETHINKING' ? -1 : naiveQ);
+
+        let maxLocalVal = gLocal[0];
+        let maxLocalIdx = 0;
+        let driftSq = 0.0;
+        for (let m = 0; m < 4; m++) {
+          if (gLocal[m] > maxLocalVal) {
+            maxLocalVal = gLocal[m];
+            maxLocalIdx = m;
+          }
+          const d = gLocal[m] - gCommit[m];
+          driftSq += d * d;
+        }
+        const regret = Math.max(0.0, maxLocalVal - gLocal[qCurr]);
+        const drift = Math.sqrt(driftSq);
+        const deltaJ = 0.6 * regret + 0.4 * drift;
+        deltaJArr.push(parseFloat(deltaJ.toFixed(3)));
+        thCancelArr.push(thCancel);
+        thCommitArr.push(thCommit);
+
+        let vSq = 0.0;
+        for (let m = 0; m < 4; m++) vSq += vLocal[m] * vLocal[m];
+        const volatility = tauSync * Math.sqrt(vSq);
+
+        if (state === 'EXECUTING') {
+          nDwell++;
+          if (nDwell >= nDwellReq && deltaJ >= thCancel) {
+            state = 'RETHINKING';
+            const rSteps = Math.ceil(2.0 + 3.0 * Math.pow(1.0 - Math.min(eta, 1.0), 1.5));
+            nRethink = rSteps;
+            hystCancels++;
+          }
+        } else {
+          nRethink--;
+          if (nRethink <= 0 && volatility <= thCommit) {
+            state = 'EXECUTING';
+            gCommit = gLocal.slice();
+            qCurr = maxLocalIdx;
+            nDwell = 0;
+            if (hasShift && qCurr === 2 && convergeStep === -1) {
+              convergeStep = k;
+            }
+          }
+        }
+        hystStateArr.push(state === 'RETHINKING' ? -1 : qCurr);
+
+        const mu = Math.min(1.2, Math.max(1.0, eta));
+        const wn = omega0 * (eta / (eta + etaHalf));
+        const phi = wn * dt;
+        const expNegPhi = Math.exp(-phi);
+        const gammaLeak = eta >= etaCut ? 1.0 : Math.exp(-(dt / tauDecay) * (1.0 - eta / etaCut));
+
+        const nextG = new Array(4);
+        const nextV = new Array(4);
+        for (let m = 0; m < 4; m++) {
+          const target = mu * g0[m];
+          const err = gLocal[m] - target;
+          nextG[m] = gammaLeak * (target + expNegPhi * ((1.0 + phi) * err + dt * vLocal[m]));
+          nextV[m] = gammaLeak * expNegPhi * (-wn * wn * dt * err + (1.0 - phi) * vLocal[m]);
+        }
+        gLocal = nextG;
+        vLocal = nextV;
+      }
+
+      document.getElementById('stat-naive-cancels').textContent = `${naiveCancels} 次` + (naiveCancels > 5 ? ' (高频抽搐)' : '');
+      document.getElementById('stat-hyst-cancels').textContent = `${hystCancels} 次` + (hystCancels <= 1 ? ' (完全稳定)' : ' (阈值偏低)');
+
+      const normG0 = Math.sqrt(100 + 4 + 1 + 0.25);
+      const thCrit = (1.0 + 0.6 * (Math.SQRT2 - 1.0)) * (1.0 - Math.exp(-32.0 / 480.0)) * muInit * normG0;
+      document.getElementById('stat-th-crit').textContent = `${thCrit.toFixed(2)} (两步黑障保护界)`;
+
+      if (preset === 'pure_jitter') {
+        document.getElementById('stat-conv-time').textContent = '无改令 (稳态保持)';
+      } else if (convergeStep >= 50) {
+        const lagSteps = convergeStep - 50;
+        document.getElementById('stat-conv-time').textContent = `${lagSteps} 步 (${lagSteps * 16} s, Step ${convergeStep})`;
+      } else {
+        document.getElementById('stat-conv-time').textContent = '未触发改令切换';
+      }
+
+      renderTrajectoryChart(labels, etaArr, deltaJArr, thCancelArr, thCommitArr);
+      renderStatesChart(labels, naiveStateArr, hystStateArr);
+    }
+
+    function renderTrajectoryChart(labels, etaArr, deltaJArr, thCancelArr, thCommitArr) {
+      const ctx = document.getElementById('chart-trajectory').getContext('2d');
+      if (chartTrajectory) chartTrajectory.destroy();
+
+      chartTrajectory = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '失配泛函 Δ𝒥(t_k)',
+              data: deltaJArr,
+              borderColor: '#3F6212',
+              backgroundColor: 'rgba(63, 98, 18, 0.12)',
+              borderWidth: 2.5,
+              fill: true,
+              pointRadius: 0,
+              yAxisID: 'y'
+            },
+            {
+              label: '施密特取消上阈值 Θ_cancel',
+              data: thCancelArr,
+              borderColor: '#B91C1C',
+              borderWidth: 1.5,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              yAxisID: 'y'
+            },
+            {
+              label: '施密特锁定下阈值 Θ_commit',
+              data: thCommitArr,
+              borderColor: '#0F766E',
+              borderWidth: 1.5,
+              borderDash: [3, 3],
+              pointRadius: 0,
+              yAxisID: 'y'
+            },
+            {
+              label: '瞬时信道质量 η(t_k)',
+              data: etaArr,
+              borderColor: '#D97706',
+              borderWidth: 1.2,
+              pointRadius: 0,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { labels: { boxWidth: 12, font: { size: 11 } } }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '仿真逻辑步长 k (每步 Δt = 16s，Step 50 为战役改令)', font: { size: 11 } },
+              ticks: { maxTicksLimit: 13, font: { size: 10 } }
+            },
+            y: {
+              position: 'left',
+              suggestedMax: 8.5,
+              title: { display: true, text: '失配泛函与阈值', font: { size: 11 } },
+              ticks: { font: { size: 10 } }
+            },
+            y1: {
+              position: 'right',
+              min: 0,
+              max: 1.3,
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: '传导因子 η', font: { size: 11 } },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function renderStatesChart(labels, naiveStateArr, hystStateArr) {
+      const ctx = document.getElementById('chart-states').getContext('2d');
+      if (chartStates) chartStates.destroy();
+
+      chartStates = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '二阶施密特迟滞系统队列 (稳定)',
+              data: hystStateArr,
+              borderColor: '#3F6212',
+              borderWidth: 2.5,
+              stepped: true,
+              pointRadius: 0
+            },
+            {
+              label: '朴素直乘系统队列 (高频抽搐)',
+              data: naiveStateArr,
+              borderColor: 'rgba(185, 28, 28, 0.55)',
+              borderWidth: 1.4,
+              stepped: true,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { boxWidth: 12, font: { size: 10 } } }
+          },
+          scales: {
+            x: { ticks: { maxTicksLimit: 8, font: { size: 10 } } },
+            y: {
+              min: -1.3,
+              max: 2.4,
+              ticks: {
+                stepSize: 1,
+                font: { size: 10 },
+                callback: (v) => {
+                  if (v === -1) return '发呆重寻思';
+                  if (v === 0) return '目标 0';
+                  if (v === 2) return '目标 2';
+                  return '';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function initFilterFreqChart() {
+      const ctx = document.getElementById('chart-filter-freq').getContext('2d');
+      const rawLabels = [
+        'τ_f=32s (32s奈奎斯特抖动)',
+        'τ_f=48s (32s奈奎斯特抖动)',
+        'τ_f=64s (32s奈奎斯特抖动)',
+        'τ_f=48s (64s 4步周期波动)'
+      ];
+      chartFilterFreq = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: rawLabels.map(wrapLabel),
+          datasets: [
+            {
+              label: '一阶指数平滑增益 |H_1|',
+              data: [0.2449, 0.1651, 0.1244, 0.2304],
+              backgroundColor: '#94A3B8',
+              borderRadius: 4
+            },
+            {
+              label: '二阶临界阻尼 (ζ=1) 增益 |H_2|',
+              data: [0.0689, 0.0226, 0.0099, 0.1356],
+              backgroundColor: '#0F766E',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { boxWidth: 12, font: { size: 10 } } }
+          },
+          scales: {
+            x: { ticks: { font: { size: 10 } } },
+            y: {
+              beginAtZero: true,
+              max: 0.30,
+              title: { display: true, text: '抖动幅值传递增益', font: { size: 10 } },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function switchDocTab(tabId) {
+      document.querySelectorAll('.doc-tab-panel').forEach((panel) => {
+        panel.classList.add('hidden');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.doc-tab-btn').forEach((btn) => {
+        const active = btn.getAttribute('data-doctab') === tabId;
+        btn.className = active
+          ? 'doc-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold bg-[#3F6212] text-white'
+          : 'doc-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold bg-stone-100 text-slate-700 hover:bg-stone-200';
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      updatePhysicsUI();
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updatePhysicsUI();
+      initRationalChart();
+      initFilterFreqChart();
+      runStabilitySimulation();
+    });
+  </script>
+</body>
+</html>
