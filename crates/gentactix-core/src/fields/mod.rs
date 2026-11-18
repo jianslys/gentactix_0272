@@ -260,6 +260,8 @@ pub fn solve_deterministic_auction(
     results
 }
 
+pub use solve_deterministic_auction as run_deterministic_multi_capacity_auction;
+
 /// 算子 B-1 · 双时间尺度爆炸危害与敌方压制施密特三态姿态机
 /// tau_blast = 9.0s -> alpha_blast = 0.1690 (快衰减瞬态爆炸)
 /// tau_supp = 36.0s -> alpha_supp = 0.6412 (慢恢复敌方压制)

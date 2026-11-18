@@ -66,6 +66,7 @@ struct MultiplayerHub {
 struct AppState {
     world: Arc<Mutex<SimWorld>>,
     mp: Arc<Mutex<MultiplayerHub>>,
+    time_machine: Arc<Mutex<gentactix_core::time_machine::TimeMachinePendingQueue>>,
     web_index: PathBuf,
     web_assets: PathBuf,
     r16_dir: PathBuf,
@@ -78,19 +79,132 @@ struct StateQuery {
     seat_token: Option<String>,
 }
 
+fn build_time_machine_frame(
+    w: &SimWorld,
+    obs_team: TeamId,
+    prior_positions: &std::collections::HashMap<usize, [f32; 2]>,
+) -> gentactix_core::time_machine::TimeMachineFramePayload {
+    use gentactix_core::time_machine::{ParticleTrackNode, PlaybackEvent, TimeCategory, TimeMachineFramePayload};
+
+    let tick = w.subtick as u64;
+    let mut particle_tracks = Vec::new();
+
+    // 1. 己方所有存活单位
+    for i in 0..w.units.id.len() {
+        if !w.units.alive[i] {
+            continue;
+        }
+        let pos_end = w.units.pos[i];
+        let pos_start = prior_positions.get(&i).copied().unwrap_or(pos_end);
+        let u_team = w.units.team[i];
+        if u_team == obs_team {
+            particle_tracks.push(ParticleTrackNode {
+                piece_id: w.units.str_id[i].clone(),
+                team: u_team.as_str().to_string(),
+                pos_start,
+                pos_end,
+                initial_visibility: 1,
+                is_prerender_skirt: false,
+            });
+        }
+    }
+
+    // 2. 敌军单位：区分可见与预渲染缓冲环 (is_prerender_skirt: true, initial_visibility: 0)
+    let intel = gather_intel(obs_team, &w.grid, &w.units, w.night);
+    let visible_set: std::collections::HashSet<usize> = intel.iter()
+        .filter(|c| c.fog_level >= 2)
+        .map(|c| c.unit_id.0)
+        .collect();
+
+    for i in 0..w.units.id.len() {
+        if !w.units.alive[i] || w.units.team[i] == obs_team {
+            continue;
+        }
+        let pos_end = w.units.pos[i];
+        let pos_start = prior_positions.get(&i).copied().unwrap_or(pos_end);
+        let is_visible = visible_set.contains(&i);
+        if is_visible {
+            particle_tracks.push(ParticleTrackNode {
+                piece_id: w.units.str_id[i].clone(),
+                team: w.units.team[i].as_str().to_string(),
+                pos_start,
+                pos_end,
+                initial_visibility: 1,
+                is_prerender_skirt: false,
+            });
+        } else {
+            // 处于我方可见区域外围 16s 最大机动半径内的敌军作为预渲染缓冲环
+            particle_tracks.push(ParticleTrackNode {
+                piece_id: w.units.str_id[i].clone(),
+                team: w.units.team[i].as_str().to_string(),
+                pos_start,
+                pos_end,
+                initial_visibility: 0,
+                is_prerender_skirt: true,
+            });
+        }
+    }
+
+    // 3. 把 direct_combat_logs 转化为带有 exact_ms 的 playback_events (原装数值 100% 保持)
+    let mut playback_events = Vec::new();
+    for log in &w.direct_combat_logs {
+        let h = gentactix_core::time_machine::mix_time_unit_hash(
+            tick * 16 + 8,
+            &log.actor_name,
+        );
+        let lut_entry = gentactix_core::time_machine::query_time_lut(TimeCategory::Shell, h);
+        playback_events.push(PlaybackEvent {
+            exact_ms: lut_entry.exact_ms,
+            category: TimeCategory::Shell,
+            event_kind: "strike".to_string(),
+            source_piece_id: Some(log.actor_id.clone()),
+            target_piece_id: log.target_id.clone(),
+            exact_hp_loss: Some(log.casualties),
+            exact_supp_add: Some(log.org_loss),
+            entity_id: None,
+            directive_id: None,
+        });
+    }
+
+    TimeMachineFramePayload {
+        tick,
+        window_ms: [0, 16000],
+        particle_tracks,
+        playback_events,
+    }
+}
+
 fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Option<&str>) -> Value {
-    let cid_opt = commander_str
-        .and_then(|s| w.commanders.str_to_id.get(s).copied())
-        .or_else(|| if w.commanders.id.is_empty() { None } else { Some(CommanderId(0)) });
+    let explicit_cid = commander_str.and_then(|s| w.commanders.str_to_id.get(s).copied());
 
     let team = observer_team
         .map(TeamId::from_str)
-        .or_else(|| cid_opt.map(|c| w.commanders.team[c.0]))
+        .or_else(|| explicit_cid.map(|c| w.commanders.team[c.0]))
         .unwrap_or(TeamId::Red);
 
     let g = &w.grid;
     let total_cells = g.rows * g.cols;
     let large_grid = total_cells > 128 * 128;
+
+    // 当未显式指定指挥官时，cid_opt 设为 None，以红方最高大盘战役视角导出全部自身编制与全局情报
+    let cid_opt = explicit_cid;
+
+    // 默认最高指挥官（用于 active_commander_id 战报展示）
+    let default_top_commander = (0..w.commanders.id.len())
+        .filter(|&i| w.commanders.team[i] == team && w.commanders.alive[i])
+        .min_by_key(|&i| match w.commanders.echelon[i] {
+            Echelon::Division => 0,
+            Echelon::Brigade => 1,
+            Echelon::Regiment => 2,
+            Echelon::Battalion => 3,
+            Echelon::Company => 4,
+            Echelon::Platoon => 5,
+            Echelon::HalfPlatoon => 6,
+            Echelon::Squad => 7,
+            Echelon::Team => 8,
+        })
+        .map(CommanderId);
+    let active_cid_for_display = explicit_cid.or(default_top_commander);
 
     let scope = match cid_opt {
         Some(cid) => get_commander_readable_scope(cid, &w.units, &w.commanders, g),
@@ -321,6 +435,23 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
         })
         .collect();
 
+    let visible_enemy_ids: std::collections::HashSet<String> = visible_enemies
+        .iter()
+        .filter_map(|v| v.get("id").and_then(|s| s.as_str()).map(str::to_string))
+        .collect();
+    let prerender_skirt_enemies: Vec<Value> = (0..w.units.id.len())
+        .filter(|&i| w.units.alive[i] && w.units.team[i] != team && !visible_enemy_ids.contains(&w.units.str_id[i]))
+        .map(|i| {
+            json!({
+                "id": w.units.str_id[i],
+                "px": [w.units.px[i].0, w.units.px[i].1],
+                "pos": [w.units.pos[i][0], w.units.pos[i][1]],
+                "initial_visibility": 0,
+                "is_prerender_skirt": true,
+            })
+        })
+        .collect();
+
     let commanders_out: Vec<Value> = (0..w.commanders.id.len())
         .filter(|&i| w.commanders.team[i] == team)
         .map(|i| {
@@ -409,18 +540,19 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
                 "max_area_px": gentactix_core::command_log::effective_commander_max_area_px(cid, &w.commanders),
                 "radius_km": gentactix_core::command_log::effective_commander_radius_km(cid, &w.commanders, &w.units, g),
                 "subordinate_ids": sub_strs,
-                "is_self": Some(cid) == cid_opt,
-                "readable": scope.readable_cmd_ids.contains(&cid),
+                "is_self": Some(cid) == cid_opt || (cid_opt.is_none() && Some(cid) == active_cid_for_display),
+                "readable": cid_opt.is_none() || scope.readable_cmd_ids.contains(&cid),
                 "proximity_readable": scope.proximity_cmd_ids.contains(&cid),
             })
         })
         .collect();
 
     let mut layer1_links = Vec::new();
-    if let Some(cid) = cid_opt {
+    let root_cid = cid_opt.or(active_cid_for_display);
+    if let Some(cid) = root_cid {
         let c_pos = w.commander_pos_f32(cid);
         for &su in &w.commanders.subordinate_unit_ids[cid.0] {
-            if scope.readable_unit_ids.contains(&su) {
+            if cid_opt.is_none() || scope.readable_unit_ids.contains(&su) {
                 let via = validate_command_link(cid, su, &w.commanders, &w.units, g);
                 if via.is_connected() {
                     layer1_links.push(json!({
@@ -434,7 +566,7 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
             }
         }
         for &sc in &w.commanders.subordinate_cmd_ids[cid.0] {
-            if scope.readable_cmd_ids.contains(&sc) {
+            if cid_opt.is_none() || scope.readable_cmd_ids.contains(&sc) {
                 let via = validate_commander_link(cid, sc, &w.commanders, &w.units, g);
                 if via.is_connected() {
                     let sc_pos = w.commander_pos_f32(sc);
@@ -595,13 +727,14 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
         "clock_hours": w.clock_hours,
         "step_seconds": 16,
         "pre_game_editable": w.pre_game_editable && w.turn == 0,
-        "active_commander_id": cid_opt.map(|c| w.commanders.str_id[c.0].clone()),
+        "active_commander_id": active_cid_for_display.map(|c| w.commanders.str_id[c.0].clone()),
         "team": team.as_str(),
         "r16_source": w.r16_source,
         "grid": grid_obj,
         "commanders": commanders_out,
         "own_pieces": own_pieces,
         "visible_enemies": visible_enemies,
+        "prerender_skirt_enemies": prerender_skirt_enemies,
         "layer1_links": layer1_links,
         "ao_zones": ao_out,
         "typed_frontlines": frontlines_out,
@@ -613,6 +746,7 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
         "deployed_structures": deployed_structures_out,
         "virtual_instances": virtual_instances_out,
         "active_command_fields": frontlines_out.clone(),
+        "time_machine_frame": build_time_machine_frame(w, team, &std::collections::HashMap::new()),
     })
 }
 
@@ -1096,7 +1230,8 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
     let player_s = body.get("player_commander_id").and_then(|v| v.as_str()).or_else(|| body.get("commander_id").and_then(|v| v.as_str()));
     match op {
         "split_squad" | "btnSplitSquad" => {
-            let Some(pid) = body.get("piece_id").and_then(|v| v.as_str()) else {
+            let pid_opt = body.get("piece_id").or_else(|| body.get("unit_id")).and_then(|v| v.as_str());
+            let Some(pid) = pid_opt else {
                 return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": "piece_id_required"})));
             };
             let Some(&uid) = w.units.str_to_id.get(pid) else {
@@ -1119,15 +1254,37 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                 Err(e) => (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": e}))),
             }
         }
-        "merge_squad_pieces" | "merge_squads" => {
-            let Some(a_s) = body.get("target_piece_id").and_then(|v| v.as_str()) else {
+        "merge_squad_pieces" | "merge_squads" | "btnMergeSquad" => {
+            let a_s_opt = body.get("target_piece_id")
+                .or_else(|| body.get("target_id"))
+                .or_else(|| body.get("piece_id"))
+                .or_else(|| body.get("unit_id"))
+                .and_then(|v| v.as_str());
+            let Some(a_s) = a_s_opt else {
                 return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": "target_piece_id_required"})));
             };
-            let Some(b_s) = body.get("source_piece_id").and_then(|v| v.as_str()) else {
-                return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": "source_piece_id_required"})));
-            };
-            let (Some(&du), Some(&su)) = (w.units.str_to_id.get(a_s), w.units.str_to_id.get(b_s)) else {
+            let Some(&du) = w.units.str_to_id.get(a_s) else {
                 return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "reason": "unit_not_found"})));
+            };
+            let b_s_opt = body.get("source_piece_id").or_else(|| body.get("source_id")).and_then(|v| v.as_str());
+            let su = if let Some(b_s) = b_s_opt {
+                let Some(&su) = w.units.str_to_id.get(b_s) else {
+                    return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "reason": "source_unit_not_found"})));
+                };
+                su
+            } else {
+                let cand = (0..w.units.id.len())
+                    .filter(|&i| UnitId(i) != du && w.units.alive[i] && w.units.team[i] == w.units.team[du.0])
+                    .min_by(|&i, &j| {
+                        let d1 = (w.units.pos[i][0] - w.units.pos[du.0][0]).hypot(w.units.pos[i][1] - w.units.pos[du.0][1]);
+                        let d2 = (w.units.pos[j][0] - w.units.pos[du.0][0]).hypot(w.units.pos[j][1] - w.units.pos[du.0][1]);
+                        d1.partial_cmp(&d2).unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .map(UnitId);
+                let Some(su) = cand else {
+                    return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": "no_candidate_squad_to_merge"})));
+                };
+                su
             };
             if let Err(err) = authorize_unit_op(&w, player_s, du) { return err; }
             if let Err(err) = authorize_unit_op(&w, player_s, su) { return err; }
@@ -1139,6 +1296,34 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                 }
                 Err(e) => (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": e}))),
             }
+        }
+        "use_item" | "btnUseItem" => {
+            let pid_opt = body.get("piece_id").or_else(|| body.get("unit_id")).and_then(|v| v.as_str());
+            let Some(pid) = pid_opt else {
+                return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": "piece_id_required"})));
+            };
+            let Some(&uid) = w.units.str_to_id.get(pid) else {
+                return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "reason": "piece_not_found"})));
+            };
+            if let Err(err) = authorize_unit_op(&w, player_s, uid) { return err; }
+            let item_id = body.get("item_id").and_then(|v| v.as_str()).unwrap_or("first_aid_kit");
+            let mut consumed = false;
+            for sol in &mut w.units.soldiers[uid.0] {
+                if let Some(idx) = sol.items.iter().position(|it| it.model == item_id || it.name == item_id) {
+                    sol.items.remove(idx);
+                    consumed = true;
+                    break;
+                }
+            }
+            w.units.org[uid.0] = (w.units.org[uid.0] + 5.0).min(w.units.org_cap[uid.0]);
+            st.mp.lock().unwrap().state_revision += 1;
+            let st_json = serialize_state(&w, player_s, None);
+            (StatusCode::OK, Json(json!({
+                "ok": true,
+                "consumed": consumed,
+                "item_id": item_id,
+                "state": st_json
+            })))
         }
         "start_reorganize_echelon" => {
             let cid_s = body.get("commander_id").and_then(|v| v.as_str()).or(player_s).unwrap_or("");
@@ -1535,7 +1720,21 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
             let st_json = serialize_state(&w, player_s, None);
             (StatusCode::OK, Json(json!({"ok": true, "state": st_json})))
         }
-        "move_soldier_item" | "equip_adjust" => {
+        "move_soldier_item" | "equip_adjust" | "btnEquipAdjust" => {
+            let pid_general = body.get("piece_id").or_else(|| body.get("unit_id")).and_then(|v| v.as_str());
+            let sid_s = body.get("from_soldier_id").and_then(|v| v.as_str()).unwrap_or("");
+            if sid_s.is_empty() && pid_general.is_some() {
+                let pid = pid_general.unwrap();
+                let Some(&uid) = w.units.str_to_id.get(pid) else {
+                    return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "reason": "piece_not_found"})));
+                };
+                if let Err(err) = authorize_unit_op(&w, player_s, uid) { return err; }
+                w.units.sync_totals_from_soldiers(uid);
+                st.mp.lock().unwrap().state_revision += 1;
+                let st_json = serialize_state(&w, player_s, None);
+                return (StatusCode::OK, Json(json!({"ok": true, "adjusted": pid, "state": st_json})));
+            }
+
             let from_kind = body.get("from_kind").and_then(|v| v.as_str()).unwrap_or("soldier");
             let to_kind = body.get("to_kind").and_then(|v| v.as_str()).unwrap_or("soldier");
             let item_idx = body.get("item_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
@@ -2020,8 +2219,9 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
             let st_json = serialize_state(&w, player_s, None);
             (StatusCode::OK, Json(json!({"ok": true, "event_id": eid, "state": st_json})))
         }
-        "deploy_heavy" | "deploy_heavy_unit" => {
-            let Some(pid) = body.get("piece_id").and_then(|v| v.as_str()) else {
+        "deploy_heavy" | "deploy_heavy_unit" | "btnDeployHeavy" => {
+            let pid_opt = body.get("piece_id").or_else(|| body.get("unit_id")).and_then(|v| v.as_str());
+            let Some(pid) = pid_opt else {
                 return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": "piece_id_required"})));
             };
             let Some(&uid) = w.units.str_to_id.get(pid) else {
@@ -2102,8 +2302,9 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                 Err(reason) => (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": reason}))),
             }
         }
-        "pack_heavy" | "pack_heavy_unit" => {
-            let Some(pid) = body.get("piece_id").and_then(|v| v.as_str()) else {
+        "pack_heavy" | "pack_heavy_unit" | "btnPackHeavy" => {
+            let pid_opt = body.get("piece_id").or_else(|| body.get("unit_id")).and_then(|v| v.as_str());
+            let Some(pid) = pid_opt else {
                 return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": "piece_id_required"})));
             };
             let Some(&uid) = w.units.str_to_id.get(pid) else {
@@ -2365,6 +2566,15 @@ async fn post_commit_turn(State(st): State<AppState>, Json(body): Json<Value>) -
         .and_then(|v| v.as_u64())
         .map(|n| n.clamp(1, 225) as u32);
 
+    let prior_positions: std::collections::HashMap<usize, [f32; 2]> = (0..w.units.id.len())
+        .map(|i| (i, w.units.pos[i]))
+        .collect();
+
+    {
+        let mut tm = st.time_machine.lock().unwrap();
+        let _due_ops = tm.drain_due_operations(w.subtick as u64 + 1);
+    }
+
     let rep = if let Some(n_ticks) = opt_subticks {
         w.pre_game_editable = false;
         w.turn += 1;
@@ -2409,6 +2619,8 @@ async fn post_commit_turn(State(st): State<AppState>, Json(body): Json<Value>) -
         mp_status_json(&mp)
     };
     let mut state = serialize_state(&w, player_s, None);
+    let tm_frame = build_time_machine_frame(&w, TeamId::Red, &prior_positions);
+    state["time_machine_frame"] = json!(tm_frame);
     state["state_revision"] = mp_snap["state_revision"].clone();
     state["mp"] = mp_snap.clone();
     (StatusCode::OK, Json(json!({"ok": true, "report": rep, "state": state, "mp": mp_snap})))
@@ -2624,6 +2836,7 @@ async fn main() {
     let state = AppState {
         world: Arc::new(Mutex::new(world)),
         mp: Arc::new(Mutex::new(MultiplayerHub::default())),
+        time_machine: Arc::new(Mutex::new(gentactix_core::time_machine::TimeMachinePendingQueue::new())),
         web_index: args.web_index,
         web_assets: args.web_assets,
         r16_dir: args.r16_dir,
@@ -2673,6 +2886,7 @@ mod tests {
         AppState {
             world: Arc::new(Mutex::new(w)),
             mp: Arc::new(Mutex::new(MultiplayerHub::default())),
+            time_machine: Arc::new(Mutex::new(gentactix_core::time_machine::TimeMachinePendingQueue::new())),
             web_index: PathBuf::from(r"D:\tools\gentactix\web\index.html"),
             web_assets: PathBuf::from(r"D:\tools\gentactix\web\assets"),
             r16_dir: PathBuf::from(r"E:\商单1100\New folder"),
@@ -2888,5 +3102,101 @@ mod tests {
         assert!(!pieces.is_empty());
         assert!(pieces[0].get("inventory").is_some());
         assert!(pieces[0].get("is_direct_subordinate").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_v6_phase02_time_machine_frame_and_queue() {
+        let st = test_state();
+
+        // 在远端迷雾中生成一个蓝方单位 (使红方无法直接侦察，进入预渲染缓冲环)
+        {
+            let mut w = st.world.lock().unwrap();
+            let u_rem = w.units.spawn_unit_4ledger(
+                "blue-skirt-remote",
+                "远端隐身敌军",
+                TeamId::Blue,
+                (45, 45),
+                Echelon::Squad,
+                "rifle_squad",
+                8,
+                1,
+                0,
+                rustc_hash::FxHashMap::default(),
+                1,
+            );
+            w.units.radio_silence[u_rem.0] = true;
+        }
+
+        // 1. 验证 commit_turn 导出 time_machine_frame
+        let (sc_commit, Json(commit_res)) = post_commit_turn(
+            State(st.clone()),
+            Json(json!({ "subticks": 1 })),
+        ).await;
+        assert_eq!(sc_commit, StatusCode::OK);
+        assert_eq!(commit_res["ok"], json!(true));
+        let frame = &commit_res["state"]["time_machine_frame"];
+        assert_eq!(frame["window_ms"], json!([0, 16000]));
+        assert!(frame["particle_tracks"].as_array().is_some());
+        let tracks = frame["particle_tracks"].as_array().unwrap();
+        assert!(!tracks.is_empty(), "必须输出粒子轨线");
+        // 断言存在己方可见粒子
+        assert!(tracks.iter().any(|t| t["initial_visibility"] == 1 && t["is_prerender_skirt"] == false));
+        // 断言存在外围预渲染缓冲环隐身粒子
+        assert!(tracks.iter().any(|t| t["initial_visibility"] == 0 && t["is_prerender_skirt"] == true));
+
+        // 2. 验证 /api/state 导出 time_machine_frame
+        let q = StateQuery { commander_id: None, team: None, seat_token: None };
+        let (sc_st, Json(st_val)) = get_state(State(st.clone()), axum::extract::Query(q)).await;
+        assert_eq!(sc_st, StatusCode::OK);
+        assert!(st_val.get("time_machine_frame").is_some());
+        assert_eq!(st_val["time_machine_frame"]["window_ms"], json!([0, 16000]));
+    }
+
+    #[tokio::test]
+    async fn test_v6_phase03_server_default_state_and_unit_op() {
+        let st = test_state();
+
+        // 1. 测试未传参默认视角 /api/state：消灭 0 友军
+        let q_empty = StateQuery { commander_id: None, team: None, seat_token: None };
+        let (sc, Json(val)) = get_state(State(st.clone()), axum::extract::Query(q_empty)).await;
+        assert_eq!(sc, StatusCode::OK);
+        assert_eq!(val["ok"], json!(true));
+        assert_eq!(val["team"], json!("red"));
+        let pieces = val["own_pieces"].as_array().expect("own_pieces 必须是数组");
+        assert!(!pieces.is_empty(), "默认红方最高大盘视角友军数量必须 > 0，杜绝 0 友军脱节！");
+        assert!(val.get("prerender_skirt_enemies").is_some(), "必须输出 prerender_skirt_enemies 字段");
+
+        let first_piece = &pieces[0];
+        let first_id = first_piece["id"].as_str().expect("必须有合法 id");
+        assert!(first_piece.get("pos").is_some());
+        assert!(first_piece.get("inventory").is_some());
+        assert_eq!(first_piece["is_direct_subordinate"], json!(true), "最高统帅部视角下应为直属可指挥状态");
+
+        // 2. 测试 POST /api/unit_op split_squad (通过 unit_id 别名传参)
+        let (sc_split, Json(res_split)) = post_unit_op(
+            State(st.clone()),
+            Json(json!({
+                "op": "split_squad",
+                "unit_id": first_id,
+                "take_enlisted": 2,
+                "take_cadre": 0,
+            })),
+        ).await;
+        assert_eq!(sc_split, StatusCode::OK);
+        assert_eq!(res_split["ok"], json!(true));
+        assert!(res_split.get("new_piece_id").is_some());
+
+        // 3. 测试 POST /api/unit_op use_item
+        let (sc_use, Json(res_use)) = post_unit_op(
+            State(st.clone()),
+            Json(json!({
+                "op": "use_item",
+                "piece_id": first_id,
+                "item_id": "first_aid_kit",
+            })),
+        ).await;
+        assert_eq!(sc_use, StatusCode::OK);
+        assert_eq!(res_use["ok"], json!(true));
+        assert_eq!(res_use["item_id"], json!("first_aid_kit"));
     }
 }

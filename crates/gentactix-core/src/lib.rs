@@ -17,6 +17,7 @@ pub mod spatial_autonomy;
 pub mod state;
 #[cfg(test)]
 pub mod stress_test;
+pub mod time_machine;
 pub mod transaction;
 pub mod units_ecs;
 pub mod world_grid;
@@ -41,6 +42,7 @@ pub use motion::{commit_motions, ConstrainedMotion, MotionConstraintSolver, Moti
 pub use operators::{DirtyHaloBox, TerrainMutation, TerrainTransaction};
 pub use publication::{compute_authority_fingerprint, load_world_state_from_json, save_world_state_to_json};
 pub use state::{ClockState, DerivedState, EntityAuthorityRecord, EntityState, InventoryLedger, PersistentFieldState, StateKind, TerrainState, TickScratch, WorldState};
+pub use time_machine::*;
 pub use transaction::{DEFAULT_SUBTICK_SECONDS, TickClock, TickOrchestrator, TickSummary, TransactionError, TransactionPhase};
 
 #[cfg(test)]

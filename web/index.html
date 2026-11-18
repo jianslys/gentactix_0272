@@ -54,13 +54,23 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .status-light{display:inline-block;width:4px;height:4px;background:#71816c;margin-right:7px}
 
 /* UI-09 右上角参谋地图工具包 (内含指北针、UI-09A 绘图工具组、UI-05 图层项) */
-.map-tools-pack{position:absolute;right:14px;top:14px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;z-index:6}
-.tool-pack-row{display:flex;align-items:center;gap:8px;background:#1c2529ee;border:1px solid #3e4c52;padding:4px 8px 4px 52px;border-radius:2px}
+.map-tools-pack{position:absolute;right:14px;top:14px;z-index:6}
+.tool-pack-unified{display:flex;align-items:center;gap:6px;background:#1c2529ee;border:1px solid #3e4c52;padding:4px 8px;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+.tool-pack-row{display:flex;align-items:center;gap:6px;padding-left:48px;position:relative}
 .draw-tool-btn{width:26px;height:26px;display:grid;place-items:center;color:#b6c1be;border:1px solid #4a595f;background:#243035;cursor:pointer;border-radius:2px;font-size:11px}
 .draw-tool-btn:hover,.draw-tool-btn.active{background:#384850;border-color:var(--gold);color:#ffffff}
-.compass-box{width:36px;height:48px;display:grid;place-items:center;color:#a2ad9b}
+.compass-box{width:32px;height:32px;display:grid;place-items:center;color:#a2ad9b;margin:0 2px}
+.layer-dock{position:relative}
+.layer-card{position:absolute;top:calc(100% + 6px);right:0;width:274px}
+.tool-pack-unified .layer-toggle{padding:4px 10px 4px 34px;height:26px;box-sizing:border-box;background:#243035;border-color:#4a595f;color:#c6d2ce}
+.tool-pack-unified .layer-toggle:hover,.tool-pack-unified .layer-toggle[aria-expanded=true]{background:#384850;border-color:var(--gold);color:#ffffff}
 .card-close-btn{position:absolute;right:10px;top:8px;width:18px;height:18px;line-height:16px;text-align:center;font-size:16px;color:#91a5aa;cursor:pointer;border-radius:2px;border:1px solid transparent;background:none;padding:0;z-index:10}
 .card-close-btn:hover{color:#fff;background:#384850;border-color:#52646b}
+.inspector-heading .card-unit-id{position:absolute;right:34px;top:10px;font-size:9px}
+
+/* UI-11 浮动提示条 (底部居中浮动，绝不重叠 UI-04) */
+.toast{position:fixed;bottom:52px;left:50%;transform:translateX(-50%);background:#1c2529f2;border:1px solid #4a585e;color:#e2dfc6;padding:8px 20px;font:11px var(--mono);border-radius:3px;box-shadow:0 8px 24px #00000088;z-index:99;pointer-events:none;opacity:0;transition:opacity .2s ease,transform .2s ease;white-space:nowrap}
+.toast.visible{opacity:1;transform:translateX(-50%) translateY(-4px)}
 
 /* UI-03M 集成指令框与子面板 (UI-03M1 ~ UI-03M4) */
 .integrated-cmd-box{position:fixed;top:70px;left:50%;transform:translateX(-50%);width:480px;max-width:92vw;background:#1e272be6;border:1px solid #4a585e;box-shadow:0 12px 40px #0c141777;border-radius:3px;z-index:20;display:none;flex-direction:column;color:#d6d9d4;backdrop-filter:blur(4px)}
@@ -115,12 +125,13 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .topbar::after,.subbar::after{left:5px;top:3px;font-size:8px;color:#ec8d81}
 .inspector [data-ui-id]::after,.inspector::after,.unit-card [data-ui-id]::after,.unit-card::after,.toast::after,dialog::after{color:#ee9286}
 .inspector::after,.unit-card::after{left:18px;top:8px}
-.inspector-top::after{left:auto;right:18px;top:8px}
+.inspector-top::after{left:80px;right:auto;top:8px}
 .inspector-section::after,.inspector-actions::after{left:18px;top:6px}
 .map-title::after,.footer::after{left:0;top:0}
 .scale::after{font-size:8px;top:5px;left:8px}
 .layer-card::after{left:16px;top:9px}
 .layer-toggle::after{font-size:8px;left:9px;top:5px}
+.toast::after{left:8px;top:-13px;font-size:8.5px;color:#ee9286}
 .map-tools-pack[data-ui-id]::after{left:auto;right:10px;top:-13px;font-size:8.5px;color:#ee9286}
 .tool-pack-row[data-ui-id]::after{left:8px;top:8px;font-size:8.5px;color:#ee9286}
 .integrated-cmd-box[data-ui-id]::after{left:12px;top:6px;font-size:8.5px;color:#ee9286}
@@ -156,6 +167,12 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 @media(max-width:1050px){.topbar .nav{gap:13px}.topbar .brand{min-width:155px}.topbar{gap:15px}.subbar{gap:12px}.hide-tablet{display:none}.map-stamp{right:22px}.top-right{gap:14px}}
 @media(max-width:700px){.app{grid-template-rows:54px 39px minmax(0,1fr)}.topbar{padding:0 12px;gap:10px}.brand{min-width:auto!important;gap:7px}.brand b{font-size:13px;letter-spacing:2px}.brand small{font-size:6px;letter-spacing:1.4px}.brand-mark{width:22px;height:25px}.nav{display:none}.clock b{font-size:15px}.clock span{display:none}.top-right{gap:13px}.help-button{padding:0}.subbar{padding:0 12px;font-size:9px;gap:8px}.subbar .weather,.subbar .divider,.hide-phone{display:none}.subbar .right{gap:6px}.control{padding:0 7px;font-size:10px}.map-title{top:20px;left:17px}.title-heading{font-size:19px;letter-spacing:3px}.title-details>span{font-size:7px;letter-spacing:1px}.map-stamp{right:13px;top:23px}.compass-wrap{right:10px;top:128px;width:47px;height:69px}.compass-wrap .compass{left:6px;width:35px;height:53px}.map-tools{right:12px;top:215px}.layer-dock{right:12px;bottom:13px}.layer-card{width:min(258px,calc(100vw - 24px))}.layer-toggle{padding:18px 10px 8px;gap:7px;font-size:10px}.layer-toggle svg{width:12px;height:12px}.scale{bottom:13px;padding:18px 9px 6px}.scale-caption{font-size:7px;letter-spacing:0}.footer{left:13px;bottom:19px;font-size:7px;letter-spacing:0;max-width:68px;gap:4px}.footer .footer-grid{display:none}.inspector{top:93px;width:min(300px,86vw)}.toast{bottom:97px;text-align:center;width:85%;font-size:10px}}
 @media(max-height:700px) and (min-width:1051px){.inspector-top{padding-bottom:10px}.inspector-section{padding-top:21px;padding-bottom:10px}.unit-display{margin:12px 0}.metric{margin-top:8px}.strength{margin-bottom:9px}.inspector-actions{padding-top:21px}}
+.map-viewport.crosshair-mode{cursor:crosshair!important}
+.map-unit.prerender-skirt{transition:opacity .15s ease}
+.fx-explosion-circle{animation:fxExplode 1.2s cubic-bezier(0.1,0.8,0.3,1) forwards;transform-origin:center;pointer-events:none}
+@keyframes fxExplode{0%{r:4px;opacity:1;stroke-width:3px}60%{opacity:.8;stroke-width:2px}100%{r:36px;opacity:0;stroke-width:.5px}}
+.fx-flash{animation:fxFlash 1.2s ease-out forwards;pointer-events:none}
+@keyframes fxFlash{0%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.8)}100%{opacity:0;transform:scale(2.4)}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -180,11 +197,11 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 </header>
 <div class="subbar" data-ui-id="UI-02"><span class="operation" id="subbarOp">白桦行动 <span class="mono" style="color:#97a39a;margin-left:8px">OP. BIRCH</span></span><span class="divider"></span><span class="hide-phone mono" id="subbarDate">22 JUN 1944 · SUBTICK 16S</span><span class="divider"></span><span class="weather"><svg class="ico" style="width:14px;height:14px"><use href="#i-cloud"/></svg><span id="subbarWeather">薄云 18°C</span></span><div class="right"><span class="hide-tablet muted" id="subbarTurnState">8m战术基准 · 权威联机</span><div class="pulse-staging" id="pulseStagingBar" data-ui-id="UI-18">STEP 00/16S · 暂存 0</div><button class="control mobile-inspector" id="openInspector" aria-expanded="false"><svg class="ico"><use href="#i-panel"/></svg>部队</button><button class="control" id="orbatToggle" title="查看战术指挥链编制母树"><svg class="ico"><use href="#i-tree"/></svg>编制</button><button class="control" id="actionQueueToggle" title="第一类修改 · 计划行动任务队列">行动</button><button class="control" id="eventQueueToggle" title="第二类修改 · 计划事件队列">事件</button><button class="control" id="commandFieldToggle" title="第四类修改 · 指挥安排与场绘制">态势场</button><button class="control" id="play" aria-pressed="false"><svg class="ico"><use id="playIcon" href="#i-play"/></svg><span id="playLabel">预演</span></button><button class="control speed" id="speed" aria-label="切换演示时间速度">1×</button></div></div>
 <div class="workspace">
-<aside class="inspector unit-card" id="inspector" aria-label="选中单位详情" data-ui-id="UI-03" style="left:20px;top:14px">
-<div class="inspector-top" data-ui-id="UI-03A" id="cardHandle-inspector"><button class="card-close-btn" id="closeCard-inspector" aria-label="关闭卡片">×</button><div class="inspector-heading"><div class="eyebrow">UNIT / INSPECTOR</div><span class="mono muted" style="font-size:9px" id="inspectorId">F-0313</span></div><div class="unit-display"><svg class="big-symbol" id="inspectorSymbol" viewBox="0 0 60 50" aria-hidden="true"></svg><div><h2 id="unitName">第 3 步兵营</h2><p id="unitCode">3 / 91 INFANTRY</p></div></div><div class="status-tag" id="unitStatus">待命 · 通信正常</div></div>
+<aside class="inspector unit-card" id="inspector" aria-label="选中单位详情" data-ui-id="UI-03" style="left:20px;top:135px">
+<div class="inspector-top" data-ui-id="UI-03A" id="cardHandle-inspector"><button class="card-close-btn" id="closeCard-inspector" aria-label="关闭卡片">×</button><div class="inspector-heading"><div class="eyebrow">UNIT / INSPECTOR</div><span class="mono muted card-unit-id" style="font-size:9px" id="inspectorId">F-0313</span></div><div class="unit-display"><svg class="big-symbol" id="inspectorSymbol" viewBox="0 0 60 50" aria-hidden="true"></svg><div><h2 id="unitName">第 3 步兵营</h2><p id="unitCode">3 / 91 INFANTRY</p></div></div><div class="status-tag" id="unitStatus">待命 · 通信正常</div></div>
 <div class="inspector-section" data-ui-id="UI-03B"><div class="section-title">作战实力 <small>COMBAT STRENGTH</small></div><div class="strength"><b id="unitStrength">642</b><span id="unitMax">/ 720</span><label>人员</label></div><div class="metric"><div class="metric-head"><span>组织度</span><b id="orgValue">92%</b></div><div class="metric-track"><div class="metric-fill" id="orgBar" style="width:92%"></div></div></div><div class="metric amber"><div class="metric-head"><span>弹药储备</span><b id="ammoValue">76%</b></div><div class="metric-track"><div class="metric-fill" id="ammoBar" style="width:76%"></div></div></div><div class="metric"><div class="metric-head"><span>补给水平</span><b id="supplyValue">88%</b></div><div class="metric-track"><div class="metric-fill" id="supplyBar" style="width:88%"></div></div></div></div>
 <div class="inspector-section" data-ui-id="UI-03C"><div class="section-title">位置与环境 <small>POSITION</small></div><div class="data-grid"><div class="datum"><label>军用格网</label><b class="mono" id="unitGrid">36U 045 · 050</b></div><div class="datum"><label>所在地域</label><b id="unitTerrain">林地边缘</b></div><div class="datum"><label>海拔</label><b class="mono" id="unitHeight">184 m</b></div><div class="datum"><label>态势可信度</label><b id="unitConfidence">己方实时报告</b></div></div></div>
-<div class="inspector-section" data-ui-id="UI-03D"><div class="section-title">当前意图 <small>COMMAND INTENT</small></div><div class="order-card"><div class="order-kind" id="orderName">向河桥展开</div><p id="orderText">沿道路抵达集结位置。保持隐蔽，<br>接敌前等待进一步命令。</p><div class="order-distance"><span id="orderDistance">1.8 <small>km</small></span><span id="orderEta">~ 24 <small>min</small></span></div></div></div>
+<div class="inspector-section" data-ui-id="UI-03D"><div class="section-title">当前意图 <small>COMMAND INTENT</small></div><div class="order-card"><div class="order-kind" id="orderName">向河桥展开</div><p id="orderText">沿道路抵达集结位置。保持隐蔽，<br>接敌前等待进一步命令。</p><div class="order-distance"><span id="orderDistance">0.0 km</span><span id="orderEta">待命 · 现地</span></div></div></div>
 <div class="inspector-actions" data-ui-id="UI-03E"><button class="action-btn primary" id="planButton"><svg class="ico"><use href="#i-route"/></svg>查看行动路线</button><button class="action-btn" id="fireButton" aria-pressed="false"><svg class="ico"><use href="#i-target"/></svg>火控与视线分析</button><button class="action-btn" id="btnOpenCmdBox" style="border-color:#b9ac7c"><svg class="ico"><use href="#i-target"/></svg>指令选项 (Shift+A)</button><p class="inspector-footnote" id="inspectorFootnote">GENTACTIX LIVE · PURE-CPU 8M CORE</p></div>
 </aside>
 <main class="map-area" aria-label="交互式作战地图" style="width:100%;height:100%">
@@ -215,38 +232,41 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 <g id="labelsLayer"><text x="105" y="479" class="place-label" font-size="18" transform="rotate(-7 105 479)">NOVAYA</text><text x="96" y="500" class="carto-label" font-size="10">新村</text><text x="480" y="313" class="place-label" font-size="17">DUBROVKA</text><text x="482" y="331" class="carto-label" font-size="10">杜布罗夫卡</text><text x="868" y="249" class="place-label" font-size="17">BEREZINO</text><text x="870" y="267" class="carto-label" font-size="10">白桦镇</text><text x="354" y="744" class="place-label" font-size="16">ZELENAYA</text><text x="355" y="762" class="carto-label" font-size="10">绿原</text><text x="742" y="131" class="terrain-label" font-size="13" transform="rotate(75 742 131)">B E R E Z A</text><text x="696" y="722" class="terrain-label" font-size="12" transform="rotate(35 696 722)">白 桦 河</text><text x="122" y="223" class="terrain-label" font-size="13" transform="rotate(-18 122 223)">北 部 林 区</text><text x="821" y="592" class="terrain-label" font-size="14" transform="rotate(-24 821 592)">216 高 地</text><text x="168" y="536" class="tactical-label" fill="#94774f">MSR 06</text><text x="1028" y="163" class="sector-label">36 U / 08</text><text x="965" y="744" class="sector-label">36 U / 12</text><text x="156" y="782" class="sector-label">36 U / 04</text></g>
 <g id="frontLayer"><path d="M838-90Q777 90 837 178T809 324Q770 408 783 491T866 640Q917 720 841 970L1250 970V-90Z" fill="#ae7769" opacity=".085"/><path d="M838-90Q777 90 837 178T809 324Q770 408 783 491T866 640Q917 720 841 970L894 970Q970 720 919 640T836 491Q823 408 862 324T890 178Q830 90 891-90Z" fill="url(#frontHatch)"/><path d="M838-90Q777 90 837 178T809 324Q770 408 783 491T866 640Q917 720 841 970" fill="none" stroke="#a65143" stroke-width="2.2" opacity=".75"/><text x="830" y="668" transform="rotate(55 830 668)" class="tactical-label" fill="#a05f4d">推定接触线 / ESTIMATED</text></g>
 <g id="intelLayer" class="view-hidden"><ellipse cx="833" cy="251" rx="118" ry="73" fill="#b59b5920" stroke="#9b844e" stroke-dasharray="5 5"/><text x="758" y="170" class="tactical-label" fill="#927540">接触位置不确定区 / LOW CONF.</text><ellipse cx="898" cy="489" rx="70" ry="57" fill="#b59b5915" stroke="#9b844e" stroke-dasharray="5 5"/></g>
-<g id="routesLayer"><path id="plannedRoute" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#f0e8cf" stroke-width="5"/><path id="plannedRouteInk" class="route-line" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#927445" stroke-width="1.9" marker-end="url(#routeArrow)"/><circle cx="560" cy="414" r="5" class="route-end"/><circle cx="690" cy="339" r="8" fill="#e5dab9" stroke="#8e7145" stroke-width="1.3"/><path d="M676 339h28m-14-14v28" stroke="#8e7145" stroke-width="1"/><rect x="508" y="436" width="106" height="22" fill="#ece5cf" stroke="#aba181" stroke-width=".6"/><text x="518" y="450" font-size="9" font-family="Consolas,monospace" fill="#7f6845">ROUTE / 1.8km</text><text x="703" y="330" class="tactical-label" fill="#7f6845">OBJ. A / 河桥</text></g>
+<g id="routesLayer"><path id="plannedRoute" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#f0e8cf" stroke-width="5"/><path id="plannedRouteInk" class="route-line" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#927445" stroke-width="1.9" marker-end="url(#routeArrow)"/><circle cx="560" cy="414" r="5" class="route-end"/><circle cx="690" cy="339" r="8" fill="#e5dab9" stroke="#8e7145" stroke-width="1.3"/><path d="M676 339h28m-14-14v28" stroke="#8e7145" stroke-width="1"/><rect x="508" y="436" width="106" height="22" fill="#ece5cf" stroke="#aba181" stroke-width=".6"/><text id="routeLabel" x="518" y="450" font-size="9" font-family="Consolas,monospace" fill="#7f6845">ROUTE / STANDBY</text><text x="703" y="330" class="tactical-label" fill="#7f6845">OBJ. A / 河桥</text></g>
 <g id="fireLayer" class="view-hidden"><circle id="rangeCircle" cx="455" cy="505" r="223" fill="none" stroke="#9c5247" stroke-width="1" stroke-dasharray="5 5" opacity=".57"/><path id="fireLive" d="M455 505 666 370" fill="none" stroke="#ad5446" stroke-width="1.8"/><path id="fireBlocked" d="M666 370 791 286" fill="none" stroke="#665c52" stroke-width="1.3" stroke-dasharray="4 5" marker-end="url(#fireArrow)"/><ellipse id="dispersion" cx="666" cy="370" rx="39" ry="16" transform="rotate(-33 666 370)" fill="#b3944820" stroke="#997b40" stroke-width="1.2" stroke-dasharray="4 3"/><path id="blockCross" d="m661 365 10 10m-10 0 10-10" stroke="#7e6642" stroke-width="2"/><text id="fireLabel" x="654" y="398" class="tactical-label" fill="#87693b">FIRE SECTOR / LIVE</text><text id="rangeLabel" x="330" y="714" class="tactical-label" fill="#9a584b">FIRE ENVELOPE / K_REG</text></g>
 <g id="drawDraftLayer"></g>
 <g id="virtualInstancesLayer"></g>
-<g id="unitsLayer"></g><rect x="-500" y="-500" width="2200" height="1900" fill="url(#paperGrain)" style="mix-blend-mode:multiply;pointer-events:none" opacity=".57"/>
+<g id="unitsLayer"></g>
+<g id="effectsLayer"></g><rect x="-500" y="-500" width="2200" height="1900" fill="url(#paperGrain)" style="mix-blend-mode:multiply;pointer-events:none" opacity=".57"/>
 </g></svg></div>
 <div class="map-title" id="mapTitle" data-ui-id="UI-04"><button class="title-button" id="titleToggle" aria-expanded="true" aria-controls="titleDetails" title="点击收为地区名；再次点击展开"><span class="title-heading" id="titleHeading">白桦河战区</span><span class="title-details" id="titleDetails"><span><span>NORTHERN SECTOR / SHEET 04</span><span>TOPOGRAPHIC SERIES · BINARY 8M</span></span></span></button></div>
 
 <!-- UI-09 参谋地图工具包 (内含指北针、UI-09A 绘图工具组、UI-05 图层项) -->
 <div class="map-tools-pack" id="mapToolsPack" data-ui-id="UI-09" aria-label="参谋地图工具包">
-  <div class="tool-pack-row" id="drawToolsBar" data-ui-id="UI-09A">
-    <button class="draw-tool-btn" id="toolRuler" title="测距标定尺">📏</button>
-    <button class="draw-tool-btn" id="toolPen" title="战术草稿画笔">✏️</button>
-    <button class="draw-tool-btn" id="toolEraser" title="橡皮擦">🧹</button>
-    <button class="draw-tool-btn" id="toolPoly" title="多边形面积绘制">⬡</button>
-    <button class="draw-tool-btn" id="toolLine" title="折线段绘制">╱</button>
-    <div class="compass-box" title="指北针">
-      <svg class="compass" viewBox="0 0 50 70" style="width:28px;height:38px"><text x="25" y="10" text-anchor="middle" fill="currentColor" font-size="9" font-family="Consolas">N</text><path d="m25 17-9 32 9-7 9 7Z" fill="none" stroke="currentColor"/><path d="m25 17-9 32 9-7Z" fill="currentColor"/></svg>
+  <div class="tool-pack-unified">
+    <div class="tool-pack-row" id="drawToolsBar" data-ui-id="UI-09A">
+      <button class="draw-tool-btn" id="toolRuler" title="测距标定尺">📏</button>
+      <button class="draw-tool-btn" id="toolPen" title="战术草稿画笔">✏️</button>
+      <button class="draw-tool-btn" id="toolEraser" title="橡皮擦">🧹</button>
+      <button class="draw-tool-btn" id="toolPoly" title="多边形面积绘制">⬡</button>
+      <button class="draw-tool-btn" id="toolLine" title="折线段绘制">╱</button>
     </div>
-  </div>
-  <div class="layer-dock" id="layerDock" style="position:static">
-    <section class="layer-card" id="layerCard" aria-label="图层列表" aria-hidden="true" inert data-ui-id="UI-05">
-      <header class="layer-head"><span>地图图层 <small>LAYERS</small></span><button class="layer-close" id="closeLayers" aria-label="关闭图层列表">×</button></header>
-      <div class="layer-options">
-        <button class="layer-option" data-layer="terrain" aria-pressed="true"><span class="check"></span>地形</button>
-        <button class="layer-option" data-layer="labels" aria-pressed="true"><span class="check"></span>地名</button>
-        <button class="layer-option" data-layer="front" aria-pressed="true"><span class="check"></span>接触线</button>
-        <button class="layer-option" data-layer="routes" aria-pressed="true"><span class="check"></span>命令</button>
-        <button class="layer-option" data-layer="fire" aria-pressed="false"><span class="check"></span>火控</button>
-      </div>
-    </section>
-    <button class="layer-toggle" id="layerToggle" aria-expanded="false" aria-controls="layerCard" data-ui-id="UI-05A"><svg class="ico"><use href="#i-layers"/></svg><span id="layerToggleText">图层</span><span class="layer-chevron" aria-hidden="true">⌃</span></button>
+    <div class="compass-box" title="指北针">
+      <svg class="compass" viewBox="0 0 50 70" style="width:24px;height:32px"><text x="25" y="10" text-anchor="middle" fill="currentColor" font-size="9" font-family="Consolas">N</text><path d="m25 17-9 32 9-7 9 7Z" fill="none" stroke="currentColor"/><path d="m25 17-9 32 9-7Z" fill="currentColor"/></svg>
+    </div>
+    <div class="layer-dock" id="layerDock">
+      <button class="layer-toggle" id="layerToggle" aria-expanded="false" aria-controls="layerCard" data-ui-id="UI-05A"><svg class="ico"><use href="#i-layers"/></svg><span id="layerToggleText">图层</span><span class="layer-chevron" aria-hidden="true">⌃</span></button>
+      <section class="layer-card" id="layerCard" aria-label="图层列表" aria-hidden="true" inert data-ui-id="UI-05">
+        <header class="layer-head"><span>地图图层 <small>LAYERS</small></span><button class="layer-close" id="closeLayers" aria-label="关闭图层列表">×</button></header>
+        <div class="layer-options">
+          <button class="layer-option" data-layer="terrain" aria-pressed="true"><span class="check"></span>地形</button>
+          <button class="layer-option" data-layer="labels" aria-pressed="true"><span class="check"></span>地名</button>
+          <button class="layer-option" data-layer="front" aria-pressed="true"><span class="check"></span>接触线</button>
+          <button class="layer-option" data-layer="routes" aria-pressed="true"><span class="check"></span>命令</button>
+          <button class="layer-option" data-layer="fire" aria-pressed="false"><span class="check"></span>火控</button>
+        </div>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -343,8 +363,15 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
           <span id="taskReadout3">组织度代价: -4%</span>
         </div>
       </div>
+      <div class="matrix-row" id="taskRowGoal">
+        <label class="row-label">目标 · 选点</label>
+        <div class="btn-group" style="align-items:center;justify-content:space-between">
+          <span class="mono muted" id="taskGoalCoordText" style="font-size:10px">未标定 (请点击地图标定)</span>
+          <button class="sub-btn" id="btnPickTaskGoal" type="button" style="border-color:#dfc486;color:#e8dfc8">在地图标定</button>
+        </div>
+      </div>
       <div class="panel-foot">
-        <button class="action-btn primary" id="btnConfirmTask">排入队列并在地图标定点</button>
+        <button class="action-btn primary" id="btnConfirmTask">排入计划行动队列</button>
       </div>
     </div>
 
@@ -384,6 +411,13 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
           <span id="evReadout1">预估器材消耗: 16 枚</span>
           <span id="evReadout2">耗时: ~128 s</span>
           <span id="evReadout3">生成逐点虚拟实例并施工</span>
+        </div>
+      </div>
+      <div class="matrix-row" id="eventRowGoal">
+        <label class="row-label">目标 · 选点</label>
+        <div class="btn-group" style="align-items:center;justify-content:space-between">
+          <span class="mono muted" id="eventGoalCoordText" style="font-size:10px">未标定 (多边形/单点/爆破电缆)</span>
+          <button class="sub-btn" id="btnPickEventGoal" type="button" style="border-color:#dfc486;color:#e8dfc8">在地图标定</button>
         </div>
       </div>
       <div class="panel-foot">
@@ -557,12 +591,40 @@ let units=[
 {id:'e3',name:'敌步兵接触',code:'CONTACT / E-031',short:'ENY 031',type:'infantry',echelon:'II ?',x:887,y:706,enemy:true,terrain:'河岸林地',height:158,status:'推定位置 · 5 分钟前',order:'监视南侧通道'}
 ];
 
+function getActiveFriendlyUnitId(){
+  if(typeof selected!=='undefined' && selected && !selected.enemy && units.some(u=>u.id===selected.id)){
+    return selected.id;
+  }
+  const f = units.find(u => !u.enemy);
+  return f ? f.id : (units[0] ? units[0].id : 'u3');
+}
+
 function symbolMarkup(u,light=false){const stroke=u.enemy?'#984d42':(light?'#c2d4d9':'#3a5969'),fill=u.enemy?'#e8c7b3':(light?'#4c6875':'#b7cbd0');let s=u.enemy?`<path d="M30 8 53 25 30 42 7 25Z" fill="${fill}" stroke="${stroke}" stroke-width="1.6"/>`:`<rect x="7" y="12" width="46" height="28" fill="${fill}" stroke="${stroke}" stroke-width="1.7"/>`;if(u.type==='infantry')s+=`<path d="m${u.enemy?'20 18 20 14m-20 0 20-14':'8 13 44 26m-44 0 44-26'}" stroke="${stroke}" stroke-width="1.35" fill="none"/>`;if(u.type==='armor')s+=`<rect x="17" y="20" width="26" height="12" rx="6" fill="none" stroke="${stroke}" stroke-width="1.5"/>`;if(u.type==='artillery')s+=`<circle cx="30" cy="26" r="4" fill="${stroke}"/>`;if(u.type==='recon')s+=`<path d="M8 39 52 13" stroke="${stroke}" stroke-width="1.5"/>`;if(u.type==='hq')s+=`<path d="M7 40v10" stroke="${stroke}" stroke-width="1.5"/><text x="30" y="30" fill="${stroke}" font-family="Consolas,monospace" font-size="12" text-anchor="middle">HQ</text>`;s+=`<text x="30" y="7" text-anchor="middle" fill="${stroke}" font-family="Consolas,monospace" font-size="8">${u.echelon}</text>`;return s;}
+
+function calculateUnitOrderMetrics(u){
+  if(!u) return { distanceStr: '0.0 km', etaStr: '待命 · 现地' };
+  if(u.enemy) return { distanceStr: '位置待核实', etaStr: '' };
+  if(!u.order || u.order==='维持警戒' || u.order==='待命'){
+    return { distanceStr: '0.0 km', etaStr: '待命 · 现地' };
+  }
+  const target = units.find(v=>v.id==='e1') || units.find(v=>v.enemy) || {x: u.x+80, y: u.y-60};
+  const dx = (target.x - u.x) * 8.0;
+  const dy = (target.y - u.y) * 8.0;
+  const distM = Math.hypot(dx, dy);
+  const distKm = distM / 1000.0;
+  const speedKmh = u.speed_kmh || 12.0;
+  const etaMin = Math.round((distKm / speedKmh) * 60);
+  return {
+    distanceStr: `${distKm.toFixed(1)} km`,
+    etaStr: `~ ${Math.max(1, etaMin)} min`
+  };
+}
+window.units = units;
 
 function renderUnitsLayer(){
   $('unitsLayer').innerHTML='';
   for(const u of units){
-    const g=svgNode('g',{class:'map-unit'+(u.enemy?' enemy':''),transform:`translate(${u.x-30} ${u.y-26})`,tabindex:'0',role:'button','aria-label':u.name,'aria-pressed':String(u.id===(selected?selected.id:'u3')),'data-unit':u.id},$('unitsLayer'));
+    const g=svgNode('g',{class:'map-unit'+(u.enemy?' enemy':''),transform:`translate(${u.x-30} ${u.y-26})`,tabindex:'0',role:'button','aria-label':u.name,'aria-pressed':String(u.id===(selected?selected.id:getActiveFriendlyUnitId())),'data-unit':u.id},$('unitsLayer'));
     svgNode('rect',{x:0,y:0,width:60,height:50,class:'selection-outline'},g);
     const sym=svgNode('g',{class:'symbol-body'},g);
     sym.innerHTML=symbolMarkup(u);
@@ -570,7 +632,13 @@ function renderUnitsLayer(){
     label.textContent=u.short;
     const c=svgNode('text',{x:30,y:77,'text-anchor':'middle',class:'unit-code'},g);
     c.textContent=u.enemy?'推定 · '+u.echelon:(u.type==='hq'?'团指挥所':u.strength+' PERS');
-    g.addEventListener('click',()=>selectUnit(u.id,true));
+    g.addEventListener('click',()=>{
+      selectUnit(u.id,true);
+      const cardCount=document.querySelectorAll('.inspector.unit-card').length;
+      const offsetX=20+(cardCount%5)*45;
+      const offsetY=135+(cardCount%5)*35;
+      openFloatingUnitCard(u.id,offsetX,offsetY);
+    });
     g.addEventListener('contextmenu',e=>{e.preventDefault();selectUnit(u.id,true);openCmdBox('panelTask');});
     g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectUnit(u.id,true);}});
   }
@@ -631,8 +699,13 @@ function selectUnit(id,open=false){
   $('unitConfidence').textContent=u.enemy?'推定 / 尚未识别':'己方实时报告';
   $('orderName').textContent=u.order;
   $('orderText').textContent=u.enemy?'仅显示已获得的接触情报；不展示敌方真实兵力、弹药与组织度。':'现行作战意图：'+u.order+'。路线、距离与耗时经纯CPU物理引擎严密测算。';
-  $('orderDistance').textContent=u.enemy?'位置待核实':'1.8 km';
-  $('orderEta').textContent=u.enemy?'':'~ 24 min';
+  const metrics=calculateUnitOrderMetrics(u);
+  $('orderDistance').textContent=metrics.distanceStr;
+  $('orderEta').textContent=metrics.etaStr;
+  const routeLbl=$('routeLabel');
+  if(routeLbl){
+    routeLbl.textContent=u.enemy?'CONTACT / EST':`ROUTE / ${metrics.distanceStr}`;
+  }
   $('planButton').innerHTML=`<svg class="ico"><use href="#${u.enemy?'i-cross':'i-route'}"/></svg>${u.enemy?'定位接触目标':'查看行动路线'}`;
   $('fireButton').disabled=!!u.enemy;
   $('fireButton').style.opacity=u.enemy?'.4':'1';
@@ -796,7 +869,7 @@ if ($('closeCard-inspector')) {
 
 const activeFloatingCards = new Map();
 
-function openFloatingUnitCard(unitId, offsetX = 320, offsetY = 14) {
+function openFloatingUnitCard(unitId, offsetX = 320, offsetY = 135) {
   const u = units.find(x => x.id === unitId);
   if (!u) return;
 
@@ -817,10 +890,11 @@ function openFloatingUnitCard(unitId, offsetX = 320, offsetY = 14) {
   card.style.top = `${offsetY}px`;
   card.style.zIndex = ++topZIndex;
 
+  const metrics = calculateUnitOrderMetrics(u);
   card.innerHTML = `
 <div class="inspector-top" data-ui-id="UI-03A" id="cardHandle-${u.id}">
   <button class="card-close-btn" title="关闭卡片" aria-label="关闭卡片">×</button>
-  <div class="inspector-heading"><div class="eyebrow">UNIT / INSPECTOR</div><span class="mono muted" style="font-size:9px">${u.enemy?u.id.toUpperCase():'F-031'+(units.indexOf(u)>=0?units.indexOf(u):1)}</span></div>
+  <div class="inspector-heading"><div class="eyebrow">UNIT / INSPECTOR</div><span class="mono muted card-unit-id" style="font-size:9px">${u.enemy?u.id.toUpperCase():'F-031'+(units.indexOf(u)>=0?units.indexOf(u):1)}</span></div>
   <div class="unit-display"><svg class="big-symbol" viewBox="0 0 60 50" aria-hidden="true">${symbolMarkup(u,true)}</svg><div><h2>${u.name}</h2><p>${u.code}</p></div></div>
   <div class="status-tag" style="${u.enemy?'color:#ddab8f':''}">${u.status}</div>
 </div>
@@ -842,7 +916,7 @@ function openFloatingUnitCard(unitId, offsetX = 320, offsetY = 14) {
 </div>
 <div class="inspector-section" data-ui-id="UI-03D">
   <div class="section-title">当前意图 <small>COMMAND INTENT</small></div>
-  <div class="order-card"><div class="order-kind">${u.order}</div><p>${u.enemy?'仅显示已获得的接触情报；不展示敌方真实兵力、弹药与组织度。':'现行作战意图：'+u.order+'。路线、距离与耗时经纯CPU物理引擎严密测算。'}</p><div class="order-distance"><span>${u.enemy?'位置待核实':'1.8 km'}</span><span>${u.enemy?'':'~ 24 min'}</span></div></div>
+  <div class="order-card"><div class="order-kind">${u.order}</div><p>${u.enemy?'仅显示已获得的接触情报；不展示敌方真实兵力、弹药与组织度。':'现行作战意图：'+u.order+'。路线、距离与耗时经纯CPU物理引擎严密测算。'}</p><div class="order-distance"><span>${metrics.distanceStr}</span><span>${metrics.etaStr}</span></div></div>
 </div>
 <div class="inspector-actions" data-ui-id="UI-03E">
   <button class="action-btn primary btn-card-plan"><svg class="ico"><use href="#${u.enemy?'i-cross':'i-route'}"/></svg>${u.enemy?'定位接触目标':'查看行动路线'}</button>
@@ -851,6 +925,10 @@ function openFloatingUnitCard(unitId, offsetX = 320, offsetY = 14) {
   <p class="inspector-footnote">● GENTACTIX LIVE · PURE-CPU 8M CORE</p>
 </div>
   `;
+
+  card.addEventListener('mousedown', () => {
+    card.style.zIndex = ++topZIndex;
+  });
 
   const handle = card.querySelector('.inspector-top');
   setupCardDraggable(card, handle);
@@ -967,6 +1045,7 @@ document.querySelectorAll('.cmd-tab-btn').forEach(btn=>{
 
 // 统一队列系统
 let unifiedQueue=[];
+window.unifiedQueue = unifiedQueue;
 function renderUnifiedQueue(){
   const container=$('unifiedQueueList');
   if(!container)return;
@@ -1018,23 +1097,60 @@ function updatePulseStaging(){
 }
 
 // 第三类修改 · 非队列直接调整 (UI-14B)
-['btnSplitSquad','btnMergeSquad','btnEquipAdjust','btnUseItem','btnDeployHeavy','btnPackHeavy'].forEach(btnId=>{
+const REORG_EQUIP_OP_MAP = {
+  btnSplitSquad: {
+    op: 'split_squad',
+    buildPayload: (uId) => ({ op: 'split_squad', piece_id: uId, unit_id: uId, take_enlisted: 3, take_cadre: 0 }),
+  },
+  btnMergeSquad: {
+    op: 'merge_squads',
+    buildPayload: (uId) => ({ op: 'merge_squads', target_piece_id: uId, target_id: uId, piece_id: uId, unit_id: uId }),
+  },
+  btnEquipAdjust: {
+    op: 'equip_adjust',
+    buildPayload: (uId) => ({ op: 'equip_adjust', piece_id: uId, unit_id: uId, from_kind: 'soldier', to_kind: 'soldier' }),
+  },
+  btnUseItem: {
+    op: 'use_item',
+    buildPayload: (uId) => ({ op: 'use_item', piece_id: uId, unit_id: uId, item_id: 'first_aid_kit' }),
+  },
+  btnDeployHeavy: {
+    op: 'deploy_heavy_unit',
+    buildPayload: (uId) => ({ op: 'deploy_heavy_unit', piece_id: uId, unit_id: uId, weapon: 'lmg', immediate: true }),
+  },
+  btnPackHeavy: {
+    op: 'pack_heavy_unit',
+    buildPayload: (uId) => ({ op: 'pack_heavy_unit', piece_id: uId, unit_id: uId, immediate: true }),
+  },
+};
+
+Object.keys(REORG_EQUIP_OP_MAP).forEach(btnId=>{
   const btn=$(btnId);
   if(!btn)return;
+  const def = REORG_EQUIP_OP_MAP[btnId];
   btn.addEventListener('click',async()=>{
+    const uId = getActiveFriendlyUnitId();
     stagedOpsCount++;
-    const uId=selected?selected.id:'u3';
-    stagedOps.push({op:btnId,unit_id:uId,time:Date.now()});
+    const payload = def.buildPayload(uId);
+    stagedOps.push({op: def.op, unit_id: uId, piece_id: uId, time: Date.now()});
     updatePulseStaging();
-    notify(`直接调整：${btn.textContent}（已暂存，于下一16s脉冲同步）`);
-    if(window.location.protocol.startsWith('http')&&selected){
+    notify(`直接调整：${btn.textContent}（已同步并发送权威核算）`);
+    if(window.location.protocol.startsWith('http')){
       try{
-        await fetch('/api/unit_op',{
+        const res = await fetch('/api/unit_op',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({unit_id:selected.id,op:btnId})
+          body:JSON.stringify(payload)
         });
-      }catch(e){}
+        if(res.ok){
+          const resData = await res.json();
+          if(resData && resData.ok){
+            await fetchBackendState();
+          }
+        }
+      }catch(e){
+        console.warn('unit_op request failed:', e);
+      }
     }
   });
 });
@@ -1115,6 +1231,79 @@ function updateTaskMatrixUI(){
   });
 });
 
+let pendingMapGoal = null;
+let pendingDemolishTarget = null;
+let pendingDemolishSwitch = null;
+let mapPickMode = null; // null | 'task_goal' | 'demolish_step1' | 'demolish_step2' | 'event_target'
+let drawnPolygonPoints = [];
+let previewDebounceTimer = null;
+
+function startMapPick(mode, promptText) {
+  mapPickMode = mode;
+  $('viewport').classList.add('crosshair-mode');
+  if ($('integratedCmdBox')) $('integratedCmdBox').style.opacity = '0.45';
+  notify(promptText || '请在地图上点击标定目标点');
+}
+
+function cancelMapPick() {
+  mapPickMode = null;
+  $('viewport').classList.remove('crosshair-mode');
+  if ($('integratedCmdBox')) $('integratedCmdBox').style.opacity = '1';
+}
+
+function renderTaskGoalMarker(x, y) {
+  const layer = $('drawDraftLayer');
+  layer.querySelectorAll('.task-goal-marker').forEach(el => el.remove());
+  const g = svgNode('g', { class: 'task-goal-marker' }, layer);
+  svgNode('circle', { cx: x, cy: y, r: 8, fill: 'none', stroke: '#dfc486', 'stroke-width': '2' }, g);
+  svgNode('circle', { cx: x, cy: y, r: 3, fill: '#dfc486' }, g);
+  svgNode('path', { d: `M${x-14} ${y}h28M${x} ${y-14}v28`, stroke: '#dfc486', 'stroke-width': '1.2' }, g);
+}
+
+function triggerPreviewPlan() {
+  clearTimeout(previewDebounceTimer);
+  previewDebounceTimer = setTimeout(async () => {
+    if (!pendingMapGoal || !window.location.protocol.startsWith('http')) return;
+    const startX = selected ? selected.x : 455;
+    const startY = selected ? selected.y : 505;
+    const targetX = pendingMapGoal[0];
+    const targetY = pendingMapGoal[1];
+    const lambdaVal = parseFloat($('taskParamSlider') ? $('taskParamSlider').value : 80) / 100;
+    try {
+      const pRes = await fetch('/api/preview_plan', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          plan_type: 'move',
+          piece_id: selected ? selected.id : 'red_1',
+          start_pos: [startY / 10, startX / 10],
+          goal_pos: [targetY / 10, targetX / 10],
+          lambda: lambdaVal
+        })
+      });
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        if (pData.ok && pData.streamline && pData.streamline.length >= 2) {
+          const layer = $('drawDraftLayer');
+          layer.querySelectorAll('.streamline-preview').forEach(el => el.remove());
+          const dStr = pData.streamline.map((pt, idx) => `${idx===0?'M':'L'}${Math.round(pt[1]*10)} ${Math.round(pt[0]*10)}`).join(' ');
+          svgNode('path', {
+            class: 'streamline-preview',
+            d: dStr,
+            fill: 'none',
+            stroke: '#dfc486',
+            'stroke-width': '2.2',
+            'stroke-dasharray': '5 3',
+            'opacity': '.85'
+          }, layer);
+        }
+      }
+    } catch(e) {
+      console.warn('Preview plan fetch failed:', e);
+    }
+  }, 50);
+}
+
 if($('taskParamSlider')){
   $('taskParamSlider').addEventListener('input',e=>{
     if(currentTaskAction==='move'){
@@ -1124,19 +1313,43 @@ if($('taskParamSlider')){
     }else if(currentTaskAction==='stop'){
       $('taskParamVal').textContent=`${e.target.value} 秒 (${Math.round(e.target.value/16)}步长)`;
     }
+    triggerPreviewPlan();
   });
 }
 
-let pendingMapGoal = null;
-let drawnPolygonPoints = [];
+if($('btnPickTaskGoal')){
+  $('btnPickTaskGoal').addEventListener('click',()=>{
+    startMapPick('task_goal','请在地图上点击标定任务目标位置');
+  });
+}
+if($('btnPickEventGoal')){
+  $('btnPickEventGoal').addEventListener('click',()=>{
+    if(currentEvent==='demolish'){
+      startMapPick('demolish_step1','【第一步】请在地图上点击标定待爆破工事目标');
+    }else{
+      startMapPick('event_target',`请在地图上点击标定【${currentEvent}】作业目标位置`);
+    }
+  });
+}
 
 async function commitTaskToQueue(){
+  if (!pendingMapGoal) {
+    if (currentTaskAction === 'retreat') {
+      const startX = selected ? selected.x : 455;
+      const startY = selected ? selected.y : 505;
+      pendingMapGoal = [Math.max(40, startX - 80), Math.min(840, startY + 60)];
+    } else {
+      startMapPick('task_goal', '请先在地图上点击标定任务目标点后再排入队列！');
+      return;
+    }
+  }
+
   stagedOpsCount++;
   const seq = unifiedQueue.length + 1;
   const startX = selected ? selected.x : 455;
   const startY = selected ? selected.y : 505;
-  const targetX = pendingMapGoal ? pendingMapGoal[0] : (startX + 72);
-  const targetY = pendingMapGoal ? pendingMapGoal[1] : (startY - 48);
+  const targetX = pendingMapGoal[0];
+  const targetY = pendingMapGoal[1];
 
   const taskItem = {
     seq,
@@ -1148,7 +1361,7 @@ async function commitTaskToQueue(){
   };
   unifiedQueue.push(taskItem);
   stagedActions.push({
-    unit_id: selected ? selected.id : 'u3',
+    unit_id: getActiveFriendlyUnitId(),
     action: taskItem.title,
     goal: [Math.round(targetY / 10), Math.round(targetX / 10)],
     move_mode: currentTaskMode
@@ -1191,6 +1404,7 @@ async function commitTaskToQueue(){
 
   addVirtualInstance(targetX, targetY, `@#${seq}`);
   notify(`任务已排入队列：#${seq} ${taskItem.title}，目标 (${targetX}, ${targetY}) 真实流线已生成`);
+  if ($('taskGoalCoordText')) $('taskGoalCoordText').textContent = `已排入队列: (${targetX}, ${targetY})`;
   pendingMapGoal = null;
 }
 if($('btnConfirmTask'))$('btnConfirmTask').addEventListener('click',commitTaskToQueue);
@@ -1259,43 +1473,48 @@ document.querySelectorAll('#eventMacroGroup .sub-btn').forEach(btn=>{
 });
 
 async function commitEventToQueue(){
-  stagedOpsCount++;
-  const seq = unifiedQueue.length + 1;
-  const evItem = {
-    seq,
-    type: 'event',
-    event: currentEvent,
-    title: `宏:${currentEvent}`
-  };
-  unifiedQueue.push(evItem);
-  stagedEvents.push({
-    unit_id: selected ? selected.id : 'u3',
-    kind: currentEvent,
-    event_type: currentEvent,
-    target_px: selected ? [Math.round(selected.y / 10), Math.round(selected.x / 10)] : [50, 45],
-    duration_h: 0.25
-  });
-  renderUnifiedQueue();
-  updatePulseStaging();
-
   const originX = (selected ? selected.x : 455);
   const originY = (selected ? selected.y : 505);
 
   if (currentEvent === 'demolish') {
-    // 爆破开关闭环：在工事目标点生成炸药标定，并在安全距离外（+80m）生成 DetonatorSwitch 实体与电缆
-    const targetPx = [originX + 40, originY - 20];
-    const switchPx = [originX - 60, originY + 40];
-    // 绘制导线
+    if (!pendingDemolishTarget || !pendingDemolishSwitch) {
+      startMapPick('demolish_step1', '【第一步】请在地图上点击标定待爆破工事目标点');
+      return;
+    }
+    stagedOpsCount++;
+    const seq = unifiedQueue.length + 1;
+    const evItem = {
+      seq,
+      type: 'event',
+      event: currentEvent,
+      title: `宏:爆破破障`
+    };
+    unifiedQueue.push(evItem);
+    stagedEvents.push({
+      unit_id: getActiveFriendlyUnitId(),
+      kind: 'demolish',
+      event_type: 'demolish',
+      target_px: [Math.round(pendingDemolishTarget[1] / 10), Math.round(pendingDemolishTarget[0] / 10)],
+      switch_px: [Math.round(pendingDemolishSwitch[1] / 10), Math.round(pendingDemolishSwitch[0] / 10)],
+      duration_h: 0.25
+    });
+    renderUnifiedQueue();
+    updatePulseStaging();
+
+    const targetPx = pendingDemolishTarget;
+    const switchPx = pendingDemolishSwitch;
+
+    // 绘制真实导线
     svgNode('path', {
       d: `M${targetPx[0]} ${targetPx[1]} L${switchPx[0]} ${switchPx[1]}`,
       fill: 'none',
       stroke: '#9b7e45',
-      'stroke-width': '1.6',
+      'stroke-width': '1.8',
       'stroke-dasharray': '4 2'
     }, $('drawDraftLayer'));
     // 在工事点加虚拟实例
     addVirtualInstance(targetPx[0], targetPx[1], `TNT-25kg`);
-    // 在撤离点生成 DetonatorSwitch 实体
+    // 在安全撤离点生成 DetonatorSwitch 实体
     const swG = svgNode('g', {
       class: 'detonator-switch-entity',
       transform: `translate(${switchPx[0]} ${switchPx[1]})`,
@@ -1320,14 +1539,41 @@ async function commitEventToQueue(){
         } catch(e) {}
       }
     });
-    notify(`爆破任务已排入队列：已架设安全引爆电缆，起爆开关置于 (${switchPx[0]}, ${switchPx[1]})`);
-  } else if (window.location.protocol.startsWith('http') && (currentEvent === 'mine' || currentEvent === 'trench')) {
+    notify(`爆破任务已排入队列：已架设真实安全引爆电缆，起爆开关置于 (${switchPx[0]}, ${switchPx[1]})`);
+    pendingDemolishTarget = null;
+    pendingDemolishSwitch = null;
+    if ($('eventGoalCoordText')) $('eventGoalCoordText').textContent = '未标定 (多边形/单点/爆破电缆)';
+    return;
+  }
+
+  // 其余工程事件
+  stagedOpsCount++;
+  const seq = unifiedQueue.length + 1;
+  const evItem = {
+    seq,
+    type: 'event',
+    event: currentEvent,
+    title: `宏:${currentEvent}`
+  };
+  unifiedQueue.push(evItem);
+  const targetPt = pendingMapGoal || [originX, originY];
+  stagedEvents.push({
+    unit_id: getActiveFriendlyUnitId(),
+    kind: currentEvent,
+    event_type: currentEvent,
+    target_px: [Math.round(targetPt[1] / 10), Math.round(targetPt[0] / 10)],
+    duration_h: 0.25
+  });
+  renderUnifiedQueue();
+  updatePulseStaging();
+
+  if (window.location.protocol.startsWith('http') && (currentEvent === 'mine' || currentEvent === 'trench')) {
     try {
       const polyPts = drawnPolygonPoints.length >= 3 ? drawnPolygonPoints : [
-        [originX, originY],
-        [originX + 64, originY],
-        [originX + 64, originY + 48],
-        [originX, originY + 48]
+        [targetPt[0], targetPt[1]],
+        [targetPt[0] + 64, targetPt[1]],
+        [targetPt[0] + 64, targetPt[1] + 48],
+        [targetPt[0], targetPt[1] + 48]
       ];
       const cRes = await fetch('/api/preview_plan', {
         method: 'POST',
@@ -1490,10 +1736,61 @@ document.querySelectorAll('#drawToolsBar .draw-tool-btn').forEach(btn=>{
 });
 
 $('mapSvg').addEventListener('click', e => {
-  if (!currentDrawTool) return;
   const p = mapPoint(e);
   const curX = Math.round((p.x - 600 - pan.x)/zoom + 600);
   const curY = Math.round((p.y - 440 - pan.y)/zoom + 440);
+
+  // 1. 优先响应准星标定模式
+  if (mapPickMode === 'task_goal') {
+    pendingMapGoal = [curX, curY];
+    window.pendingMapGoal = pendingMapGoal;
+    cancelMapPick();
+    renderTaskGoalMarker(curX, curY);
+    triggerPreviewPlan();
+    if ($('taskGoalCoordText')) $('taskGoalCoordText').textContent = `已标定: (${curX}, ${curY})`;
+    notify(`任务目标点已标定: (${curX}, ${curY})`);
+    return;
+  }
+  if (mapPickMode === 'demolish_step1') {
+    pendingDemolishTarget = [curX, curY];
+    const layer = $('drawDraftLayer');
+    layer.querySelectorAll('.demolish-marker').forEach(el => el.remove());
+    const g = svgNode('g', { class: 'demolish-marker' }, layer);
+    svgNode('circle', { cx: curX, cy: curY, r: 10, fill: '#8b3a3044', stroke: '#e88d81', 'stroke-width': '2' }, g);
+    svgNode('text', { x: curX, y: curY + 4, 'text-anchor': 'middle', fill: '#e88d81', font: 'bold 9px Consolas' }, g).textContent = 'TNT';
+    if ($('eventGoalCoordText')) $('eventGoalCoordText').textContent = `目标: (${curX}, ${curY}) -> 待标定开关`;
+    startMapPick('demolish_step2', `【第二步】已标定爆破点 (${curX}, ${curY})！请在安全距离外点击标定起爆开关与电缆位置`);
+    return;
+  }
+  if (mapPickMode === 'demolish_step2') {
+    pendingDemolishSwitch = [curX, curY];
+    cancelMapPick();
+    const layer = $('drawDraftLayer');
+    const g = svgNode('g', { class: 'demolish-marker' }, layer);
+    svgNode('line', {
+      x1: pendingDemolishTarget[0], y1: pendingDemolishTarget[1],
+      x2: curX, y2: curY,
+      stroke: '#e88d81', 'stroke-width': '1.8', 'stroke-dasharray': '4 2'
+    }, g);
+    svgNode('circle', { cx: curX, cy: curY, r: 8, fill: '#8b3a30', stroke: '#fff', 'stroke-width': '1.5' }, g);
+    if ($('eventGoalCoordText')) $('eventGoalCoordText').textContent = `爆破: (${pendingDemolishTarget[0]},${pendingDemolishTarget[1]}) 电缆至 (${curX},${curY})`;
+    notify(`起爆开关已标定: (${curX}, ${curY})，电缆已连通！`);
+    return;
+  }
+  if (mapPickMode === 'event_target') {
+    pendingMapGoal = [curX, curY];
+    cancelMapPick();
+    const layer = $('drawDraftLayer');
+    layer.querySelectorAll('.event-marker').forEach(el => el.remove());
+    const g = svgNode('g', { class: 'event-marker' }, layer);
+    svgNode('circle', { cx: curX, cy: curY, r: 8, fill: 'none', stroke: '#dfc486', 'stroke-width': '1.8', 'stroke-dasharray': '3 2' }, g);
+    if ($('eventGoalCoordText')) $('eventGoalCoordText').textContent = `作业点: (${curX}, ${curY})`;
+    notify(`工程事件位置已标定: (${curX}, ${curY})`);
+    return;
+  }
+
+  // 2. 正常图台绘测工具
+  if (!currentDrawTool) return;
 
   if (currentDrawTool === 'toolRuler') {
     if (!rulerStart) {
@@ -1590,7 +1887,7 @@ document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('clic
   const view=btn.dataset.view;
   $('intelLayer').classList.toggle('view-hidden',view!=='intelligence');
   if(view==='orders'){
-    if(selected.enemy)selectUnit('u3');
+    if(selected && selected.enemy) selectUnit(getActiveFriendlyUnitId());
     setLayer('routes',true);
     openCmdBox('panelTask');
     notify('行动规划视图：金色虚线表示拟定路线，已呼出计划行动任务队列。');
@@ -1713,6 +2010,9 @@ async function fetchBackendState(){
     if(!res.ok)return;
     const data=await res.json();
     if(!data.ok)return;
+    if (data.time_machine_frame && typeof TimeMachineRenderer !== 'undefined' && !TimeMachineRenderer.isPlaying) {
+      TimeMachineRenderer.loadFrame(data.time_machine_frame);
+    }
 
     // 1. 同步顶部栏信息与 16s 权威时钟
     if(typeof data.clock_seconds==='number'){
@@ -1806,6 +2106,7 @@ async function fetchBackendState(){
 
       if(newUnits.length>0){
         units=newUnits;
+        window.units=units;
         renderUnitsLayer();
         const prevId=selected?selected.id:null;
         selectUnit(prevId&&units.some(u=>u.id===prevId)?prevId:units[0].id);
@@ -1838,6 +2139,156 @@ window.fetchStateWeaponLos=async function(pieceId){
   }
 };
 
+// -----------------------------------------------------------------------------
+// 外置时间机 (Time Machine) 只读渲染驱动器 (Pre-render Skirt + exact_ms)
+// -----------------------------------------------------------------------------
+const TimeMachineRenderer = {
+  currentFrame: null,
+  isPlaying: false,
+  startTime: 0,
+  speed: 1.0,
+  prerenderNodes: new Map(),
+
+  loadFrame(frame) {
+    if (!frame || !Array.isArray(frame.particle_tracks)) return;
+    this.currentFrame = frame;
+    this.prerenderNodes.clear();
+
+    const skirtLayer = $('unitsLayer');
+    for (const track of frame.particle_tracks) {
+      if (track.is_prerender_skirt) {
+        const existing = document.querySelector(`[data-prerender="${track.piece_id}"]`);
+        if (existing) existing.remove();
+        const g = svgNode('g', {
+          class: 'map-unit enemy prerender-skirt',
+          'data-prerender': track.piece_id,
+          style: 'visibility:hidden;opacity:0;pointer-events:none'
+        }, skirtLayer);
+        svgNode('rect', { x: 0, y: 0, width: 60, height: 50, class: 'selection-outline' }, g);
+        const sym = svgNode('g', { class: 'symbol-body' }, g);
+        sym.innerHTML = symbolMarkup({ type: 'infantry', enemy: true, echelon: '•' });
+        const label = svgNode('text', { x: 30, y: 64, 'text-anchor': 'middle', class: 'unit-caption' }, g);
+        label.textContent = `PRERENDER ${track.piece_id.slice(-3)}`;
+        this.prerenderNodes.set(track.piece_id, g);
+      }
+    }
+    if (Array.isArray(frame.playback_events)) {
+      for (const ev of frame.playback_events) {
+        ev.triggered = false;
+      }
+    }
+  },
+
+  startPlayback(speed = 1.0) {
+    if (!this.currentFrame) return;
+    this.isPlaying = true;
+    this.speed = speed;
+    this.startTime = performance.now();
+    requestAnimationFrame(this.step.bind(this));
+  },
+
+  step(now) {
+    if (!this.isPlaying || !this.currentFrame) return;
+    const elapsedMs = Math.min(16000, (now - this.startTime) * this.speed);
+    const ratio = elapsedMs / 16000.0;
+    const gridRows = 64, gridCols = 64;
+
+    // 1. 关键帧线性插值
+    for (const track of this.currentFrame.particle_tracks) {
+      const r = track.pos_start[0] + (track.pos_end[0] - track.pos_start[0]) * ratio;
+      const c = track.pos_start[1] + (track.pos_end[1] - track.pos_start[1]) * ratio;
+      const mapX = 100 + (c / gridCols) * 1000;
+      const mapY = 90 + (r / gridRows) * 700;
+
+      let node = track.is_prerender_skirt ?
+        this.prerenderNodes.get(track.piece_id) :
+        document.querySelector(`[data-unit="${track.piece_id}"]`);
+
+      if (node) {
+        node.setAttribute('transform', `translate(${mapX - 30} ${mapY - 26})`);
+        if (track.is_prerender_skirt) {
+          const inSight = units.filter(u => !u.enemy).some(u => Math.hypot(u.x - mapX, u.y - mapY) < 120);
+          node.style.visibility = inSight ? 'visible' : 'hidden';
+          node.style.opacity = inSight ? '1' : '0';
+        }
+      }
+    }
+
+    // 2. 毫秒事件触发 (exact_ms)
+    if (Array.isArray(this.currentFrame.playback_events)) {
+      for (const ev of this.currentFrame.playback_events) {
+        if (!ev.triggered && elapsedMs >= ev.exact_ms) {
+          ev.triggered = true;
+          this.triggerExactEvent(ev, ratio);
+        }
+      }
+    }
+
+    if (elapsedMs < 16000) {
+      requestAnimationFrame(this.step.bind(this));
+    } else {
+      this.isPlaying = false;
+      this.prerenderNodes.forEach(node => node.remove());
+      this.prerenderNodes.clear();
+      fetchBackendState();
+    }
+  },
+
+  triggerExactEvent(ev, ratio) {
+    const fxLayer = $('effectsLayer') || $('unitsLayer');
+    let targetX = 600, targetY = 400;
+
+    let targetTrack = this.currentFrame.particle_tracks.find(t => t.piece_id === ev.target_piece_id);
+    if (targetTrack) {
+      const r = targetTrack.pos_start[0] + (targetTrack.pos_end[0] - targetTrack.pos_start[0]) * ratio;
+      const c = targetTrack.pos_start[1] + (targetTrack.pos_end[1] - targetTrack.pos_start[1]) * ratio;
+      targetX = 100 + (c / 64) * 1000;
+      targetY = 90 + (r / 64) * 700;
+    }
+
+    const g = svgNode('g', {
+      class: 'time-machine-fx',
+      transform: `translate(${targetX} ${targetY})`
+    }, fxLayer);
+    svgNode('circle', {
+      cx: 0, cy: 0, r: 6,
+      fill: 'none',
+      stroke: '#e8a342',
+      'stroke-width': '3',
+      class: 'fx-explosion-circle'
+    }, g);
+    svgNode('circle', {
+      cx: 0, cy: 0, r: 10,
+      fill: '#dfc486',
+      opacity: '0.8',
+      class: 'fx-flash'
+    }, g);
+    setTimeout(() => g.remove(), 1400);
+
+    if (typeof ev.exact_hp_loss === 'number') {
+      const targetUnit = units.find(u => u.id === ev.target_piece_id);
+      if (targetUnit) {
+        targetUnit.strength = Math.max(0, targetUnit.strength - ev.exact_hp_loss);
+        if (selected && selected.id === targetUnit.id) {
+          if ($('unitStrength')) $('unitStrength').textContent = targetUnit.strength;
+        }
+      }
+      notify(`[${ev.exact_ms}ms] 目标 ${ev.target_piece_id} 遭受打击，损失兵力 ${ev.exact_hp_loss}`);
+    }
+    if (typeof ev.exact_supp_add === 'number') {
+      const targetUnit = units.find(u => u.id === ev.target_piece_id);
+      if (targetUnit) {
+        targetUnit.org = Math.max(0, targetUnit.org - Math.round(ev.exact_supp_add * 100));
+        if (selected && selected.id === targetUnit.id) {
+          if ($('orgValue')) $('orgValue').textContent = `${targetUnit.org}%`;
+          if ($('orgBar')) $('orgBar').style.width = `${targetUnit.org}%`;
+        }
+      }
+    }
+  }
+};
+window.TimeMachineRenderer = TimeMachineRenderer;
+
 // 提交推进 16s 脉冲步长 (Phase 03 & Phase 05 API)
 window.commitSimulationTurn=async function(){
   try{
@@ -1862,8 +2313,14 @@ window.commitSimulationTurn=async function(){
         body:JSON.stringify(payload)
       });
       if(res.ok){
-        notify('已推进 16s 权威脉冲事务！');
-        await fetchBackendState();
+        notify('已推进 16s 权威脉冲事务！时间机插值放片中...');
+        const retData = await res.json();
+        if (retData && retData.state && retData.state.time_machine_frame) {
+          TimeMachineRenderer.loadFrame(retData.state.time_machine_frame);
+          TimeMachineRenderer.startPlayback(1.0);
+        } else {
+          await fetchBackendState();
+        }
       }
     }
   }catch(e){
@@ -1873,7 +2330,7 @@ window.commitSimulationTurn=async function(){
 
 // 初始化启动
 renderUnitsLayer();
-selectUnit('u3');
+selectUnit(getActiveFriendlyUnitId());
 syncInspector();
 applyView();
 updatePulseStaging();

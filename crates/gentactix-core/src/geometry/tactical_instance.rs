@@ -421,6 +421,8 @@ pub struct DetonatorSwitch {
     pub detonated: bool,
 }
 
+pub type DetonatorSwitchEntity = DetonatorSwitch;
+
 impl DetonatorSwitch {
     pub fn new(
         switch_id: u64,

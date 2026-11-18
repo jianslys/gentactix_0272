@@ -16,6 +16,11 @@ use crate::units_ecs::{
     tick_overload_faults_5m, ActiveEvent, AtomicAction, CommanderId, CommanderSoA, Echelon,
     EventKind, EventQueue, LockFlags, Rank, UnitId, UnitSoA, UnitState,
 };
+use crate::fields::{
+    run_deterministic_multi_capacity_auction, AuctionBid, DeygoutRadioOperator, SchmidtPostureState,
+    UnitZohDirectiveFilter, ALPHA_BLAST, ALPHA_SUPP,
+};
+use crate::geometry::tactical_instance::{AugmentedArcIntegrator, DetonatorSwitchEntity};
 use crate::world_grid::{CellModEntry, FeatureFlags, MobilityClass, TeamId, WorldGrid, FOREST, MOUNTAIN, PLAIN, WATER};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
@@ -270,12 +275,22 @@ pub struct SimWorld {
     pub night: bool,
     pub pre_game_editable: bool,
     pub r16_source: Option<String>,
+    pub unit_postures: Vec<SchmidtPostureState>,
+    pub unit_suppression: Vec<f32>,
+    pub cell_h_blast: Vec<f32>,
+    pub cell_s_supp: Vec<f32>,
+    pub unit_zoh_filters: FxHashMap<u32, UnitZohDirectiveFilter>,
+    pub engineer_integrators: FxHashMap<u32, AugmentedArcIntegrator>,
+    pub detonator_switches: Vec<DetonatorSwitchEntity>,
 }
 
 impl SimWorld {
     pub fn new(grid: WorldGrid) -> Self {
         let buckets = SpatialBucketGrid::new(grid.rows, grid.cols);
         let epoch = 23400u64;
+        let n_cells = grid.rows * grid.cols;
+        let cell_h_blast = vec![0.0f32; n_cells];
+        let cell_s_supp = vec![0.0f32; n_cells];
         Self {
             grid,
             units: UnitSoA::new(),
@@ -303,6 +318,65 @@ impl SimWorld {
             night: false,
             pre_game_editable: true,
             r16_source: None,
+            unit_postures: Vec::new(),
+            unit_suppression: Vec::new(),
+            cell_h_blast,
+            cell_s_supp,
+            unit_zoh_filters: FxHashMap::default(),
+            engineer_integrators: FxHashMap::default(),
+            detonator_switches: Vec::new(),
+        }
+    }
+
+    pub fn ensure_aux_states(&mut self) {
+        let n = self.units.id.len();
+        if self.unit_postures.len() < n {
+            self.unit_postures.resize(n, SchmidtPostureState::Active);
+        }
+        if self.unit_suppression.len() < n {
+            self.unit_suppression.resize(n, 0.0);
+        }
+        let total_cells = self.grid.rows * self.grid.cols;
+        if self.cell_h_blast.len() < total_cells {
+            self.cell_h_blast.resize(total_cells, 0.0);
+        }
+        if self.cell_s_supp.len() < total_cells {
+            self.cell_s_supp.resize(total_cells, 0.0);
+        }
+    }
+
+    pub fn record_blast_and_suppression(&mut self, t_px: (i32, i32), total_pts: f32, target_unit: Option<UnitId>) {
+        self.ensure_aux_states();
+        if self.grid.in_bounds(t_px.0, t_px.1) {
+            let cidx = self.grid.idx(t_px.0, t_px.1);
+            if cidx < self.cell_h_blast.len() {
+                self.cell_h_blast[cidx] += total_pts * 15.0;
+                self.cell_s_supp[cidx] += total_pts * 1.5;
+            }
+        }
+        if let Some(tid) = target_unit {
+            if tid.0 < self.unit_suppression.len() {
+                self.unit_suppression[tid.0] += total_pts * 0.8;
+                let cur = self.unit_postures[tid.0];
+                self.unit_postures[tid.0] = cur.transition(self.unit_suppression[tid.0]).transition(self.unit_suppression[tid.0]);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn pos_to_px(&self, pos: [f32; 2]) -> (i32, i32) {
+        let r = (pos[0].round() as i32).clamp(0, self.grid.rows as i32 - 1);
+        let c = (pos[1].round() as i32).clamp(0, self.grid.cols as i32 - 1);
+        (r, c)
+    }
+
+    #[inline]
+    pub fn elevation_at_pos(&self, pos: [f32; 2]) -> f32 {
+        let (r, c) = self.pos_to_px(pos);
+        if self.grid.in_bounds(r, c) {
+            self.grid.elevation_m[self.grid.idx(r, c)]
+        } else {
+            0.0
         }
     }
 
@@ -1982,6 +2056,72 @@ impl SimWorld {
             }
         }
 
+        // 1.1 算子 C: Deygout 刃峰电台阻挡损耗与单单位 <=128B 稀疏二阶 ZOH 指令滤波
+        self.ensure_aux_states();
+        for ci in 0..self.commanders.id.len() {
+            let cid = CommanderId(ci);
+            let c_pos = self.commander_pos_f32(cid);
+            for uid in 0..self.units.id.len() {
+                if !self.units.alive[uid] || self.units.direct_commander_id[uid] != Some(cid) {
+                    continue;
+                }
+                let u_pos = self.units.pos[uid];
+                let dist_tot = self.grid.distance_km(c_pos, u_pos) * 1000.0;
+                if dist_tot > 1.0 {
+                    let mut profile = Vec::with_capacity(3);
+                    profile.push((0.0, self.elevation_at_pos(c_pos)));
+                    let mid_pos = [(c_pos[0] + u_pos[0]) * 0.5, (c_pos[1] + u_pos[1]) * 0.5];
+                    profile.push((dist_tot * 0.5, self.elevation_at_pos(mid_pos)));
+                    profile.push((dist_tot, self.elevation_at_pos(u_pos)));
+                    let _dominant_edge = DeygoutRadioOperator::find_dominant_knife_edge(&profile);
+                }
+
+                let target_w = if self.units.autonomy_state[uid] == AtomicAction::Attack {
+                    1.0f32
+                } else if self.units.autonomy_state[uid] == AtomicAction::Hold {
+                    0.5f32
+                } else {
+                    0.0f32
+                };
+                let filter = self.unit_zoh_filters.entry(uid as u32).or_default();
+                filter.step_zoh(&[(1, target_w)], 1.0, SUBTICK_SECONDS);
+                let _rethink = filter.evaluate_schmidt_rethink(&[(1, target_w)], 1.0);
+            }
+        }
+
+        // 1.2 算子 A: 确定性 Tier-B 多容量最小堆拍卖 (G_alloc 分配)
+        let mut bids = Vec::new();
+        let mut cell_capacities = FxHashMap::default();
+        for uid in 0..self.units.id.len() {
+            if !self.units.alive[uid] || self.units.persons(UnitId(uid)) == 0 {
+                continue;
+            }
+            let target_px = if let Some(plan) = self.direct_unit_plans.get(&format!("u{}", uid)) {
+                if let Some(wp) = plan.waypoints.first() {
+                    self.pos_to_px(*wp)
+                } else {
+                    self.units.px[uid]
+                }
+            } else {
+                self.units.px[uid]
+            };
+            if self.grid.in_bounds(target_px.0, target_px.1) {
+                let cell_idx = self.grid.idx(target_px.0, target_px.1);
+                let center = [target_px.0 as f32 + 0.5, target_px.1 as f32 + 0.5];
+                let dist_m = self.grid.distance_km(self.units.pos[uid], center) * 1000.0;
+                let cost_fixed = (dist_m * 1000.0) as i64;
+                bids.push(AuctionBid {
+                    cost_fixed,
+                    unit_id: uid as u32,
+                    cell_idx,
+                });
+                cell_capacities.entry(cell_idx).or_insert(1);
+            }
+        }
+        if !bids.is_empty() {
+            let _allocations = run_deterministic_multi_capacity_auction(bids, &cell_capacities);
+        }
+
         // 2. Autonomous tactical step for units (Rayon parallel evaluation + deterministic apply)
         //    Then restore positions for units currently under direct player orders (avoids double-move).
         let saved_direct: FxHashMap<usize, ([f32; 2], (i32, i32), f32)> = self
@@ -2025,6 +2165,63 @@ impl SimWorld {
 
         // 3. Direct orders (player-controlled) -> move along waypoints / advance timed actions
         let direct_moved = self.step_direct_orders_5m();
+
+        // 3.1 算子 D: 工兵 16s 步长增广弧长边走边干施工实体与起爆开关
+        self.ensure_aux_states();
+        let (grid_rows_i, grid_cols_i) = (self.grid.rows as i32, self.grid.cols as i32);
+        let pos_to_px_local = |pos: [f32; 2]| {
+            ((pos[0].round() as i32).clamp(0, grid_rows_i - 1), (pos[1].round() as i32).clamp(0, grid_cols_i - 1))
+        };
+
+        let engineer_uids: Vec<u32> = self.engineer_integrators.keys().copied().collect();
+        for uid in engineer_uids {
+            let u_idx = uid as usize;
+            if u_idx >= self.units.alive.len() || !self.units.alive[u_idx] {
+                continue;
+            }
+            let supp = self.unit_suppression.get(u_idx).copied().unwrap_or(0.0);
+            let persons = self.units.persons(UnitId(u_idx));
+            let (cur_pos, completed_wps) = if let Some(integrator) = self.engineer_integrators.get_mut(&uid) {
+                integrator.step_16s(3.5, persons, supp, 40.0);
+                let completed: Vec<[f32; 2]> = integrator.completed_instances.drain(..)
+                    .filter_map(|idx| integrator.waypoints.get(idx).copied())
+                    .collect();
+                (integrator.cur_pos, completed)
+            } else {
+                continue;
+            };
+
+            self.units.pos[u_idx] = cur_pos;
+            let new_px = pos_to_px_local(cur_pos);
+            if self.grid.in_bounds(new_px.0, new_px.1) {
+                self.units.px[u_idx] = new_px;
+            }
+            for pt in completed_wps {
+                let px = pos_to_px_local(pt);
+                if self.grid.in_bounds(px.0, px.1) {
+                    let gi = self.grid.idx(px.0, px.1);
+                    self.grid.terrain_attrition_day[gi] = (self.grid.terrain_attrition_day[gi] * 0.5).max(0.0);
+                }
+            }
+        }
+
+        let mut exploded_points = Vec::new();
+        for detonator in &mut self.detonator_switches {
+            if detonator.wire_laid && detonator.charges_placed && !detonator.detonated {
+                let op_pos = detonator.switch_pos;
+                if let Ok(pts) = detonator.trigger_detonation(op_pos) {
+                    exploded_points.extend(pts);
+                }
+            }
+        }
+        for pt in exploded_points {
+            let px = self.pos_to_px(pt);
+            if self.grid.in_bounds(px.0, px.1) {
+                let gi = self.grid.idx(px.0, px.1);
+                self.cell_h_blast[gi] += 50.0;
+                self.cell_s_supp[gi] += 10.0;
+            }
+        }
 
         // 4. (reserved) Operational Art continuous movement
 
@@ -2079,7 +2276,9 @@ impl SimWorld {
                 t_px,
                 spec.ballistic_group,
             );
-            let pwr = self.units.unit_power(aid, dist_m, !los.blocked, None, 1.0 + reg_b);
+            let attacker_posture = self.unit_postures.get(aid.0).copied().unwrap_or(SchmidtPostureState::Active);
+            let zeta = attacker_posture.source_factor();
+            let pwr = self.units.unit_power(aid, dist_m, !los.blocked, None, (1.0 + reg_b) * zeta);
             let mut fire_dt = [0.0f32; 6];
             let mut total_pts = 0.0f32;
             for d in 0..6 {
@@ -2103,6 +2302,7 @@ impl SimWorld {
                     !spec.indirect,
                     &tag,
                 );
+                self.record_blast_and_suppression(t_px, total_pts, Some(tid));
                 apply_registration_to_cells(
                     &mut self.grid,
                     aid,
@@ -2221,6 +2421,27 @@ impl SimWorld {
         for ci in 0..self.commanders.id.len() {
             self.commanders.resolve_succession(CommanderId(ci), &self.units);
             self.commanders.sync_hq_ledger_authority(CommanderId(ci), &self.units);
+        }
+
+        // 算子 B-2: 双时间尺度衰减与单位施密特姿态回升
+        self.ensure_aux_states();
+        for h in &mut self.cell_h_blast {
+            *h *= ALPHA_BLAST;
+            if *h < 1e-4 {
+                *h = 0.0;
+            }
+        }
+        for s in &mut self.cell_s_supp {
+            *s *= ALPHA_SUPP;
+            if *s < 1e-4 {
+                *s = 0.0;
+            }
+        }
+        for uid in 0..self.units.id.len() {
+            if uid < self.unit_suppression.len() {
+                self.unit_suppression[uid] *= ALPHA_SUPP;
+                self.unit_postures[uid] = self.unit_postures[uid].transition(self.unit_suppression[uid]);
+            }
         }
 
         self.grid.tick_environment(dt);
@@ -2852,6 +3073,7 @@ pub fn build_demo_world() -> SimWorld {
     let u2 = w.units.spawn_unit("red-sq-2", "红1排2班", TeamId::Red, (25, 25), Echelon::Squad, "rifle_squad", 10, 1, eq_map(&[("rifle", 9), ("lmg", 1)]), 0);
     let u_tk = w.units.spawn_unit("red-tk-1", "红坦支援组", TeamId::Red, (24, 24), Echelon::Squad, "tank_squad", 4, 1, eq_map(&[("tank_medium", 1), ("radio", 1)]), 0);
     let _ub = w.units.spawn_unit("blue-sq-1", "蓝方警戒班", TeamId::Blue, (24, 30), Echelon::Squad, "rifle_squad", 8, 1, eq_map(&[("rifle", 8), ("radio", 1)]), 1);
+    let _ub2 = w.units.spawn_unit("blue-tk-2", "蓝方掩护组", TeamId::Blue, (18, 50), Echelon::Squad, "tank_squad", 4, 1, eq_map(&[("tank_medium", 1)]), 1);
 
     for u in [u1, u2, u_tk] {
         w.commanders.link_subordinate_unit(cmd_pl, u, &mut w.units);
@@ -2970,4 +3192,110 @@ pub fn build_art_16_world() -> SimWorld {
         1,
     );
     w
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::command_log::MathRecursiveDriver;
+    use crate::fields::{SchmidtPostureState, ALPHA_BLAST, ALPHA_SUPP};
+    use crate::geometry::tactical_instance::{AugmentedArcIntegrator, ConstructionFsmState, DetonatorSwitchEntity};
+
+    #[test]
+    fn test_v6_phase01_sim_loop_golden_operators_integration() {
+        let mut sim = build_demo_world();
+        let mut driver = MathRecursiveDriver::default();
+
+        // 1. 验证主循环推进与电台 ZOH 稀疏滤波器接入
+        assert!((ALPHA_BLAST - 0.1690).abs() < 1e-4, "ALPHA_BLAST 必须精确锁死 0.1690");
+        assert!((ALPHA_SUPP - 0.6412).abs() < 1e-4, "ALPHA_SUPP 必须精确锁死 0.6412");
+
+        sim.step_subtick_16s(&mut driver);
+        assert!(!sim.unit_zoh_filters.is_empty(), "主循环必须自动维护单位 ZOH 滤波器");
+        for (_, filter) in &sim.unit_zoh_filters {
+            assert!(filter.entries.len() <= 16, "稀疏 ZOH 模态项不超过 16");
+            assert!(std::mem::size_of_val(filter) <= 128, "单个单位 ZOH 滤波器内存占用严格 <= 128 字节");
+            assert!(filter.dwell_ticks >= 1, "ZOH 滤波器随 16s 步长累加 dwell_ticks");
+        }
+
+        // 2. 验证受击格双时间尺度衰减与单位姿态坍塌机
+        let target_px = (20, 20);
+        let target_uid = UnitId(0);
+        sim.record_blast_and_suppression(target_px, 10.0, Some(target_uid));
+        let cidx = sim.grid.idx(target_px.0, target_px.1);
+        let h_blast_init = sim.cell_h_blast[cidx];
+        let s_supp_init = sim.cell_s_supp[cidx];
+        assert!(h_blast_init >= 100.0, "受到重击后目标格 H_blast 骤升");
+        assert!(s_supp_init >= 10.0, "受到重击后目标格 S_supp 骤升");
+        assert_eq!(
+            sim.unit_postures[target_uid.0],
+            SchmidtPostureState::Prone,
+            "高压制直接击穿施密特死区，单位进入 Prone 伏卧态"
+        );
+        assert_eq!(
+            sim.unit_postures[target_uid.0].source_factor(),
+            0.02,
+            "Prone 态发射辐射极大坍塌至 2%"
+        );
+
+        // 推进 2 个 16s 步长 (32 秒后)
+        sim.step_subtick_16s(&mut driver);
+        sim.step_subtick_16s(&mut driver);
+
+        let h_blast_32s = sim.cell_h_blast[cidx];
+        let s_supp_32s = sim.cell_s_supp[cidx];
+        // H_blast 经历快衰减 (ALPHA_BLAST^2)
+        assert!(
+            h_blast_32s < h_blast_init * 0.05,
+            "32s 后快衰减爆炸危险已基本消除 (剩余 < 5%)"
+        );
+        // S_supp 经历慢恢复 (ALPHA_SUPP^2 ~ 0.41)
+        assert!(
+            s_supp_32s > s_supp_init * 0.35,
+            "32s 后敌方依然处于显著压制恢复期，突击黄金窗口确立"
+        );
+
+        // 3. 验证工兵增广弧长 s_tilde 边走边干施工实体与半截保留
+        let u_eng = 0u32;
+        let waypoints = vec![[15.0, 15.0], [15.0, 18.0]];
+        let mut integrator = AugmentedArcIntegrator::new(waypoints);
+        integrator.cur_pos = [15.0, 15.0];
+        sim.engineer_integrators.insert(u_eng, integrator);
+
+        // 重压制下暂停测试
+        sim.unit_suppression[u_eng as usize] = 2.0;
+        sim.step_subtick_16s(&mut driver);
+        assert_eq!(
+            sim.engineer_integrators[&u_eng].fsm_state,
+            ConstructionFsmState::PinnedPause,
+            "严重压制下工兵进入 PinnedPause 暂停"
+        );
+
+        // 恢复作业并推进
+        sim.unit_suppression[u_eng as usize] = 0.0;
+        sim.unit_postures[u_eng as usize] = SchmidtPostureState::Active;
+        sim.step_subtick_16s(&mut driver);
+        assert!(
+            sim.engineer_integrators[&u_eng].s_tilde > 0.0,
+            "工兵恢复作业后增广弧长 s_tilde 推进大于 0"
+        );
+
+        // 4. 验证起爆开关实体门禁与触发
+        let mut switch = DetonatorSwitchEntity::new(
+            101,
+            sim.units.team[0] as u8,
+            [10.0, 60.0],
+            vec![[10.0, 15.0]],
+            vec![[10.0, 60.0], [10.0, 15.0]],
+        );
+        switch.charges_placed = true;
+        switch.wire_laid = true;
+        // 操作员在安全距离外 (距离 45m >= 40m)
+        assert!(switch.can_detonate([10.0, 60.0]).is_ok(), "安全距离外允许起爆");
+        sim.detonator_switches.push(switch);
+
+        // 推进触发起爆
+        sim.step_subtick_16s(&mut driver);
+        assert!(sim.detonator_switches[0].detonated, "起爆开关成功引爆");
+    }
 }
