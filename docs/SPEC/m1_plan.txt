@@ -1,0 +1,92 @@
+================================================================================
+GENTACTIX MILESTONE 1 (MVP) · 512x512 (8.0m) 白桦河桥头内置剧本与真地图合一计划 (m1_plan.txt)
+权威规范基线：
+1. docs/SPEC/SPEC_M1_MVP_512_BIRCH_RIVER_AND_UNIFIED_TERRAIN_CODEX.md
+2. docs/SPEC/SPEC_V6_HOTFIX_CLOSURE_CODEX.md
+单一工作流入口：.agent/workflows/m1-mvp.md (内含 Phase M1-1 ~ Phase M1-4 四道硬阻断门禁)
+================================================================================
+
+[最高准则]
+1. 全图锁死 512x512、Δx = 8.0m (4096m x 4096m) 纯二进制网格，零外部磁盘依赖。
+2. 保留 `build_demo_world()` 供旧单测调用不破；将 `--demo` 与 `/api/reset` 默认挂载到全新
+   `build_birch_river_512_world(0x1944_0622_B1RC_4512)`。
+3. 严格按 Phase M1-1 -> M1-2 -> M1-3 -> M1-4 逐阶段执行，每阶段末尾必须物理停机等待大王回复“确认”！
+
+--------------------------------------------------------------------------------
+PHASE M1-1 · 后端 512x512 (8.0m) 白桦河剧本、二进制地形流扩展与 V6 尾项清零
+--------------------------------------------------------------------------------
+仅限修改：
+- crates/gentactix-core/src/world_grid.rs
+- crates/gentactix-core/src/sim_loop.rs
+- crates/gentactix-server/src/main.rs
+
+核心交付：
+1. 清零 V6 尾项：`serialize_state` 与 `build_time_machine_frame` 将前沿接触可见门槛调整为
+   `fog_level <= 2`（消除开局 `0接触点`）；修复 `deploy_heavy_unit / pack_heavy_unit` 在 `!immediate`
+   入队后漏写 `return` 的问题。
+2. 扩展 `WorldGrid::encode_terrain_raw_bin(&self)`：在 `rows(u32)+cols(u32)+terrain(n)+raw_u16(2n)`
+   后追加 `forest_density_u8(n)`（共 `8 + 4n` 字节，512x512 下为 1,048,584 字节）。
+3. 在 `sim_loop.rs` 实现 `pub fn build_birch_river_512_world(seed: u64) -> SimWorld`：
+   - 512x512, `cell_m = 8.0`；蜿蜒白桦河 (`WATER`)、中央公路桥 (`BRIDGE` @ r=246..250)、北浅滩、
+     东西主干公路 (`HIGHWAY`) 与南北土路 (`DIRT_ROAD`)、184/216 高地连续高程与连续森林 (`FOREST`)；
+   - 红1连完整编制（连部 + 2个步兵排6个班 + 坦克排 + 82迫击炮 + 工兵班 + 侦察组 >= 10 个作战单位）与
+     蓝方桥头防御连（含桥西前哨班距红1排 ~210m 确保开局可见并可迅速交火，及东岸主阵地与装甲反击组）。
+4. `main.rs` 将 `--demo` 与 `/api/reset` 切至 `build_birch_river_512_world`，并在 `/api/state` 导出
+   `mvp_objectives`。
+5. 跑通 `cargo test --workspace` 全绿（新增 `test_m1_birch_river_512_world_and_terrain_bin`）。
+
+【硬阻断 · 强制停机等待确认】：
+完成 PHASE M1-1 代码与 `cargo test --workspace` 全绿后必须立刻停止！汇报测试结果并等待大王回复“确认”后再进入 PHASE M1-2，严禁提前修改 `web/index.html`！
+
+--------------------------------------------------------------------------------
+PHASE M1-2 · 前端 `/api/terrain_raw.bin` 真 8m 印刷地形渲染器（撕掉静态假画皮）
+--------------------------------------------------------------------------------
+仅限修改：
+- web/index.html
+
+核心交付：
+1. 清零 V6 前端尾项：从 `resData.ticket` 解包类别与生效秒数修复 Toast `第 0 秒`；`.toast` 提至
+   `bottom: 78px` 避开比例尺；`BINARY_STEPS` 扩至 `4096`，比例尺与地域标签绑定真实 `cell_m`。
+2. 拉取 `/api/terrain_raw.bin` 解析 `512x512` 的 `terrain`、`elevU16`、`forestU8`：
+   - 在 `#terrainLayer` 用离屏 Canvas + SVG 矢量合成 SD2 暖灰军用印刷风真地图（西北光源高程晕渲、
+     10m/20m 真实等高线、真实蜿蜒白桦河、中央大桥、主干公路/支线土路、疏密针叶林簇）；
+   - 将 `#labelsLayer` 地名（杜布罗夫卡、OBJ.A 白桦河大桥、白桦镇、184/216高地）全部用 `gridToSvg(r,c)`
+     锚定到真实格点；
+   - 单位卡 `UI-03C` 海拔/地域与 `UI-09A` 测距尺（附起点终点高差 `Δh`）全部直读真实地形缓存。
+
+【硬阻断 · 强制停机等待确认】：
+完成 PHASE M1-2 后必须立刻停止！汇报真地形渲染实现要点，等待大王回复“确认”后再进入 PHASE M1-3！
+
+--------------------------------------------------------------------------------
+PHASE M1-3 · 交火火线、实时战报电传 (`UI-08`) 与桥头夺控回合闭环
+--------------------------------------------------------------------------------
+仅限修改：
+- web/index.html (如需补充战报摘要字段可微调 `crates/gentactix-server/src/main.rs`)
+
+核心交付：
+1. 在 `TimeMachineRenderer` 播放期间，根据 `playback_events` 与后端交火记录实时绘制射击火线脉冲
+   （曳光弹道线 + 弹着爆破圈）与浮动战损提示。
+2. 将左下角 `UI-08` 升级为可展开/滚动的实时战场电传战报流，记录每回合毫秒级交火、伤亡、压制与
+   工程进展；在副栏展示 `OBJ. A / 白桦河大桥` 夺控状态与双方战损比。
+
+【硬阻断 · 强制停机等待确认】：
+完成 PHASE M1-3 后必须立刻停止！汇报交火演出与电传战报闭环情况，等待大王回复“确认”后再进入 PHASE M1-4！
+
+--------------------------------------------------------------------------------
+PHASE M1-4 · 512x512 MVP 无作弊 E2E 全验真、实拍看图与推送回库
+--------------------------------------------------------------------------------
+仅限修改：
+- tests/e2e/verify_production_ui.mjs (及验证发现的前后端细小衔接修正)
+
+核心交付：
+1. 升级 `tests/e2e/verify_production_ui.mjs`：
+   - 断言 `/api/state` 为 `512x512, cell_m=8`，`own_pieces.length >= 8`，`visible_enemies.length >= 1`；
+   - 断言 `/api/terrain_raw.bin` 字节数为 `1048584` 且前端真地形图层 `#trueTerrainRaster` 已渲染；
+   - 保持全部 21 项既有门禁（AABB 零重叠、1440x900 零溢出、真点击多卡、真 CDP 地图选点、`#0` 入队防篡改、
+     `Δpos > 0.01`）100% PASS。
+2. 实跑 `cargo test --workspace` + `node tests/e2e/verify_production_ui.mjs`，亲眼调用读图工具审阅
+   `scratch/production_desktop_screenshot.png` 确认视觉惊艳无叠字后，执行 `git commit` 与 `git push origin main`。
+
+【硬阻断 · 强制停机等待确认】：
+全部跑通并推送 `origin/main` 后停止汇报。
+================================================================================
