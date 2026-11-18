@@ -17,7 +17,7 @@ use gentactix_core::command_log::{
     get_commander_readable_scope, radio_channel_idx, register_zone, validate_command_link,
     validate_commander_link,
 };
-use gentactix_core::sim_loop::{build_art_16_world, build_demo_world, build_r16_platoon_world, plan_grid_path_f32, SimWorld};
+use gentactix_core::sim_loop::{build_art_16_world, build_r16_platoon_world, plan_grid_path_f32, SimWorld};
 use gentactix_core::time_machine::TimeCategory;
 use gentactix_core::units_ecs::{equipment_spec, CommanderId, Echelon, EventKind, ReorgTargetSpec, UnitId, UnitState, RADIO_CHANNELS};
 use gentactix_core::world_grid::{
@@ -114,7 +114,7 @@ fn build_time_machine_frame(
     let intel = gather_intel(obs_team, &w.grid, &w.units, w.night);
     let visible_set: std::collections::HashSet<usize> = intel.iter()
         .filter(|c| {
-            if c.fog_level > 1 {
+            if c.fog_level > 2 {
                 return false;
             }
             let cpos = [c.px.0 as f32, c.px.1 as f32];
@@ -409,7 +409,7 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
     let visible_enemies: Vec<Value> = intel
         .into_iter()
         .filter(|c| {
-            if c.fog_level > 1 {
+            if c.fog_level > 2 {
                 return false;
             }
             let cpos = [c.px.0 as f32, c.px.1 as f32];
@@ -733,6 +733,43 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
     }
     let virtual_instances_out: Vec<Value> = Vec::new();
 
+    let bridge_center = [248.0f32, 276.0f32];
+    let mut red_near = 0u32;
+    let mut blue_near = 0u32;
+    let mut red_total = 0u32;
+    let mut blue_total = 0u32;
+    for i in 0..w.units.id.len() {
+        if !w.units.alive[i] { continue; }
+        let p = w.units.persons(UnitId(i));
+        let pos = w.units.pos[i];
+        let d_m = ((pos[0] - bridge_center[0]).powi(2) + (pos[1] - bridge_center[1]).powi(2)).sqrt() * w.grid.cell_m;
+        if w.units.team[i] == TeamId::Red {
+            red_total += p;
+            if d_m <= 120.0 { red_near += p; }
+        } else if w.units.team[i] == TeamId::Blue {
+            blue_total += p;
+            if d_m <= 120.0 { blue_near += p; }
+        }
+    }
+    let bridge_control = if red_near > 0 && blue_near > 0 {
+        "Contested"
+    } else if red_near > 0 {
+        "Red"
+    } else if blue_near > 0 {
+        "Blue"
+    } else {
+        "Uncontested"
+    };
+    let mvp_objectives = json!({
+        "bridge_obj_id": "OBJ_A_BIRCH_BRIDGE",
+        "bridge_control": bridge_control,
+        "bridge_center_px": [248, 276],
+        "red_force_near_bridge": red_near,
+        "blue_force_near_bridge": blue_near,
+        "red_total_persons": red_total,
+        "blue_total_persons": blue_total,
+    });
+
     json!({
         "ok": true,
         "ground_bodies": &g.ground_bodies,
@@ -763,6 +800,7 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
         "deployed_structures": deployed_structures_out,
         "virtual_instances": virtual_instances_out,
         "active_command_fields": frontlines_out.clone(),
+        "mvp_objectives": mvp_objectives,
         "time_machine_frame": build_time_machine_frame(w, team, &std::collections::HashMap::new()),
     })
 }
@@ -1605,8 +1643,8 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                 Err(e) => (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": e}))),
             }
         }
-        "reset_demo" => {
-            *w = build_demo_world();
+        "reset_demo" | "reset_birch_river" => {
+            *w = gentactix_core::sim_loop::build_birch_river_512_world(0x1944_0622_B1FC_4512);
             (StatusCode::OK, Json(json!({"ok": true})))
         }
         "load_art16" => {
@@ -2375,7 +2413,7 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                 .unwrap_or_default();
             let op_cnt = body.get("operator_count").and_then(|v| v.as_u64()).unwrap_or(2) as u32;
             let immediate = body.get("immediate").and_then(|v| v.as_bool()).unwrap_or(false);
-            let dur_h = body.get("duration_h").and_then(|v| v.as_f64()).unwrap_or(0.25) as f32;
+            let _dur_h = body.get("duration_h").and_then(|v| v.as_f64()).unwrap_or(0.25) as f32;
             if immediate {
                 let tag = w.events.next_id + 1;
                 w.events.next_id = tag;
@@ -2407,16 +2445,9 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                         }),
                     )
                 };
-                let labor = w.units.persons(uid);
-                let eid = w.events.push(uid, dur_h.max(0.05), labor, EventKind::DeployHeavyUnit {
-                    weapon,
-                    keep_manned,
-                    operator_soldier_ids: op_sols,
-                    operator_count: op_cnt,
-                });
                 st.mp.lock().unwrap().state_revision += 1;
                 let st_json = serialize_state(&w, player_s, None);
-                (StatusCode::OK, Json(json!({"ok": true, "queued": true, "ticket": ticket, "event_id": eid, "state": st_json})))
+                return (StatusCode::OK, Json(json!({"ok": true, "queued": true, "ticket": ticket, "state": st_json})));
             }
         }
         "operate_heavy_unit" => {
@@ -2470,7 +2501,7 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
             if let Err(err) = authorize_unit_op(&w, player_s, target_uid) { return err; }
             let attach = body.get("attach").and_then(|v| v.as_bool()).unwrap_or(false);
             let immediate = body.get("immediate").and_then(|v| v.as_bool()).unwrap_or(false);
-            let dur_h = body.get("duration_h").and_then(|v| v.as_f64()).unwrap_or(0.25) as f32;
+            let _dur_h = body.get("duration_h").and_then(|v| v.as_f64()).unwrap_or(0.25) as f32;
             if immediate {
                 match w.execute_pack_heavy(uid, target_uid, attach) {
                     Ok(_) => {
@@ -2498,11 +2529,9 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                         }),
                     )
                 };
-                let labor = w.units.persons(uid).max(w.units.effective_operator_stats(uid).0);
-                let eid = w.events.push(uid, dur_h.max(0.05), labor, EventKind::PackHeavyUnit { target_unit_id: target_uid, attach });
                 st.mp.lock().unwrap().state_revision += 1;
                 let st_json = serialize_state(&w, player_s, None);
-                (StatusCode::OK, Json(json!({"ok": true, "queued": true, "ticket": ticket, "event_id": eid, "state": st_json})))
+                return (StatusCode::OK, Json(json!({"ok": true, "queued": true, "ticket": ticket, "state": st_json})));
             }
         }
         "cancel_event" => {
@@ -3059,8 +3088,8 @@ async fn main() {
     let args = Args::parse();
     let tile_xy = parse_tile_xy(&args.tile_xy);
     let world = if args.demo {
-        println!("Loaded 64x64 synthetic demo world");
-        build_demo_world()
+        println!("Loaded 512x512 Birch River MVP world");
+        gentactix_core::sim_loop::build_birch_river_512_world(0x1944_0622_B1FC_4512)
     } else if args.r16 && args.r16_dir.is_dir() {
         match build_r16_platoon_world(&args.r16_dir, tile_xy, args.flow_threshold) {
             Ok(w) => {
@@ -3130,6 +3159,7 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gentactix_core::sim_loop::build_demo_world;
 
     fn test_state() -> AppState {
         let mut w = build_demo_world();
@@ -3506,5 +3536,78 @@ mod tests {
         assert_eq!(sc_commit, StatusCode::OK);
         assert_eq!(commit_res["ok"], json!(true));
         assert_eq!(commit_res["state"]["own_pieces"].as_array().unwrap().len(), initial_own_count + 1, "commit_turn 必须消费 due_ops 并完成编制分队转正");
+    }
+
+    #[tokio::test]
+    async fn test_m1_birch_river_512_world_and_terrain_bin() {
+        let world = gentactix_core::sim_loop::build_birch_river_512_world(0x1944_0622_B1FC_4512);
+
+        // 1. 验证 512x512 8.0m 二进制网格与 1,048,584 字节纯二进制协议
+        assert_eq!(world.grid.rows, 512);
+        assert_eq!(world.grid.cols, 512);
+        assert_eq!(world.grid.cell_m, 8.0);
+        let raw_bin = world.grid.encode_terrain_raw_bin();
+        assert_eq!(
+            raw_bin.len(),
+            1_048_584,
+            "512x512 网格下 terrain_raw_bin 必须严格等于 8 + 4 * 262144 = 1,048,584 字节"
+        );
+
+        // 2. 验证红方 (>= 10 兵牌) 与蓝方 (visible_enemies >= 1 开局接触)
+        let st = test_state();
+        {
+            let mut w = st.world.lock().unwrap();
+            *w = world;
+        }
+
+        let (sc_st, Json(st_val)) = get_state(
+            State(st.clone()),
+            axum::extract::Query(StateQuery {
+                commander_id: None,
+                team: None,
+                seat_token: None,
+            }),
+        )
+        .await;
+        assert_eq!(sc_st, StatusCode::OK);
+        assert_eq!(st_val["ok"], json!(true));
+
+        let own_pieces = st_val["own_pieces"].as_array().expect("own_pieces array");
+        assert!(
+            own_pieces.len() >= 10,
+            "红方必须拥有不少于 10 个战斗/保障兵牌，实际: {}",
+            own_pieces.len()
+        );
+
+        let visible_enemies = st_val["visible_enemies"].as_array().expect("visible_enemies array");
+        assert!(
+            !visible_enemies.is_empty(),
+            "白桦河战场开局必须拥有至少 1 个可见敌军接触点，彻底告别 0-contact 假象！实际: {}",
+            visible_enemies.len()
+        );
+
+        // 3. 验证 mvp_objectives 胜负大盘与大桥控制权
+        let objs = &st_val["mvp_objectives"];
+        assert_eq!(objs["bridge_obj_id"], "OBJ_A_BIRCH_BRIDGE");
+        assert!(objs.get("bridge_control").is_some());
+        assert!(objs.get("red_total_persons").is_some());
+        assert!(objs.get("blue_total_persons").is_some());
+
+        // 4. 验证 deploy_heavy_unit 与 pack_heavy_unit 的 !immediate 入队早退
+        let (sc_dep, Json(res_dep)) = post_unit_op(
+            State(st.clone()),
+            Json(json!({
+                "op": "deploy_heavy_unit",
+                "piece_id": "red-mtr-1",
+                "weapon": "mortar_81",
+                "keep_manned": true,
+            })),
+        )
+        .await;
+        assert_eq!(sc_dep, StatusCode::OK);
+        assert_eq!(res_dep["ok"], json!(true));
+        assert_eq!(res_dep["queued"], json!(true));
+        assert!(res_dep.get("ticket").is_some());
+        assert!(res_dep.get("event_id").is_none(), "必须消除 w.events 双重入队");
     }
 }

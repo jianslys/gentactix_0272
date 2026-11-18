@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = resolve(__dirname, '../../');
 const serverExe = resolve(repoRoot, 'target/debug/gentactix-server' + (process.platform === 'win32' ? '.exe' : ''));
-const chromeDataDir = join(tmpdir(), 'gentactix_chrome_e2e_h3');
+const chromeDataDir = join(tmpdir(), 'gentactix_chrome_e2e_m1');
 const scratchDir = join(repoRoot, 'scratch');
 mkdirSync(scratchDir, { recursive: true });
 mkdirSync(chromeDataDir, { recursive: true });
@@ -158,6 +158,56 @@ try {
   await settle(1200);
 
   // ---------------------------------------------------------------------------
+  // 0. 512x512 纯二进制 8m 权威空间与二进制地形流断言 (Phase M1-4 MVP Gate)
+  // ---------------------------------------------------------------------------
+  console.log('Verifying 512x512 world scale and terrain binary contract...');
+  const initStateRes = await fetch(`http://127.0.0.1:${PORT}/api/state`);
+  const initState = await initStateRes.json();
+  assert(initState.ok, 'Initial state must be ok');
+
+  // 1. 网格规格 512x512, cell_m=8
+  const grid = initState.grid;
+  passCheck('512x512 deterministic grid dimensions', grid && grid.rows === 512 && grid.cols === 512 && grid.cell_m === 8, JSON.stringify(grid));
+
+  // 2. 真实开局编制: 红1连加强连 (>=8) + 桥头接触哨 (>=1)
+  const ownCount = initState.own_pieces ? initState.own_pieces.length : 0;
+  const enyCount = initState.visible_enemies ? initState.visible_enemies.length : 0;
+  passCheck('Friendly pieces count >= 8 (Company-reinforced)', ownCount >= 8, `own_pieces=${ownCount}`);
+  passCheck('Visible enemies count >= 1 (Zero 0-contact defect)', enyCount >= 1, `visible_enemies=${enyCount}`);
+
+  // 3. 夺控目标对象导出
+  passCheck('State exports mvp_objectives with bridge_control', !!initState.mvp_objectives && !!initState.mvp_objectives.bridge_control, JSON.stringify(initState.mvp_objectives));
+
+  // 4. /api/terrain_raw.bin 二进制流大小 1,048,584 字节
+  const binRes = await fetch(`http://127.0.0.1:${PORT}/api/terrain_raw.bin`);
+  const binBuf = await binRes.arrayBuffer();
+  const expectedBytes = 8 + 512 * 512 * 4; // 1,048,584
+  passCheck('Terrain raw binary exact size = 1,048,584 bytes', binBuf.byteLength === expectedBytes, `size=${binBuf.byteLength}`);
+
+  // 5. 前端 #trueTerrainRaster 光栅底图有效挂载
+  const rasterCheck = await evaluate(`(() => {
+    const img = document.getElementById('trueTerrainRaster');
+    if (!img) return { ok: false, reason: 'Missing #trueTerrainRaster element' };
+    const href = img.getAttribute('href') || img.getAttribute('xlink:href') || img.src || '';
+    return { ok: href.length > 100, hrefLength: href.length };
+  })()`);
+  passCheck('Frontend #trueTerrainRaster mounted with true terrain canvas texture', rasterCheck.ok, `length=${rasterCheck.hrefLength}`);
+
+  // 6. UI-08 电传战报流与桥梁胶囊状态检测
+  const teletypeCheck = await evaluate(`(() => {
+    const stream = document.getElementById('teletypeStream');
+    const pill = document.getElementById('subbarBridgeObjective');
+    const lines = stream ? stream.querySelectorAll('.teletype-line') : [];
+    return {
+      streamExists: !!stream,
+      linesCount: lines.length,
+      pillExists: !!pill,
+      pillText: pill ? pill.textContent : ''
+    };
+  })()`);
+  passCheck('UI-08 teletype console & bridge objective pill active', teletypeCheck.streamExists && teletypeCheck.linesCount > 0 && teletypeCheck.pillExists, JSON.stringify(teletypeCheck));
+
+  // ---------------------------------------------------------------------------
   // 1. 全局 6 大禁词全量扫描 (Forbidden Word Scan)
   // ---------------------------------------------------------------------------
   const forbiddenScan = await evaluate(`(() => {
@@ -171,7 +221,8 @@ try {
       const node = walker.currentNode;
       const text = node.textContent;
       for (const f of forbidden) {
-        if (text.includes(f)) {
+        const hit = f === "0友军" ? /(?:^|[^0-9])0[ \t]*友军/.test(text) : text.includes(f);
+        if (hit) {
           hits.push({ forbidden: f, text: text.trim().slice(0, 40) });
         }
       }
@@ -515,8 +566,10 @@ try {
   // ---------------------------------------------------------------------------
   console.log('Testing true physical displacement and Time Machine contracts...');
   const s0 = await (await fetch(`http://127.0.0.1:${PORT}/api/state`)).json();
-  const p0 = s0.own_pieces && s0.own_pieces[0] ? s0.own_pieces[0].pos : [10.0, 10.0];
-  const unitId = s0.own_pieces && s0.own_pieces[0] ? s0.own_pieces[0].id : 'red_inf_1';
+  const targetPieceBefore = (s0.own_pieces && s0.own_pieces.length > 0) ? s0.own_pieces[0] : null;
+  assert(targetPieceBefore, 'At least one friendly piece must exist for displacement test');
+  const p0 = targetPieceBefore.pos;
+  const unitId = targetPieceBefore.id;
 
   // 下发移动命令推进 16s 权威脉冲步长
   const commitRes = await (await fetch(`http://127.0.0.1:${PORT}/api/commit_turn`, {
@@ -527,7 +580,7 @@ try {
       planned_actions: [{
         piece_id: unitId,
         action: 'move',
-        goal: [p0[0] + 5.0, p0[1] + 5.0],
+        goal: [p0[0] + 6.0, p0[1] + 6.0],
         move_mode: 'fast'
       }]
     })
@@ -543,7 +596,8 @@ try {
 
   // 检查位移
   const s1 = await (await fetch(`http://127.0.0.1:${PORT}/api/state`)).json();
-  const p1 = s1.own_pieces && s1.own_pieces[0] ? s1.own_pieces[0].pos : p0;
+  const targetPieceAfter = s1.own_pieces ? s1.own_pieces.find(p => p.id === unitId) : null;
+  const p1 = targetPieceAfter ? targetPieceAfter.pos : p0;
   const deltaPos = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
   passCheck(`True physical displacement verified (Delta pos = ${deltaPos.toFixed(4)} > 0.01)`, deltaPos > 0.01, `p0=[${p0}], p1=[${p1}]`);
 

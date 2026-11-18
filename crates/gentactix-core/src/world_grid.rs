@@ -2014,12 +2014,15 @@ impl WorldGrid {
 
     pub fn encode_terrain_raw_bin(&self) -> Vec<u8> {
         let n = self.rows * self.cols;
-        let mut out = Vec::with_capacity(8 + n + n * 2);
+        let mut out = Vec::with_capacity(8 + n + n * 2 + n);
         out.extend_from_slice(&(self.rows as u32).to_le_bytes());
         out.extend_from_slice(&(self.cols as u32).to_le_bytes());
         out.extend_from_slice(&self.terrain);
         for &v in &self.raw_u16 {
             out.extend_from_slice(&v.to_le_bytes());
+        }
+        for &d in &self.forest_density {
+            out.push((d.clamp(0.0, 1.0) * 255.0).round() as u8);
         }
         out
     }

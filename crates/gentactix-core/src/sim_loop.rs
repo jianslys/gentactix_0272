@@ -21,7 +21,7 @@ use crate::fields::{
     UnitZohDirectiveFilter, ALPHA_BLAST, ALPHA_SUPP,
 };
 use crate::geometry::tactical_instance::{AugmentedArcIntegrator, DetonatorSwitchEntity};
-use crate::world_grid::{CellModEntry, FeatureFlags, MobilityClass, TeamId, WorldGrid, FOREST, MOUNTAIN, PLAIN, WATER};
+use crate::world_grid::{CellModEntry, FeatureFlags, MobilityClass, TeamId, WorldGrid, BRIDGE, DIRT_ROAD, FOREST, HIGHWAY, MOUNTAIN, PLAIN, WATER};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -3109,6 +3109,463 @@ pub fn build_demo_world() -> SimWorld {
         fuel_t: 20.0,
         replacements: 30.0,
     });
+    w
+}
+
+fn raster_road(grid: &mut WorldGrid, p1: (i32, i32), p2: (i32, i32), half_w: i32, t: u8) {
+    let (mut r0, mut c0) = p1;
+    let (r1, c1) = p2;
+    let dr = (r1 - r0).abs();
+    let dc = (c1 - c0).abs();
+    let sr = if r0 < r1 { 1 } else { -1 };
+    let sc = if c0 < c1 { 1 } else { -1 };
+    let mut err = dr - dc;
+
+    loop {
+        for dr_off in -half_w..=half_w {
+            for dc_off in -half_w..=half_w {
+                let nr = r0 + dr_off;
+                let nc = c0 + dc_off;
+                if nr >= 0 && nr < grid.rows as i32 && nc >= 0 && nc < grid.cols as i32 {
+                    let gi = grid.idx(nr, nc);
+                    if grid.terrain[gi] != WATER && grid.terrain[gi] != BRIDGE {
+                        grid.terrain[gi] = t;
+                        grid.base_terrain[gi] = t;
+                    }
+                }
+            }
+        }
+        if r0 == r1 && c0 == c1 {
+            break;
+        }
+        let e2 = 2 * err;
+        if e2 > -dc {
+            err -= dc;
+            r0 += sr;
+        }
+        if e2 < dr {
+            err += dr;
+            c0 += sc;
+        }
+    }
+}
+
+/// 512x512 Birch River MVP World (4096m x 4096m, dx = 8.0m)
+/// Deterministic scenario: Birch River meander, central highway bridge (OBJ. A),
+/// north shallow ford, Hill 184 & Hill 216, continuous forest coverage,
+/// Red 1st Reinforced Company (10+ units) vs Blue Bridgehead Defense Company.
+pub fn build_birch_river_512_world(_seed: u64) -> SimWorld {
+    let mut grid = WorldGrid::new_plain(512, 512, 8.0);
+
+    // 1. Multi-frequency continuous elevation & water/bridge/mountain terrain
+    for r in 0..512i32 {
+        let r_f = r as f32;
+        let river_c_center = 276.0 + 28.0 * (r_f / 56.0).sin() + 12.0 * (r_f / 29.0).cos();
+        let river_c_mid = river_c_center.round() as i32;
+
+        for c in 0..512i32 {
+            let c_f = c as f32;
+            let gi = grid.idx(r, c);
+
+            // Base smooth elevation
+            let mut elev = 135.0 + 3.2 * ((r_f * 0.035).sin() + (c_f * 0.028).cos());
+
+            // Hill 184 at (195, 155), peak ~ 184m
+            let d184_sq = (r_f - 195.0) * (r_f - 195.0) + (c_f - 155.0) * (c_f - 155.0);
+            let h184 = 49.0 * (-d184_sq / (2.0 * 36.0 * 36.0)).exp();
+
+            // Hill 216 at (310, 355), peak ~ 216m
+            let d216_sq = (r_f - 310.0) * (r_f - 310.0) + (c_f - 355.0) * (c_f - 355.0);
+            let h216 = 81.0 * (-d216_sq / (2.0 * 42.0 * 42.0)).exp();
+
+            // North ridge at (45..80, 290..340), elevation > 220m
+            let ridge_dr = (r_f - 62.0) / 22.0;
+            let ridge_dc = (c_f - 315.0) / 30.0;
+            let ridge_d_sq = ridge_dr * ridge_dr + ridge_dc * ridge_dc;
+            let h_ridge = if ridge_d_sq < 4.0 {
+                105.0 * (-ridge_d_sq * 0.5).exp()
+            } else {
+                0.0
+            };
+
+            elev += h184 + h216 + h_ridge;
+
+            // River morphology
+            let dist_to_river = (c - river_c_mid).abs();
+            let is_river = dist_to_river <= 6;
+
+            // Central Highway Bridge ("OBJ. A / 白桦河大桥") at r in 246..=250 across river
+            let is_bridge = r >= 246 && r <= 250 && dist_to_river <= 8;
+
+            // North shallow ford at r in 118..=121 across river
+            let is_ford = r >= 118 && r <= 121 && dist_to_river <= 7;
+
+            if is_bridge {
+                grid.terrain[gi] = BRIDGE;
+                grid.base_terrain[gi] = BRIDGE;
+                elev = 125.0;
+            } else if is_ford {
+                grid.terrain[gi] = DIRT_ROAD;
+                grid.base_terrain[gi] = DIRT_ROAD;
+                elev = 114.0;
+            } else if is_river {
+                grid.terrain[gi] = WATER;
+                grid.base_terrain[gi] = WATER;
+                elev = 112.0 + (dist_to_river as f32) * 0.7;
+            } else if elev >= 220.0 {
+                grid.terrain[gi] = MOUNTAIN;
+                grid.base_terrain[gi] = MOUNTAIN;
+            } else {
+                grid.terrain[gi] = PLAIN;
+                grid.base_terrain[gi] = PLAIN;
+            }
+
+            grid.elevation_m[gi] = elev;
+            grid.raw_u16[gi] = elev.round().clamp(0.0, 65535.0) as u16;
+        }
+    }
+
+    // 2. Continuous Forest coverage
+    for r in 0..512i32 {
+        let r_f = r as f32;
+        for c in 0..512i32 {
+            let c_f = c as f32;
+            let gi = grid.idx(r, c);
+            if grid.terrain[gi] == WATER || grid.terrain[gi] == BRIDGE || grid.terrain[gi] == MOUNTAIN {
+                continue;
+            }
+
+            // Northern forest zone: r in [20, 140], c in [50, 220]
+            let in_north_forest = r >= 20 && r <= 140 && c >= 50 && c <= 220;
+            // Hill 216 reverse slope forest zone: r in [260, 400], c in [380, 480]
+            let in_hill_forest = r >= 260 && r <= 400 && c >= 380 && c <= 480;
+
+            if in_north_forest {
+                let dr = (r_f - 80.0) / 45.0;
+                let dc = (c_f - 135.0) / 65.0;
+                let d_norm = (1.0 - (dr * dr + dc * dc)).clamp(0.0, 1.0);
+                let density = 0.45 + 0.45 * d_norm;
+                if density >= 0.35 {
+                    grid.set_forest_density(r, c, density);
+                }
+            } else if in_hill_forest {
+                let dr = (r_f - 330.0) / 55.0;
+                let dc = (c_f - 430.0) / 40.0;
+                let d_norm = (1.0 - (dr * dr + dc * dc)).clamp(0.0, 1.0);
+                let density = 0.40 + 0.50 * d_norm;
+                if density >= 0.35 {
+                    grid.set_forest_density(r, c, density);
+                }
+            }
+        }
+    }
+
+    // 3. Road Network
+    // East-West Highway
+    raster_road(&mut grid, (260, 40), (248, 175), 1, HIGHWAY);
+    raster_road(&mut grid, (248, 175), (248, 267), 1, HIGHWAY);
+    raster_road(&mut grid, (248, 285), (236, 385), 1, HIGHWAY);
+    raster_road(&mut grid, (236, 385), (230, 480), 1, HIGHWAY);
+
+    // North-South Dirt Roads (connecting through shallow ford)
+    raster_road(&mut grid, (60, 180), (120, 190), 0, DIRT_ROAD);
+    raster_road(&mut grid, (120, 190), (120, 260), 0, DIRT_ROAD);
+    raster_road(&mut grid, (120, 280), (140, 350), 0, DIRT_ROAD);
+    raster_road(&mut grid, (120, 190), (248, 175), 0, DIRT_ROAD);
+    raster_road(&mut grid, (248, 175), (380, 210), 0, DIRT_ROAD);
+
+    // Synchronize feature flags & attrition
+    grid.sync_feature_flags_from_terrain();
+    grid.refresh_attrition();
+
+    let mut w = SimWorld::new(grid);
+    w.role_echelon = Echelon::Company;
+
+    // 4. Red Force (Player: Red 1st Reinforced Company)
+    let cmd_co = w.commanders.spawn_commander(
+        "cmd-co-1",
+        "红1连连部",
+        TeamId::Red,
+        (246, 170),
+        Echelon::Company,
+        Rank::Captain,
+        0,
+    );
+    let hq_uid = w.units.spawn_unit_4ledger(
+        "red-co-hq",
+        "红1连连部直辖班",
+        TeamId::Red,
+        (246, 170),
+        Echelon::Squad,
+        "hq_squad",
+        4,
+        1,
+        1,
+        eq_map(&[("rifle", 5), ("radio", 1)]),
+        0,
+    );
+    w.commanders.hq_piece_id[cmd_co.0] = Some(hq_uid);
+    w.units.direct_commander_id[hq_uid.0] = Some(cmd_co);
+    w.commanders.sync_hq_ledger_authority(cmd_co, &w.units);
+
+    // Red 1st Platoon (Forward assault echelons near bridge west approach)
+    let cmd_pl1 = w.commanders.spawn_commander(
+        "cmd-pl-1",
+        "红1排排部",
+        TeamId::Red,
+        (246, 230),
+        Echelon::Platoon,
+        Rank::Lieutenant,
+        0,
+    );
+    w.commanders.link_subordinate_cmd(cmd_co, cmd_pl1);
+
+    let u_1pl_1 = w.units.spawn_unit(
+        "red-1pl-sq1",
+        "红1排1班(步兵)",
+        TeamId::Red,
+        (245, 235),
+        Echelon::Squad,
+        "rifle_squad",
+        9,
+        1,
+        eq_map(&[("rifle", 9), ("lmg", 1)]),
+        0,
+    );
+    let u_1pl_2 = w.units.spawn_unit(
+        "red-1pl-sq2",
+        "红1排2班(步兵)",
+        TeamId::Red,
+        (247, 235),
+        Echelon::Squad,
+        "rifle_squad",
+        9,
+        1,
+        eq_map(&[("rifle", 9), ("lmg", 1)]),
+        0,
+    );
+    let u_1pl_3 = w.units.spawn_unit(
+        "red-1pl-sq3",
+        "红1排3班(步兵)",
+        TeamId::Red,
+        (249, 232),
+        Echelon::Squad,
+        "rifle_squad",
+        9,
+        1,
+        eq_map(&[("rifle", 9), ("lmg", 1)]),
+        0,
+    );
+    w.commanders.link_subordinate_unit(cmd_pl1, u_1pl_1, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_pl1, u_1pl_2, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_pl1, u_1pl_3, &mut w.units);
+
+    // Red 2nd Platoon (Maneuver reserve)
+    let cmd_pl2 = w.commanders.spawn_commander(
+        "cmd-pl-2",
+        "红2排排部",
+        TeamId::Red,
+        (210, 190),
+        Echelon::Platoon,
+        Rank::Lieutenant,
+        0,
+    );
+    w.commanders.link_subordinate_cmd(cmd_co, cmd_pl2);
+
+    let u_2pl_1 = w.units.spawn_unit(
+        "red-2pl-sq1",
+        "红2排1班(步兵)",
+        TeamId::Red,
+        (208, 195),
+        Echelon::Squad,
+        "rifle_squad",
+        9,
+        1,
+        eq_map(&[("rifle", 9), ("lmg", 1)]),
+        0,
+    );
+    let u_2pl_2 = w.units.spawn_unit(
+        "red-2pl-sq2",
+        "红2排2班(步兵)",
+        TeamId::Red,
+        (212, 195),
+        Echelon::Squad,
+        "rifle_squad",
+        9,
+        1,
+        eq_map(&[("rifle", 9), ("lmg", 1)]),
+        0,
+    );
+    w.commanders.link_subordinate_unit(cmd_pl2, u_2pl_1, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_pl2, u_2pl_2, &mut w.units);
+
+    // Red Specialized Support Units
+    let u_tk = w.units.spawn_unit(
+        "red-tk-1",
+        "红坦支援排(T-34/85)",
+        TeamId::Red,
+        (246, 220),
+        Echelon::Squad,
+        "tank_squad",
+        3,
+        1,
+        eq_map(&[("tank_medium", 1), ("radio", 1)]),
+        0,
+    );
+    let u_mtr = w.units.spawn_unit(
+        "red-mtr-1",
+        "红82mm迫击炮班",
+        TeamId::Red,
+        (242, 200),
+        Echelon::Squad,
+        "mortar_squad",
+        6,
+        1,
+        eq_map(&[("mortar_81", 1), ("rifle", 6), ("radio", 1)]),
+        0,
+    );
+    let u_eng = w.units.spawn_unit(
+        "red-eng-1",
+        "红工兵工程班",
+        TeamId::Red,
+        (252, 210),
+        Echelon::Squad,
+        "engineer_squad",
+        7,
+        1,
+        eq_map(&[("rifle", 7), ("radio", 1)]),
+        0,
+    );
+    let u_rec = w.units.spawn_unit(
+        "red-rec-1",
+        "红前出侦察组",
+        TeamId::Red,
+        (240, 242),
+        Echelon::Squad,
+        "recon_squad",
+        3,
+        1,
+        eq_map(&[("rifle", 3), ("radio", 1)]),
+        0,
+    );
+    w.commanders.link_subordinate_unit(cmd_co, u_tk, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_co, u_mtr, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_co, u_eng, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_co, u_rec, &mut w.units);
+
+    // Red Depot
+    w.depots.push(Depot {
+        str_id: "depot-red-1".into(),
+        team: TeamId::Red,
+        px: (248, 160),
+        food_t: 50.0,
+        ammo_t: 80.0,
+        fuel_t: 40.0,
+        replacements: 50.0,
+    });
+
+    // 5. Blue Force (AI: Blue Bridgehead Defense Company)
+    let cmd_bco = w.commanders.spawn_commander(
+        "cmd-blue-co",
+        "蓝桥头防御连部",
+        TeamId::Blue,
+        (248, 320),
+        Echelon::Company,
+        Rank::Captain,
+        1,
+    );
+    let cmd_bpl1 = w.commanders.spawn_commander(
+        "cmd-blue-pl1",
+        "蓝桥东前沿排部",
+        TeamId::Blue,
+        (248, 280),
+        Echelon::Platoon,
+        Rank::Lieutenant,
+        1,
+    );
+    w.commanders.link_subordinate_cmd(cmd_bco, cmd_bpl1);
+
+    // Blue Outpost at (247, 262) ~216m from Red 1st Platoon (guaranteed visible enemy contact)
+    let ub_outpost = w.units.spawn_unit(
+        "blue-outpost-1",
+        "蓝桥西前哨观察组",
+        TeamId::Blue,
+        (247, 262),
+        Echelon::Squad,
+        "rifle_squad",
+        7,
+        1,
+        eq_map(&[("rifle", 7), ("radio", 1)]),
+        1,
+    );
+    let ub_def1 = w.units.spawn_unit(
+        "blue-def-1",
+        "蓝桥东堡垒1班",
+        TeamId::Blue,
+        (245, 285),
+        Echelon::Squad,
+        "rifle_squad",
+        9,
+        1,
+        eq_map(&[("rifle", 9), ("lmg", 1)]),
+        1,
+    );
+    let ub_def2 = w.units.spawn_unit(
+        "blue-def-2",
+        "蓝桥东堡垒2班",
+        TeamId::Blue,
+        (251, 285),
+        Echelon::Squad,
+        "rifle_squad",
+        9,
+        1,
+        eq_map(&[("rifle", 9), ("lmg", 1)]),
+        1,
+    );
+    let ub_hmg = w.units.spawn_unit(
+        "blue-hmg-1",
+        "蓝桥头机枪火力组",
+        TeamId::Blue,
+        (248, 290),
+        Echelon::Squad,
+        "mg_squad",
+        5,
+        1,
+        eq_map(&[("hmg", 1), ("rifle", 5)]),
+        1,
+    );
+    w.commanders.link_subordinate_unit(cmd_bpl1, ub_outpost, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_bpl1, ub_def1, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_bpl1, ub_def2, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_bpl1, ub_hmg, &mut w.units);
+
+    let ub_tk = w.units.spawn_unit(
+        "blue-tk-1",
+        "蓝装甲支援组(IV号)",
+        TeamId::Blue,
+        (255, 310),
+        Echelon::Squad,
+        "tank_squad",
+        3,
+        1,
+        eq_map(&[("tank_medium", 1), ("radio", 1)]),
+        1,
+    );
+    let ub_art = w.units.spawn_unit(
+        "blue-art-1",
+        "蓝支援炮兵阵地",
+        TeamId::Blue,
+        (230, 360),
+        Echelon::Squad,
+        "howitzer_squad",
+        7,
+        1,
+        eq_map(&[("howitzer_105", 1), ("rifle", 7), ("radio", 1)]),
+        1,
+    );
+    w.commanders.link_subordinate_unit(cmd_bco, ub_tk, &mut w.units);
+    w.commanders.link_subordinate_unit(cmd_bco, ub_art, &mut w.units);
+
     w
 }
 
