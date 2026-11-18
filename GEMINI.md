@@ -12,7 +12,7 @@
 | :--- | :--- | :--- | :--- |
 | **Rule (常驻总控)** | `AGENTS.md` / `GEMINI.md` | `gentactix-rule` | 确立 V6 SPEC 权威、单 Phase 自办与跨 Phase 硬阻断铁律、原生工具优先与真闭环验收标准 |
 | **Agent (施工专员)** | `.agents/agents/gentactix-builder/agent.md` | `gentactix-builder` | 专职代码落地、Rust 生命周期与借用排障、外置时间机与 Web 地图绑定、真点击 E2E 实测 |
-| **Workflow (分阶段门禁)** | `.agent/workflows/v6-phase1.md ~ v6-phase6.md` | `v6-phases` | 物理隔离每个施工阶段，配合 Planning 模式 Artifact 逐阶段手动触发放行 |
+| **Workflow (分阶段门禁)** | `.agent/workflows/v6-phase1.md ~ v6-phase6.md`、`v6-hotfix-1.md ~ v6-hotfix-3.md` | `v6-phases` | 物理隔离每个施工阶段，配合 Planning 模式 Artifact 逐阶段手动触发放行 |
 | **Skill (内核法典)** | `.agents/skills/gentactix-engine-codex/SKILL.md` | `gentactix-engine-codex` | 锁死 $\Delta x = 2^3\text{m} = 8.0\text{m}$ 纯二进制网格、16s 步长、四大数学算子真入核与外置时间机零业务污染 |
 | **Skill (前端法典)** | `.agents/skills/gentactix-cartography-ui/SKILL.md` | `gentactix-cartography-ui` | 锁死 SD2/CMO 印刷地图基准、真多开 `UI-03` 卡片、26 个零重叠红字 `UI-ID`、时间机预渲染环与无作弊 E2E |
 
@@ -21,7 +21,7 @@
 ## 二 · 五大施工铁律（违反任意一条直接打回重造）
 
 1. **SPEC 法典绝对服从律（Zero Hallucination）**：
-   - 任何施工前，优先查阅当前仓库内的权威规格：`docs/SPEC/SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md`、`docs/SPEC/SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md`、`docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md` 及 `docs/SPEC/plan.txt`（禁止回读已退役的 `SPEC_FINAL_GENTACTIX_CORE_ENGINE.md`）；
+   - 任何施工前，优先查阅当前仓库内的权威规格：`docs/SPEC/SPEC_V6_HOTFIX_CLOSURE_CODEX.md`、`docs/SPEC/hotfix_plan.txt`、`docs/SPEC/SPEC_V6_TIMEMACHINE_AND_FULL_INTEGRATION_CODEX.md`、`docs/SPEC/SPEC_PSEUDO_ASYNC_SCRIPTED_TIMELINE_AND_PHASE_OFFSET_CODEX.md`、`docs/SPEC/SPEC_V5_MATH_AND_FULL_CLOSURE_CODEX.md` 及 `docs/SPEC/plan.txt`（禁止回读已退役的 `SPEC_FINAL_GENTACTIX_CORE_ENGINE.md`）；
    - **绝对禁止任何“懒计算 / 连级阉割代理”或单元测试孤岛**！所有数学算子必须真实接入 `sim_loop.rs::step_subtick_16s` 主循环；
    - **绝对禁止引入十进制 `5m` 或 `200m` 假网格污染**！全系统空间最小步进元永久锁死为纯二进制 $\Delta x = 2^3\text{m} = 8.0\text{m}$（位移 `>> 3`、掩码 `& 7`、浮点 `0.125`）；
    - **外置时间机零污染红线**：绝不篡改或二次切分原生物理伤害数值，只通过 `(abs_sec_hash, unit_name_const_hash) -> 品类时间 LUT` 调度 `#0` 拦单、跨回合窗口喂数、`visibility=0` 预渲染环与 `exact_ms` 放片。
