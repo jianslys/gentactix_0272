@@ -18,6 +18,7 @@ use gentactix_core::command_log::{
     validate_commander_link,
 };
 use gentactix_core::sim_loop::{build_art_16_world, build_demo_world, build_r16_platoon_world, plan_grid_path_f32, SimWorld};
+use gentactix_core::time_machine::TimeCategory;
 use gentactix_core::units_ecs::{equipment_spec, CommanderId, Echelon, EventKind, ReorgTargetSpec, UnitId, UnitState, RADIO_CHANNELS};
 use gentactix_core::world_grid::{
     FrontlineRole, MobilityClass, TeamId, WorldGrid, AIRFIELD, BRIDGE, DIRT_ROAD, FOREST, HIGHWAY,
@@ -112,7 +113,15 @@ fn build_time_machine_frame(
     // 2. 敌军单位：区分可见与预渲染缓冲环 (is_prerender_skirt: true, initial_visibility: 0)
     let intel = gather_intel(obs_team, &w.grid, &w.units, w.night);
     let visible_set: std::collections::HashSet<usize> = intel.iter()
-        .filter(|c| c.fog_level >= 2)
+        .filter(|c| {
+            if c.fog_level > 1 {
+                return false;
+            }
+            let cpos = [c.px.0 as f32, c.px.1 as f32];
+            (0..w.units.id.len())
+                .filter(|&u| w.units.alive[u] && w.units.team[u] == obs_team)
+                .any(|u| w.grid.distance_km(w.units.pos[u], cpos) <= 4.5)
+        })
         .map(|c| c.unit_id.0)
         .collect();
 
@@ -400,12 +409,20 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
     let visible_enemies: Vec<Value> = intel
         .into_iter()
         .filter(|c| {
-            let Some(cid) = cid_opt else { return true; };
-            let cpos = [c.px.0 as f32, c.px.1 as f32];
-            if g.distance_km(w.commander_pos_f32(cid), cpos) <= 4.5 {
-                return true;
+            if c.fog_level > 1 {
+                return false;
             }
-            scope.readable_unit_ids.iter().any(|&su| g.distance_km(w.units.pos[su.0], cpos) <= 4.5)
+            let cpos = [c.px.0 as f32, c.px.1 as f32];
+            if let Some(cid) = cid_opt {
+                if g.distance_km(w.commander_pos_f32(cid), cpos) <= 4.5 {
+                    return true;
+                }
+                scope.readable_unit_ids.iter().any(|&su| g.distance_km(w.units.pos[su.0], cpos) <= 4.5)
+            } else {
+                (0..w.units.id.len())
+                    .filter(|&u| w.units.alive[u] && w.units.team[u] == team)
+                    .any(|u| g.distance_km(w.units.pos[u], cpos) <= 4.5)
+            }
         })
         .map(|c| {
             let intel_clarity = match c.fog_level {
@@ -1241,6 +1258,36 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
             let te = body.get("take_enlisted").and_then(|v| v.as_u64()).unwrap_or(3) as u32;
             let tc = body.get("take_cadre").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
             let nid = format!("{}-sp{}", pid, w.units.id.len());
+            let immediate = body.get("immediate").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !immediate {
+                let ticket = {
+                    let mut tm = st.time_machine.lock().unwrap();
+                    tm.enqueue_operation(
+                        w.subtick as u64,
+                        8,
+                        TimeCategory::Command,
+                        pid,
+                        16,
+                        json!({
+                            "op": "split_squad",
+                            "piece_id": pid,
+                            "take_enlisted": te,
+                            "take_cadre": tc,
+                            "new_piece_id": nid,
+                            "player_commander_id": player_s,
+                        }),
+                    )
+                };
+                st.mp.lock().unwrap().state_revision += 1;
+                let st_json = serialize_state(&w, player_s, None);
+                return (StatusCode::OK, Json(json!({
+                    "ok": true,
+                    "queued": true,
+                    "ticket": ticket,
+                    "new_piece_id": nid,
+                    "state": st_json,
+                })));
+            }
             match w.units.split_unit(uid, te, tc, &nid) {
                 Ok(child) => {
                     if let Some(cmd) = w.units.direct_commander_id[uid.0] {
@@ -1288,6 +1335,34 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
             };
             if let Err(err) = authorize_unit_op(&w, player_s, du) { return err; }
             if let Err(err) = authorize_unit_op(&w, player_s, su) { return err; }
+            let immediate = body.get("immediate").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !immediate {
+                let ticket = {
+                    let mut tm = st.time_machine.lock().unwrap();
+                    tm.enqueue_operation(
+                        w.subtick as u64,
+                        8,
+                        TimeCategory::Command,
+                        a_s,
+                        16,
+                        json!({
+                            "op": "merge_squads",
+                            "target_piece_id": a_s,
+                            "source_piece_id": w.units.str_id[su.0],
+                            "player_commander_id": player_s,
+                        }),
+                    )
+                };
+                st.mp.lock().unwrap().state_revision += 1;
+                let st_json = serialize_state(&w, player_s, None);
+                return (StatusCode::OK, Json(json!({
+                    "ok": true,
+                    "queued": true,
+                    "ticket": ticket,
+                    "total_persons": w.units.persons(du) + w.units.persons(su),
+                    "state": st_json,
+                })));
+            }
             match w.units.merge_squads_direct(du, su) {
                 Ok(tot) => {
                     st.mp.lock().unwrap().state_revision += 1;
@@ -1307,6 +1382,35 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
             };
             if let Err(err) = authorize_unit_op(&w, player_s, uid) { return err; }
             let item_id = body.get("item_id").and_then(|v| v.as_str()).unwrap_or("first_aid_kit");
+            let immediate = body.get("immediate").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !immediate {
+                let ticket = {
+                    let mut tm = st.time_machine.lock().unwrap();
+                    tm.enqueue_operation(
+                        w.subtick as u64,
+                        8,
+                        TimeCategory::Command,
+                        pid,
+                        16,
+                        json!({
+                            "op": "use_item",
+                            "piece_id": pid,
+                            "item_id": item_id,
+                            "player_commander_id": player_s,
+                        }),
+                    )
+                };
+                st.mp.lock().unwrap().state_revision += 1;
+                let st_json = serialize_state(&w, player_s, None);
+                return (StatusCode::OK, Json(json!({
+                    "ok": true,
+                    "queued": true,
+                    "ticket": ticket,
+                    "consumed": false,
+                    "item_id": item_id,
+                    "state": st_json,
+                })));
+            }
             let mut consumed = false;
             for sol in &mut w.units.soldiers[uid.0] {
                 if let Some(idx) = sol.items.iter().position(|it| it.model == item_id || it.name == item_id) {
@@ -1729,6 +1833,33 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                     return (StatusCode::NOT_FOUND, Json(json!({"ok": false, "reason": "piece_not_found"})));
                 };
                 if let Err(err) = authorize_unit_op(&w, player_s, uid) { return err; }
+                let immediate = body.get("immediate").and_then(|v| v.as_bool()).unwrap_or(false);
+                if !immediate {
+                    let ticket = {
+                        let mut tm = st.time_machine.lock().unwrap();
+                        tm.enqueue_operation(
+                            w.subtick as u64,
+                            8,
+                            TimeCategory::Command,
+                            pid,
+                            16,
+                            json!({
+                                "op": "equip_adjust",
+                                "piece_id": pid,
+                                "player_commander_id": player_s,
+                            }),
+                        )
+                    };
+                    st.mp.lock().unwrap().state_revision += 1;
+                    let st_json = serialize_state(&w, player_s, None);
+                    return (StatusCode::OK, Json(json!({
+                        "ok": true,
+                        "queued": true,
+                        "ticket": ticket,
+                        "adjusted": pid,
+                        "state": st_json,
+                    })));
+                }
                 w.units.sync_totals_from_soldiers(uid);
                 st.mp.lock().unwrap().state_revision += 1;
                 let st_json = serialize_state(&w, player_s, None);
@@ -2257,6 +2388,25 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                     Err(reason) => (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": reason}))),
                 }
             } else {
+                let ticket = {
+                    let mut tm = st.time_machine.lock().unwrap();
+                    tm.enqueue_operation(
+                        w.subtick as u64,
+                        8,
+                        TimeCategory::Command,
+                        pid,
+                        16,
+                        json!({
+                            "op": "deploy_heavy_unit",
+                            "piece_id": pid,
+                            "weapon": weapon,
+                            "keep_manned": keep_manned,
+                            "operator_soldier_ids": op_sols,
+                            "operator_count": op_cnt,
+                            "player_commander_id": player_s,
+                        }),
+                    )
+                };
                 let labor = w.units.persons(uid);
                 let eid = w.events.push(uid, dur_h.max(0.05), labor, EventKind::DeployHeavyUnit {
                     weapon,
@@ -2266,7 +2416,7 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                 });
                 st.mp.lock().unwrap().state_revision += 1;
                 let st_json = serialize_state(&w, player_s, None);
-                (StatusCode::OK, Json(json!({"ok": true, "event_id": eid, "state": st_json})))
+                (StatusCode::OK, Json(json!({"ok": true, "queued": true, "ticket": ticket, "event_id": eid, "state": st_json})))
             }
         }
         "operate_heavy_unit" => {
@@ -2331,11 +2481,28 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
                     Err(reason) => (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": reason}))),
                 }
             } else {
+                let ticket = {
+                    let mut tm = st.time_machine.lock().unwrap();
+                    tm.enqueue_operation(
+                        w.subtick as u64,
+                        8,
+                        TimeCategory::Command,
+                        pid,
+                        16,
+                        json!({
+                            "op": "pack_heavy_unit",
+                            "piece_id": pid,
+                            "target_unit_id": w.units.str_id[target_uid.0],
+                            "attach": attach,
+                            "player_commander_id": player_s,
+                        }),
+                    )
+                };
                 let labor = w.units.persons(uid).max(w.units.effective_operator_stats(uid).0);
                 let eid = w.events.push(uid, dur_h.max(0.05), labor, EventKind::PackHeavyUnit { target_unit_id: target_uid, attach });
                 st.mp.lock().unwrap().state_revision += 1;
                 let st_json = serialize_state(&w, player_s, None);
-                (StatusCode::OK, Json(json!({"ok": true, "event_id": eid, "state": st_json})))
+                (StatusCode::OK, Json(json!({"ok": true, "queued": true, "ticket": ticket, "event_id": eid, "state": st_json})))
             }
         }
         "cancel_event" => {
@@ -2408,6 +2575,91 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
             (StatusCode::OK, Json(json!({"ok": true, "casualties": rep.person_losses, "state": st_json})))
         }
         _ => (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "reason": format!("unknown_op:{op}")}))),
+    }
+}
+
+fn apply_due_operation(w: &mut SimWorld, op: &gentactix_core::time_machine::PendingOpTicket) {
+    let payload = &op.raw_op_payload;
+    let op_kind = payload.get("op").and_then(|v| v.as_str()).unwrap_or("");
+    match op_kind {
+        "split_squad" | "btnSplitSquad" => {
+            let pid = payload.get("piece_id").or_else(|| payload.get("unit_id")).and_then(|v| v.as_str()).unwrap_or(&op.unit_name);
+            if let Some(&uid) = w.units.str_to_id.get(pid) {
+                let te = payload.get("take_enlisted").and_then(|v| v.as_u64()).unwrap_or(3) as u32;
+                let tc = payload.get("take_cadre").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                let nid = payload.get("new_piece_id").and_then(|v| v.as_str()).map(str::to_string)
+                    .unwrap_or_else(|| format!("{}-sp{}", pid, w.units.id.len()));
+                if let Ok(child) = w.units.split_unit(uid, te, tc, &nid) {
+                    if let Some(cmd) = w.units.direct_commander_id[uid.0] {
+                        w.commanders.link_subordinate_unit(cmd, child, &mut w.units);
+                    }
+                }
+            }
+        }
+        "merge_squad_pieces" | "merge_squads" | "btnMergeSquad" => {
+            let target_pid = payload.get("target_piece_id").or_else(|| payload.get("piece_id")).and_then(|v| v.as_str()).unwrap_or(&op.unit_name);
+            if let Some(&du) = w.units.str_to_id.get(target_pid) {
+                let su_opt = payload.get("source_piece_id").and_then(|v| v.as_str()).and_then(|s| w.units.str_to_id.get(s).copied());
+                let cand_su = if let Some(su) = su_opt {
+                    Some(su)
+                } else {
+                    (0..w.units.id.len())
+                        .filter(|&i| UnitId(i) != du && w.units.alive[i] && w.units.team[i] == w.units.team[du.0])
+                        .min_by(|&i, &j| {
+                            let d1 = (w.units.pos[i][0] - w.units.pos[du.0][0]).hypot(w.units.pos[i][1] - w.units.pos[du.0][1]);
+                            let d2 = (w.units.pos[j][0] - w.units.pos[du.0][0]).hypot(w.units.pos[j][1] - w.units.pos[du.0][1]);
+                            d1.partial_cmp(&d2).unwrap_or(std::cmp::Ordering::Equal)
+                        })
+                        .map(UnitId)
+                };
+                if let Some(su) = cand_su {
+                    if su != du {
+                        let _ = w.units.merge_squads_direct(du, su);
+                    }
+                }
+            }
+        }
+        "use_item" | "btnUseItem" => {
+            let pid = payload.get("piece_id").or_else(|| payload.get("unit_id")).and_then(|v| v.as_str()).unwrap_or(&op.unit_name);
+            if let Some(&uid) = w.units.str_to_id.get(pid) {
+                let item_id = payload.get("item_id").and_then(|v| v.as_str()).unwrap_or("first_aid_kit");
+                for sol in &mut w.units.soldiers[uid.0] {
+                    if let Some(idx) = sol.items.iter().position(|it| it.model == item_id || it.name == item_id) {
+                        sol.items.remove(idx);
+                        break;
+                    }
+                }
+                w.units.org[uid.0] = (w.units.org[uid.0] + 5.0).min(w.units.org_cap[uid.0]);
+            }
+        }
+        "move_soldier_item" | "equip_adjust" | "btnEquipAdjust" => {
+            let pid = payload.get("piece_id").or_else(|| payload.get("unit_id")).and_then(|v| v.as_str()).unwrap_or(&op.unit_name);
+            if let Some(&uid) = w.units.str_to_id.get(pid) {
+                w.units.sync_totals_from_soldiers(uid);
+            }
+        }
+        "deploy_heavy" | "deploy_heavy_unit" | "btnDeployHeavy" => {
+            let pid = payload.get("piece_id").or_else(|| payload.get("unit_id")).and_then(|v| v.as_str()).unwrap_or(&op.unit_name);
+            if let Some(&uid) = w.units.str_to_id.get(pid) {
+                let weapon = payload.get("weapon").and_then(|v| v.as_str()).unwrap_or("lmg");
+                let keep_manned = payload.get("keep_manned").and_then(|v| v.as_bool()).unwrap_or(true);
+                let op_sols: Vec<String> = payload.get("operator_soldier_ids").and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect()).unwrap_or_default();
+                let op_cnt = payload.get("operator_count").and_then(|v| v.as_u64()).unwrap_or(2) as u32;
+                let tag = w.events.next_id + 1;
+                w.events.next_id = tag;
+                let _ = w.execute_deploy_heavy(uid, weapon, keep_manned, &op_sols, op_cnt, tag);
+            }
+        }
+        "pack_heavy" | "pack_heavy_unit" | "btnPackHeavy" => {
+            let pid = payload.get("piece_id").or_else(|| payload.get("unit_id")).and_then(|v| v.as_str()).unwrap_or(&op.unit_name);
+            if let Some(&uid) = w.units.str_to_id.get(pid) {
+                let target_uid = payload.get("target_unit_id").and_then(|v| v.as_str()).and_then(|s| w.units.str_to_id.get(s).copied()).unwrap_or(uid);
+                let attach = payload.get("attach").and_then(|v| v.as_bool()).unwrap_or(false);
+                let _ = w.execute_pack_heavy(uid, target_uid, attach);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -2570,9 +2822,14 @@ async fn post_commit_turn(State(st): State<AppState>, Json(body): Json<Value>) -
         .map(|i| (i, w.units.pos[i]))
         .collect();
 
-    {
+    let n_steps = opt_subticks.unwrap_or(1);
+    let target_drain_tick = w.subtick as u64 + n_steps as u64;
+    let due_ops = {
         let mut tm = st.time_machine.lock().unwrap();
-        let _due_ops = tm.drain_due_operations(w.subtick as u64 + 1);
+        tm.drain_due_operations(target_drain_tick)
+    };
+    for op in due_ops {
+        apply_due_operation(&mut w, &op);
     }
 
     let rep = if let Some(n_ticks) = opt_subticks {
@@ -3198,5 +3455,56 @@ mod tests {
         assert_eq!(sc_use, StatusCode::OK);
         assert_eq!(res_use["ok"], json!(true));
         assert_eq!(res_use["item_id"], json!("first_aid_kit"));
+    }
+
+    #[tokio::test]
+    async fn test_v6_hotfix01_backend_closure() {
+        let st = test_state();
+
+        // 1. Turn 0 开局，验证远方敌军 blue-tk-2 不在 visible_enemies 中穿帮，而在 prerender_skirt 中
+        let q = StateQuery { commander_id: None, team: None, seat_token: None };
+        let (sc, Json(st_val)) = get_state(State(st.clone()), axum::extract::Query(q)).await;
+        assert_eq!(sc, StatusCode::OK);
+        let vis_enemies = st_val["visible_enemies"].as_array().expect("visible_enemies 数组");
+        assert!(vis_enemies.iter().all(|e| e["id"].as_str() != Some("blue-tk-2")), "Turn 0 远方敌军 blue-tk-2 绝不亮标于 visible_enemies");
+
+        let tracks = st_val["time_machine_frame"]["particle_tracks"].as_array().expect("particle_tracks");
+        let blue_tk_2_node = tracks.iter().find(|t| t["piece_id"].as_str() == Some("blue-tk-2"));
+        if let Some(node) = blue_tk_2_node {
+            assert_eq!(node["is_prerender_skirt"], json!(true), "blue-tk-2 必须为预渲染缓冲环隐身单位");
+            assert_eq!(node["initial_visibility"], json!(0), "blue-tk-2 初始可见度必须为 0");
+        }
+
+        // 2. 暂停当回合点击 split_squad，必须挂起进入时间机队列，禁止提前修改 w.units
+        let initial_own_count = st_val["own_pieces"].as_array().unwrap().len();
+        let first_id = st_val["own_pieces"][0]["id"].as_str().unwrap();
+
+        let (sc_split, Json(res_split)) = post_unit_op(
+            State(st.clone()),
+            Json(json!({
+                "op": "split_squad",
+                "unit_id": first_id,
+                "take_enlisted": 2,
+                "take_cadre": 0,
+            })),
+        ).await;
+        assert_eq!(sc_split, StatusCode::OK);
+        assert_eq!(res_split["ok"], json!(true));
+        assert_eq!(res_split["queued"], json!(true));
+        assert!(res_split.get("ticket").is_some());
+
+        // 再次获取 state，验证暂停当回合内 own_pieces 数量未暴涨
+        let (sc_st2, Json(st_val2)) = get_state(State(st.clone()), axum::extract::Query(StateQuery { commander_id: None, team: None, seat_token: None })).await;
+        assert_eq!(sc_st2, StatusCode::OK);
+        assert_eq!(st_val2["own_pieces"].as_array().unwrap().len(), initial_own_count, "暂停当回合内禁止修改单位数量");
+
+        // 3. 执行 commit_turn，时间机队列提取并执行到期操作，own_pieces 数量转正增加
+        let (sc_commit, Json(commit_res)) = post_commit_turn(
+            State(st.clone()),
+            Json(json!({ "subticks": 1 })),
+        ).await;
+        assert_eq!(sc_commit, StatusCode::OK);
+        assert_eq!(commit_res["ok"], json!(true));
+        assert_eq!(commit_res["state"]["own_pieces"].as_array().unwrap().len(), initial_own_count + 1, "commit_turn 必须消费 due_ops 并完成编制分队转正");
     }
 }

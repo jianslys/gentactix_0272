@@ -2073,7 +2073,14 @@ impl SimWorld {
                     let mid_pos = [(c_pos[0] + u_pos[0]) * 0.5, (c_pos[1] + u_pos[1]) * 0.5];
                     profile.push((dist_tot * 0.5, self.elevation_at_pos(mid_pos)));
                     profile.push((dist_tot, self.elevation_at_pos(u_pos)));
-                    let _dominant_edge = DeygoutRadioOperator::find_dominant_knife_edge(&profile);
+                    let dominant_edge = DeygoutRadioOperator::find_dominant_knife_edge(&profile);
+                    if let Some(edge_idx) = dominant_edge {
+                        let nu = (profile[edge_idx].1 - profile[0].1).abs() / 10.0;
+                        let t_diff = DeygoutRadioOperator::rational_diffraction_transmission(nu);
+                        if t_diff < 0.5 {
+                            self.units.control_radius_km[uid] = (self.units.control_radius_km[uid] * (0.5 + 0.5 * t_diff)).max(0.1);
+                        }
+                    }
                 }
 
                 let target_w = if self.units.autonomy_state[uid] == AtomicAction::Attack {
@@ -2085,7 +2092,10 @@ impl SimWorld {
                 };
                 let filter = self.unit_zoh_filters.entry(uid as u32).or_default();
                 filter.step_zoh(&[(1, target_w)], 1.0, SUBTICK_SECONDS);
-                let _rethink = filter.evaluate_schmidt_rethink(&[(1, target_w)], 1.0);
+                let rethink = filter.evaluate_schmidt_rethink(&[(1, target_w)], 1.0);
+                if let Some(rethink_ticks) = rethink {
+                    filter.dwell_ticks = filter.dwell_ticks.saturating_sub(rethink_ticks.min(filter.dwell_ticks.saturating_sub(1)));
+                }
             }
         }
 
@@ -2096,7 +2106,7 @@ impl SimWorld {
             if !self.units.alive[uid] || self.units.persons(UnitId(uid)) == 0 {
                 continue;
             }
-            let target_px = if let Some(plan) = self.direct_unit_plans.get(&format!("u{}", uid)) {
+            let target_px = if let Some(plan) = self.direct_unit_plans.get(&self.units.str_id[uid]) {
                 if let Some(wp) = plan.waypoints.first() {
                     self.pos_to_px(*wp)
                 } else {
@@ -2119,7 +2129,19 @@ impl SimWorld {
             }
         }
         if !bids.is_empty() {
-            let _allocations = run_deterministic_multi_capacity_auction(bids, &cell_capacities);
+            let allocations = run_deterministic_multi_capacity_auction(bids, &cell_capacities);
+            for (winner_uid, cell_idx) in allocations {
+                let u_idx = winner_uid as usize;
+                if u_idx < self.units.id.len() && self.units.alive[u_idx] {
+                    if !self.direct_unit_plans.contains_key(&self.units.str_id[u_idx]) {
+                        let ar = (cell_idx / self.grid.cols) as i32;
+                        let ac = (cell_idx % self.grid.cols) as i32;
+                        if self.grid.in_bounds(ar, ac) && self.units.px[u_idx] == (ar, ac) {
+                            self.units.moved_last_turn[u_idx] = false;
+                        }
+                    }
+                }
+            }
         }
 
         // 2. Autonomous tactical step for units (Rayon parallel evaluation + deterministic apply)

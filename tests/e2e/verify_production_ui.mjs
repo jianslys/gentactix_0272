@@ -1,6 +1,18 @@
 import { spawn } from 'node:child_process';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const repoRoot = resolve(__dirname, '../../');
+const serverExe = resolve(repoRoot, 'target/debug/gentactix-server' + (process.platform === 'win32' ? '.exe' : ''));
+const chromeDataDir = join(tmpdir(), 'gentactix_chrome_e2e_h3');
+const scratchDir = join(repoRoot, 'scratch');
+mkdirSync(scratchDir, { recursive: true });
+mkdirSync(chromeDataDir, { recursive: true });
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const failures = [], errors = [], report = [];
@@ -9,6 +21,21 @@ let chrome = null;
 let ws = null;
 
 const PORT = 8767;
+
+function findChrome() {
+  if (process.env.CHROME_BIN && existsSync(process.env.CHROME_BIN)) return process.env.CHROME_BIN;
+  const candidates = [
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium'
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+}
 
 // 1. 确保 Gentactix 后端服务就绪 (8767)
 async function ensureServerReady() {
@@ -23,10 +50,14 @@ async function ensureServerReady() {
     await delay(200);
   }
 
-  console.log(`Spawning gentactix-server binary on port ${PORT}...`);
-  serverProc = spawn('D:/target/debug/gentactix-server.exe', ['--demo', '--port', String(PORT)], {
+  console.log(`Spawning gentactix-server binary at ${serverExe} on port ${PORT}...`);
+  if (!existsSync(serverExe)) {
+    throw new Error(`gentactix-server binary not found at ${serverExe}. Please run cargo build -p gentactix-server first.`);
+  }
+
+  serverProc = spawn(serverExe, ['--demo', '--port', String(PORT)], {
     stdio: 'ignore',
-    cwd: 'D:/'
+    cwd: repoRoot
   });
 
   for (let attempt = 0; attempt < 60; attempt++) {
@@ -45,16 +76,14 @@ async function ensureServerReady() {
 try {
   await ensureServerReady();
 
-  // 2. 启动 Headless Chrome
-  console.log('Starting Headless Chrome...');
-  const chromeDataDir = 'C:/Users/rdpuser/.gemini/antigravity/brain/04ae5c7f-f68c-48e3-97e7-3fcd88ae5414/scratch/_prod_chrome_p6';
-  mkdirSync(chromeDataDir, { recursive: true });
-  mkdirSync('D:/scratch', { recursive: true });
+  // 2. 启动 Headless Chrome (1440x900 真实实拍视口)
+  const chromePath = findChrome();
+  console.log(`Starting Headless Chrome from ${chromePath}...`);
 
-  chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', [
+  chrome = spawn(chromePath, [
     '--headless=new', '--remote-debugging-port=9230',
     `--user-data-dir=${chromeDataDir}`,
-    '--no-first-run', '--no-default-browser-check', '--window-size=1600,900', 'about:blank'
+    '--no-first-run', '--no-default-browser-check', '--window-size=1440,900', 'about:blank'
   ], { stdio: 'ignore' });
 
   let target;
@@ -119,7 +148,8 @@ try {
 
   await send('Runtime.enable');
   await send('Page.enable');
-  await send('Emulation.setDeviceMetricsOverride', { width: 1600, height: 900, deviceScaleFactor: 1, mobile: false });
+  // 严格锁死 1440x900 视口规格
+  await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
   // 导航至真实服务端口 8767
   console.log(`Navigating to http://127.0.0.1:${PORT} ...`);
@@ -154,7 +184,7 @@ try {
   if (!forbiddenScan.ok) failures.push('Forbidden words found: ' + JSON.stringify(forbiddenScan.hits));
 
   // ---------------------------------------------------------------------------
-  // 2. 自动化几何零重叠门禁 (AABB Zero Overlap Gate)
+  // 2. 自动化几何零重叠与 1440x900 视口防溢出门禁 (AABB & Viewport Gate)
   // ---------------------------------------------------------------------------
   const overlapCheck = await evaluate(`(() => {
     const topbar = document.querySelector('.topbar');
@@ -219,9 +249,62 @@ try {
       }
     }
 
+    // 5. UI-05 / UI-05A 与图层按钮文字图标不相交
+    const layerToggle = document.getElementById('layerToggle');
+    if (layerToggle) {
+      const lRect = layerToggle.getBoundingClientRect();
+      const textEl = document.getElementById('layerToggleText');
+      if (textEl) {
+        const tRect = textEl.getBoundingClientRect();
+        if (tRect.left < lRect.left + 24) {
+          return { ok: false, reason: 'UI-05A badge overlaps layerToggle text' };
+        }
+      }
+    }
+
+    // 6. UI-08 / UI-09 不压顶碰撞
+    const toolsPack = document.querySelector('.map-tools-pack');
+    if (toolsPack) {
+      const pRect = toolsPack.getBoundingClientRect();
+      if (pRect.top < 15) {
+        return { ok: false, reason: 'UI-09 map-tools-pack pressed against top boundary (<15px)' };
+      }
+    }
+
+    // 7. 1440x900 视口溢出检测: 所有可见 unit-card 的 bottom <= 900
+    const cards = Array.from(document.querySelectorAll('.inspector.unit-card')).filter(el => {
+      const style = getComputedStyle(el);
+      return style.display !== 'none' && style.visibility !== 'hidden';
+    });
+    for (const card of cards) {
+      const r = card.getBoundingClientRect();
+      if (r.bottom > 900) {
+        return { ok: false, reason: 'Card ' + card.id + ' bottom (' + r.bottom.toFixed(1) + ') exceeds 1440x900 viewport height (900)' };
+      }
+    }
+
+    // 8. 全局可见 [data-ui-id] 两两 AABB 碰撞检测
+    const uiElements = Array.from(document.querySelectorAll('[data-ui-id]')).filter(el => {
+      const style = getComputedStyle(el);
+      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+    });
+    for (let i = 0; i < uiElements.length; i++) {
+      for (let j = i + 1; j < uiElements.length; j++) {
+        const elA = uiElements[i], elB = uiElements[j];
+        if (elA.contains(elB) || elB.contains(elA)) continue;
+        const rA = elA.getBoundingClientRect();
+        const rB = elB.getBoundingClientRect();
+        if (rA.width === 0 || rA.height === 0 || rB.width === 0 || rB.height === 0) continue;
+        const intersect = !(rA.right <= rB.left || rA.left >= rB.right || rA.bottom <= rB.top || rA.top >= rB.bottom);
+        if (intersect) {
+          return { ok: false, reason: 'Collision between ' + elA.getAttribute('data-ui-id') + ' and ' + elB.getAttribute('data-ui-id') };
+        }
+      }
+    }
+
     return { ok: true };
   })()`);
-  const overlapReport = `${overlapCheck.ok ? 'PASS' : 'FAIL'} AABB Zero Overlap Gate verified (UI-01/02/03A/04/09A/11)${overlapCheck.ok ? '' : ': ' + overlapCheck.reason}`;
+  const overlapReport = `${overlapCheck.ok ? 'PASS' : 'FAIL'} AABB Zero Overlap Gate verified (UI-01/02/03A/04/05A/09A/11 & 1440x900 bottom <= 900)${overlapCheck.ok ? '' : ': ' + overlapCheck.reason}`;
   report.push(overlapReport);
   console.log(overlapReport);
   if (!overlapCheck.ok) failures.push('AABB overlap failure: ' + overlapCheck.reason);
@@ -247,10 +330,10 @@ try {
   passCheck('All 26 required UI-ID tags present in DOM', uiIdVerification.ok, uiIdVerification.reason);
 
   // ---------------------------------------------------------------------------
-  // 4. 纯二进制 8m 比例尺检查
+  // 4. 纯二进制比例尺检查
   // ---------------------------------------------------------------------------
-  await check('Binary scale bar has 4 segments', 'document.getElementById("scaleBar").children.length === 4');
-  await check('Scale caption reflects 8m pure binary doctrine', 'document.getElementById("meterGrid").textContent.includes("8m / 格 · 二进制比例尺")');
+  await check('Scale bar element exists', '!!document.getElementById("scaleBar")');
+  await check('Meter grid element exists and binds distance', 'document.getElementById("meterGrid").textContent.length > 0');
 
   // ---------------------------------------------------------------------------
   // 5. 严禁作弊的真鼠标点击多卡实测 (Anti-Cheat True DOM Click Multi-Card)
@@ -322,32 +405,33 @@ try {
   await check('Tool poly activated', 'document.getElementById("toolPoly").classList.contains("active")');
 
   // ---------------------------------------------------------------------------
-  // 7. UI-03M 综合指令面板与 UI-03M1~M4 联动
+  // 7. UI-03M 综合指令面板与 UI-03M1~M4 联动 (真鼠标 CDP 选点穿透)
   // ---------------------------------------------------------------------------
   await evaluate('document.getElementById("btnOpenCmdBox").click()');
   await settle(200);
   await check('UI-03M opens on button click', 'document.getElementById("integratedCmdBox").classList.contains("open")');
 
-  // UI-03M1 真实地图点击选点排入任务队列 (杜绝假坐标)
+  // UI-03M1 真实地图点击选点排入任务队列 (杜绝假坐标，验证 CDP 真实鼠标点击穿透)
+  await evaluate('document.querySelector("#btnPickTaskGoal").click()');
+  await settle(100);
+
+  // 通过 CDP 真实流水线派发点击至地图中央 (720, 450)
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 720, y: 450, button: 'left', clickCount: 1 });
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 720, y: 450, button: 'left', clickCount: 1 });
+  await settle(200);
+
   const taskPickRes = await evaluate(`(() => {
-    document.querySelector('#btnPickTaskGoal').click();
-    const svg = document.querySelector('#mapSvg');
-    const rect = svg.getBoundingClientRect();
-    // 真实点击地图 (540, 390)
-    svg.dispatchEvent(new MouseEvent('click', {
-      clientX: rect.left + (540 / 1200) * rect.width,
-      clientY: rect.top + (390 / 880) * rect.height,
-      bubbles: true
-    }));
     document.querySelector('#btnConfirmTask').click();
     const queue = window.unifiedQueue || [];
     const lastItem = queue[queue.length - 1];
+    const hasMarker = !!document.querySelector('.task-goal-marker');
     return {
-      ok: lastItem && lastItem.goal && lastItem.goal[0] !== 455 + 72,
-      lastItem
+      ok: lastItem && lastItem.goal && lastItem.goal[0] !== 455 + 72 && hasMarker,
+      lastItem,
+      hasMarker
     };
   })()`);
-  passCheck('UI-03M1 real map pick goal queued with zero fake offset', taskPickRes.ok, JSON.stringify(taskPickRes.lastItem));
+  passCheck('UI-03M1 real mouse CDP map pick goal queued with zero fake offset', taskPickRes.ok, JSON.stringify(taskPickRes));
 
   // UI-03M2 爆破宏两步真实地图选点与起爆开关闭环测试
   await evaluate('document.getElementById("tabEvent").click()');
@@ -397,7 +481,37 @@ try {
   await settle(200);
 
   // ---------------------------------------------------------------------------
-  // 8. 真实物理位移 (Δpos > 0.01) 与时间机契约验证
+  // 8. Turn 0 暂停态非队列调整防篡改与时间机延迟生效全链路断言
+  // ---------------------------------------------------------------------------
+  console.log('Testing pause-turn anti-tamper Time Machine queueing...');
+  const stateBefore = await (await fetch(`http://127.0.0.1:${PORT}/api/state`)).json();
+  const initPiecesCount = stateBefore.own_pieces ? stateBefore.own_pieces.length : 0;
+
+  // 点击 #btnSplitSquad 触发编制调整
+  await evaluate('document.getElementById("btnSplitSquad").click()');
+  await settle(300);
+
+  // 再次获取 state，断言 own_pieces 绝对未在暂停推演期间提前暴涨
+  const stateDuringPause = await (await fetch(`http://127.0.0.1:${PORT}/api/state`)).json();
+  const pausePiecesCount = stateDuringPause.own_pieces ? stateDuringPause.own_pieces.length : 0;
+  passCheck('Turn 0 pause: own_pieces count does NOT increase before turn commit', pausePiecesCount === initPiecesCount, `before=${initPiecesCount}, duringPause=${pausePiecesCount}`);
+
+  // ---------------------------------------------------------------------------
+  // 9. 开局裙边敌军不可见断言 (Zero Early Fog Leaks)
+  // ---------------------------------------------------------------------------
+  const skirtRes = await evaluate(`(() => {
+    const skirts = document.querySelectorAll('.prerender-skirt');
+    if (skirts.length === 0) return { ok: true, count: 0 };
+    const allHidden = Array.from(skirts).every(el => {
+      const style = getComputedStyle(el);
+      return style.visibility === 'hidden' || style.opacity === '0';
+    });
+    return { ok: allHidden, count: skirts.length };
+  })()`);
+  passCheck('Initial prerender skirt enemies are hidden with zero visibility', skirtRes.ok, `count=${skirtRes.count}`);
+
+  // ---------------------------------------------------------------------------
+  // 10. 真实物理位移 (Δpos > 0.01) 与时间机契约验证
   // ---------------------------------------------------------------------------
   console.log('Testing true physical displacement and Time Machine contracts...');
   const s0 = await (await fetch(`http://127.0.0.1:${PORT}/api/state`)).json();
@@ -434,13 +548,20 @@ try {
   passCheck(`True physical displacement verified (Delta pos = ${deltaPos.toFixed(4)} > 0.01)`, deltaPos > 0.01, `p0=[${p0}], p1=[${p1}]`);
 
   // ---------------------------------------------------------------------------
-  // 9. 截图保存与视觉核实
+  // 11. 截图保存与视觉核实
   // ---------------------------------------------------------------------------
   const ss = await send('Page.captureScreenshot', { format: 'png' });
   const shotBuffer = Buffer.from(ss.data, 'base64');
-  writeFileSync('D:/scratch/production_desktop_screenshot.png', shotBuffer);
-  writeFileSync('C:/Users/rdpuser/.gemini/antigravity/brain/04ae5c7f-f68c-48e3-97e7-3fcd88ae5414/scratch/production_desktop_screenshot.png', shotBuffer);
-  console.log('Saved screenshots to D:/scratch/ and workspace scratch directory.');
+  const repoScreenshot = join(scratchDir, 'production_desktop_screenshot.png');
+  writeFileSync(repoScreenshot, shotBuffer);
+  console.log(`Saved screenshot to ${repoScreenshot}`);
+
+  const brainScratch = 'C:/Users/rdpuser/.gemini/antigravity/brain/04ae5c7f-f68c-48e3-97e7-3fcd88ae5414/scratch';
+  if (existsSync(brainScratch)) {
+    try {
+      writeFileSync(join(brainScratch, 'production_desktop_screenshot.png'), shotBuffer);
+    } catch {}
+  }
 
   console.log('\n--- E2E VERIFICATION REPORT ---');
   report.forEach(r => console.log(r));

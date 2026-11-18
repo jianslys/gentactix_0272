@@ -9,41 +9,41 @@
 *{box-sizing:border-box}body{margin:0;background:var(--deep);color:var(--ink);font:12px var(--sans);height:100dvh;overflow:hidden}button,input{font:inherit}button{color:inherit;cursor:pointer}button:disabled{cursor:default}button:focus-visible,a:focus-visible{outline:2px solid #dfc486;outline-offset:-2px}button{border:0;background:none}svg{display:block}button svg{width:17px;height:17px;flex-shrink:0}.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.45;stroke-linecap:square;stroke-linejoin:miter}.mono{font-family:var(--mono)}.muted{color:var(--dim)}.caps{font:10px var(--mono);letter-spacing:1.8px}.gold{color:var(--gold)}
 html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidden;width:100%;display:grid;height:100dvh;grid-template-rows:36px 26px minmax(0,1fr)}.topbar{display:flex;align-items:center;border-bottom:1px solid #435054;padding:0 14px;gap:18px;z-index:5;background:var(--deep);height:36px}.brand{display:flex;align-items:center;gap:8px;min-width:160px;margin-left:42px}.brand-mark{width:20px;height:24px;color:var(--gold)}.brand b{font:700 14px var(--sans);letter-spacing:2px}.brand small{display:block;color:var(--dim);font:7px var(--mono);letter-spacing:1.5px;margin-top:1px}.nav{height:100%;display:flex;gap:16px}.nav button{position:relative;letter-spacing:1.5px;color:#929c9c;padding:0 2px;font-size:11px}.nav button.active{color:#ecdfbc}.nav button.active:after{position:absolute;content:"";height:2px;background:var(--gold);bottom:0;left:0;right:0}.top-right{margin-left:auto;display:flex;align-items:center;gap:14px}.concept-tag{font:8px var(--mono);letter-spacing:1.2px;border:1px solid #5d624f;color:#c9ba92;padding:3px 6px}.help-button{display:flex;align-items:center;gap:5px;color:#aeb7b5;font-size:10px}.clock{display:flex;align-items:baseline;gap:6px}.clock b{font:16px var(--mono);letter-spacing:1px}.clock span{font:9px var(--mono);color:#8e9a9b}.clock:before{content:"";width:4px;height:4px;background:var(--gold);border-radius:50%}.subbar{display:flex;align-items:center;background:#2c373b;border-bottom:1px solid #11191d;padding:0 14px 0 46px;gap:12px;color:#b5bdb9;font-size:10px;height:26px}.subbar .divider{width:1px;height:12px;background:#465055}.operation{color:#e0d1ae;letter-spacing:1px}.weather{display:flex;align-items:center;gap:6px}.subbar .right{margin-left:auto;display:flex;align-items:center;gap:10px}.control{height:20px;padding:0 8px;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid #526064;color:#d1d8d4;font-size:10px}.control:hover{background:#465155}.control[aria-pressed=true]{border-color:var(--gold);color:#eddbb6}.speed{font-family:var(--mono);font-size:10px}.workspace{position:relative;width:100%;height:100%;overflow:hidden;min-height:0;display:block}.eyebrow{font:9px var(--mono);letter-spacing:2px;color:#98a6a7;margin-bottom:9px}
 .map-area{position:relative;overflow:hidden;background:#ded7bd;isolation:isolate;min-width:0}.map-viewport{position:absolute;inset:0;cursor:grab;touch-action:none}.map-viewport.dragging{cursor:grabbing}.map-svg{width:100%;height:100%;background:#ddd6ba;user-select:none}.map-svg text{user-select:none}.map-title{position:absolute;left:25px;top:24px;z-index:2;color:#4e5144;--title-alpha:.4;--title-offset:4px}.title-button{display:block;text-align:left;padding:18px 16px 14px 0;background:radial-gradient(ellipse at 20% 30%,#ded8beed,transparent 80%);color:inherit;min-width:150px}.title-heading{display:block;font-family:"Noto Serif SC","Songti SC",SimSun,serif;font-size:21px;font-weight:400;letter-spacing:4px;text-shadow:0 1px #f3e9cf;transition:font-size .26s ease,letter-spacing .26s ease}.title-details{display:grid;grid-template-rows:1fr;opacity:var(--title-alpha);transform:translateY(var(--title-offset));transition:grid-template-rows .26s ease,margin .26s ease,opacity .1s linear;pointer-events:none;margin-top:9px}.title-details>span{overflow:hidden;display:flex;flex-direction:column;gap:5px;font:8px var(--mono);letter-spacing:1.5px;color:#747562}.map-title.compact .title-heading{font-size:13px;letter-spacing:2px}.map-title.compact .title-details{grid-template-rows:0fr;opacity:0;margin-top:0}.map-title .title-heading{opacity:calc(.65 + var(--title-alpha)*.35)}.map-stamp{position:absolute;right:24px;top:25px;color:#756d54;font:9px var(--mono);letter-spacing:2px;writing-mode:vertical-rl;display:flex;gap:13px;align-items:center;pointer-events:none}.map-stamp span{border:1px solid #969076;padding:8px 5px;font:10px var(--sans);letter-spacing:3px}.compass{position:absolute;right:35px;top:101px;width:47px;height:65px;pointer-events:none;color:#525c54}.map-tools{position:absolute;right:18px;top:215px;display:grid;background:#e9e3ccf0;border:1px solid #aaa68e;box-shadow:0 2px 8px #32372312}.map-tools button{width:32px;height:33px;display:grid;place-items:center;color:#4f5a53;border-bottom:1px solid #bdb79f}.map-tools button:last-child{border-bottom:0}.map-tools button:hover{background:#d0c8ae}.map-tools button.text-icon{font:20px var(--mono)}.zoom-readout{font:8px var(--mono);text-align:center;color:#656c5b;padding:6px 0;border-top:1px solid #c4bea8}.map-notice{position:absolute;bottom:75px;left:25px;color:#6c705e;display:flex;align-items:center;gap:6px;font-size:9px;pointer-events:none;padding-top:14px}.map-notice svg{width:12px;height:12px}.layer-dock{position:absolute;right:20px;bottom:18px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:22px;color:#414b42}.layer-card{width:274px;background:#f0ecdcf7;border:1px solid #777e6a;outline:1px solid #8d927544;outline-offset:-4px;box-shadow:0 8px 24px #3237231c;transform-origin:bottom right;transition:opacity .22s ease,transform .22s ease,visibility .22s;transform:translateY(12px) scale(.97);opacity:0;visibility:hidden;pointer-events:none}.layer-card.open{transform:translateY(0) scale(1);opacity:1;visibility:visible;pointer-events:auto}.layer-head{display:flex;align-items:center;justify-content:space-between;padding:24px 16px 10px;border-bottom:1px solid #9b9c802f;font-size:11px;letter-spacing:2px}.layer-head small{font:8px var(--mono);letter-spacing:1.5px;color:#79806c;margin-left:8px}.layer-close{font-size:19px;line-height:1;padding:3px 5px;color:#767c69}.layer-close:hover{color:#303d32}.layer-options{padding:12px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}.layer-option{font-size:11px;display:flex;align-items:center;gap:9px;color:#767e6d;white-space:nowrap;padding:7px 0;text-align:left}.layer-option:hover{color:#354e40}.layer-option .check{width:12px;height:12px;border:1px solid #8f9b8c;display:grid;place-items:center}.layer-option[aria-pressed=true] .check{background:#5d726a;border-color:#5d726a}.layer-option[aria-pressed=true] .check:after{content:"";width:5px;height:3px;border-left:1px solid #e5e8d7;border-bottom:1px solid #e5e8d7;transform:rotate(-45deg) translateY(-1px)}.layer-option[aria-pressed=true]{color:#293b34}.layer-toggle{position:relative;display:flex;align-items:center;gap:9px;background:#eee9d6f5;color:#414b42;border:1px solid #7c8470;padding:18px 14px 8px;font-size:11px;letter-spacing:2px;box-shadow:0 2px 8px #32372315;transition:background .15s}.layer-toggle:hover,.layer-toggle[aria-expanded=true]{background:#e0ddc7}.layer-toggle svg{width:14px;height:14px}.layer-chevron{font:12px var(--mono);transform:rotate(0);transition:transform .22s}.layer-toggle[aria-expanded=true] .layer-chevron{transform:rotate(180deg)}.scale{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);padding:19px 12px 7px;pointer-events:none;color:#373b32;background:#f0ebd7df;border:1px solid #65694c88;z-index:2}.scale-bar{display:flex;border:1px solid #363a30;height:6px;width:120px}.scale-bar i{flex:1;background:#363a30}.scale-bar i:nth-child(even){background:#f6f1e3}.scale-text{font:9px var(--mono);display:flex;justify-content:space-between;margin-bottom:3px}.scale-caption{font:8px var(--mono);text-align:center;letter-spacing:.5px;margin-top:5px;white-space:nowrap}.edge-coordinates{position:absolute;inset:0;pointer-events:none;border:8px solid #817c5310;z-index:-1}.map-unit{cursor:pointer;outline:0}.map-unit .selection-outline{opacity:0;fill:none;stroke:#455d62;stroke-width:1;stroke-dasharray:3 3}.map-unit[aria-pressed=true] .selection-outline{opacity:1}.map-unit:hover .selection-outline,.map-unit:focus-visible .selection-outline{opacity:1;stroke-width:2}.map-unit .symbol-body{filter:drop-shadow(0 2px 1px #393b372d)}.map-unit .unit-caption{font:11px var(--sans);fill:#3e4b43;paint-order:stroke;stroke:#e5dfc6;stroke-width:4px;stroke-linejoin:round;letter-spacing:.4px}.map-unit .unit-code{font:9px var(--mono);fill:#626b5c;paint-order:stroke;stroke:#e5dfc6;stroke-width:3px}.map-unit .echelon{font:10px var(--mono);font-weight:bold;fill:#344c59;paint-order:stroke;stroke:#e5dfc6;stroke-width:2px}.map-unit.enemy .echelon{fill:#984a3f}.map-unit.enemy .unit-caption{fill:#984a3f}.map-unit .unit-strength{font:8px var(--mono);fill:#3a504f}.carto-label{font-family:Georgia,"Times New Roman",SimSun,serif;fill:#606752;letter-spacing:3px}.place-label{font-family:Georgia,"Times New Roman",SimSun,serif;fill:#555f53;paint-order:stroke;stroke:#e3dec5;stroke-width:3px;stroke-linejoin:round;letter-spacing:2px}.terrain-label{font-family:Georgia,"Times New Roman",SimSun,serif;fill:#697258;font-style:italic;letter-spacing:6px}.tactical-label{font:9px var(--mono);letter-spacing:1px;paint-order:stroke;stroke:#e5dfc6;stroke-width:3px;stroke-linejoin:round}.sector-label{font:9px var(--mono);fill:#8a8c72;letter-spacing:1px}.route-line{stroke-dasharray:7 5}.route-end{fill:#d9cea7;stroke:#886b3c;stroke-width:1.5}.view-hidden{display:none!important}
-.inspector,.unit-card{position:absolute;background:var(--chrome);border:1px solid #3d4a4f;box-shadow:0 8px 30px #101a1e44;min-height:0;display:flex;flex-direction:column;z-index:8;overflow:auto;scrollbar-width:thin;scrollbar-color:#596365 transparent;width:286px;max-height:calc(100vh - 80px);border-radius:2px}
+.inspector,.unit-card{position:absolute;background:var(--chrome);border:1px solid #3d4a4f;box-shadow:0 8px 30px #101a1e44;min-height:0;display:flex;flex-direction:column;z-index:8;overflow:auto;scrollbar-width:thin;scrollbar-color:#596365 transparent;width:286px;max-height:calc(100vh - 110px);border-radius:2px}
 .inspector-top,.inspector-section,.inspector-actions{position:relative;flex-shrink:0}
-.inspector-top{padding:18px 18px 12px;border-bottom:1px solid var(--line);cursor:move;user-select:none}
+.inspector-top{padding:14px 16px 10px;border-bottom:1px solid var(--line);cursor:move;user-select:none}
 .inspector-heading{display:flex;justify-content:space-between;align-items:center}
 .inspector-heading .eyebrow{margin:0}
-.unit-display{display:flex;align-items:center;gap:12px;margin:12px 0 10px}
-.unit-display .big-symbol{width:48px;height:42px;flex:none;overflow:visible}
-.unit-display h2{font-size:16px;margin:0 0 5px;letter-spacing:1px;font-weight:500}
+.unit-display{display:flex;align-items:center;gap:10px;margin:8px 0 6px}
+.unit-display .big-symbol{width:44px;height:38px;flex:none;overflow:visible}
+.unit-display h2{font-size:15px;margin:0 0 3px;letter-spacing:1px;font-weight:500}
 .unit-display p{font:9px var(--mono);color:#91a5aa;margin:0;letter-spacing:1.2px}
-.status-tag{font:10px var(--sans);color:#b7c8ad;border:1px solid #56695e;padding:3px 6px;display:inline-flex;align-items:center;gap:6px}
+.status-tag{font:9px var(--sans);color:#b7c8ad;border:1px solid #56695e;padding:2px 5px;display:inline-flex;align-items:center;gap:5px}
 .status-tag:before{content:"";width:4px;height:4px;background:#a2b89b}
-.inspector-section{padding:14px 18px;border-bottom:1px solid var(--line)}
-.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:#b3bfba;font-size:10px;letter-spacing:2px}
+.inspector-section{padding:10px 16px;border-bottom:1px solid var(--line)}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;color:#b3bfba;font-size:10px;letter-spacing:2px}
 .section-title small{font:8px var(--mono);letter-spacing:1px;color:#778e91}
-.strength{display:flex;align-items:baseline;gap:6px;margin-bottom:12px}
-.strength b{font:24px var(--mono);color:#e0e3d8;letter-spacing:-1px}
-.strength span{font:11px var(--mono);color:#879896}
-.strength label{margin-left:auto;font-size:10px;color:#95a39e}
-.metric{margin:10px 0 0}
-.metric-head{display:flex;justify-content:space-between;font-size:10px;color:#a3b0ab;margin-bottom:5px}
-.metric-head b{font:10px var(--mono);color:#c2cbbd}
+.strength{display:flex;align-items:baseline;gap:5px;margin-bottom:8px}
+.strength b{font:20px var(--mono);color:#e0e3d8;letter-spacing:-1px}
+.strength span{font:10px var(--mono);color:#879896}
+.strength label{margin-left:auto;font-size:9px;color:#95a39e}
+.metric{margin:6px 0 0}
+.metric-head{display:flex;justify-content:space-between;font-size:9px;color:#a3b0ab;margin-bottom:3px}
+.metric-head b{font:9px var(--mono);color:#c2cbbd}
 .metric-track{height:4px;background:repeating-linear-gradient(90deg,#42524f 0,#42524f calc(10% - 3px),transparent calc(10% - 3px),transparent 10%)}
 .metric-fill{height:100%;background:repeating-linear-gradient(90deg,#a8b3a0 0,#a8b3a0 20px,transparent 20px,transparent 23px)}
 .metric.amber .metric-fill{background:repeating-linear-gradient(90deg,#bea574 0,#bea574 20px,transparent 20px,transparent 23px)}
-.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
-.datum label{font-size:9px;color:#8b9c98;display:block;margin-bottom:5px}
-.datum b{font-size:11px;font-weight:400;color:#d1d7cb}
-.order-card{position:relative;padding:0 0 0 14px;border-left:1px solid #667b7d}
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+.datum label{font-size:8.5px;color:#8b9c98;display:block;margin-bottom:2px}
+.datum b{font-size:10px;font-weight:400;color:#d1d7cb}
+.order-card{position:relative;padding:0 0 0 12px;border-left:1px solid #667b7d}
 .order-card:before{position:absolute;content:"";left:-4px;top:2px;width:7px;height:7px;border:1px solid #c5b57f;background:var(--chrome)}
-.order-card .order-kind{font-size:11px;color:#ddd6bc}
-.order-card p{font-size:10px;color:#8fa2a0;line-height:1.7;margin:6px 0 8px}
-.order-distance{display:flex;gap:14px;font:10px var(--mono);color:#c4c9b6}
+.order-card .order-kind{font-size:10px;color:#ddd6bc}
+.order-card p{font-size:9.5px;color:#8fa2a0;line-height:1.5;margin:4px 0 6px}
+.order-distance{display:flex;gap:12px;font:9.5px var(--mono);color:#c4c9b6}
 .order-distance small{font-size:8px;color:#869995}
-.inspector-actions{padding:14px 18px;margin-top:auto;display:flex;flex-direction:column;gap:6px}
-.action-btn{width:100%;height:30px;border:1px solid #58696b;font-size:10px;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:7px}
+.inspector-actions{padding:10px 16px;margin-top:auto;display:flex;flex-direction:column;gap:5px}
+.action-btn{width:100%;height:26px;border:1px solid #58696b;font-size:9.5px;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:6px}
 .action-btn.primary{border-color:#9a926e;background:#a7a0821c;color:#e2d7b5}
 .action-btn:hover{background:#465451}
 .action-btn[aria-pressed=true]{border-color:#b9ac7c;background:#b9ac7c22;color:#e3d6ae}
@@ -54,7 +54,7 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .status-light{display:inline-block;width:4px;height:4px;background:#71816c;margin-right:7px}
 
 /* UI-09 右上角参谋地图工具包 (内含指北针、UI-09A 绘图工具组、UI-05 图层项) */
-.map-tools-pack{position:absolute;right:14px;top:14px;z-index:6}
+.map-tools-pack{position:absolute;right:18px;top:20px;z-index:6}
 .tool-pack-unified{display:flex;align-items:center;gap:6px;background:#1c2529ee;border:1px solid #3e4c52;padding:4px 8px;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
 .tool-pack-row{display:flex;align-items:center;gap:6px;padding-left:48px;position:relative}
 .draw-tool-btn{width:26px;height:26px;display:grid;place-items:center;color:#b6c1be;border:1px solid #4a595f;background:#243035;cursor:pointer;border-radius:2px;font-size:11px}
@@ -62,7 +62,7 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .compass-box{width:32px;height:32px;display:grid;place-items:center;color:#a2ad9b;margin:0 2px}
 .layer-dock{position:relative}
 .layer-card{position:absolute;top:calc(100% + 6px);right:0;width:274px}
-.tool-pack-unified .layer-toggle{padding:4px 10px 4px 34px;height:26px;box-sizing:border-box;background:#243035;border-color:#4a595f;color:#c6d2ce}
+.tool-pack-unified .layer-toggle{padding:4px 10px 4px 44px;height:26px;box-sizing:border-box;background:#243035;border-color:#4a595f;color:#c6d2ce}
 .tool-pack-unified .layer-toggle:hover,.tool-pack-unified .layer-toggle[aria-expanded=true]{background:#384850;border-color:var(--gold);color:#ffffff}
 .card-close-btn{position:absolute;right:10px;top:8px;width:18px;height:18px;line-height:16px;text-align:center;font-size:16px;color:#91a5aa;cursor:pointer;border-radius:2px;border:1px solid transparent;background:none;padding:0;z-index:10}
 .card-close-btn:hover{color:#fff;background:#384850;border-color:#52646b}
@@ -130,10 +130,10 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .map-title::after,.footer::after{left:0;top:0}
 .scale::after{font-size:8px;top:5px;left:8px}
 .layer-card::after{left:16px;top:9px}
-.layer-toggle::after{font-size:8px;left:9px;top:5px}
+.layer-toggle::after{font-size:8px;left:6px;top:7px}
 .toast::after{left:8px;top:-13px;font-size:8.5px;color:#ee9286}
 .map-tools-pack[data-ui-id]::after{left:auto;right:10px;top:-13px;font-size:8.5px;color:#ee9286}
-.tool-pack-row[data-ui-id]::after{left:8px;top:8px;font-size:8.5px;color:#ee9286}
+.tool-pack-row[data-ui-id]::after{left:6px;top:7px;font-size:8.5px;color:#ee9286}
 .integrated-cmd-box[data-ui-id]::after{left:12px;top:6px;font-size:8.5px;color:#ee9286}
 .cmd-subpanel[data-ui-id]::after{left:12px;top:4px;font-size:8px;color:#ee9286}
 .pulse-staging[data-ui-id]::after{left:5px;top:7px;font-size:8.5px;color:#ec8d81}
@@ -162,8 +162,8 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .reorg-btn:hover,.cmd-btn:hover{background:#35444a;border-color:#c5aa70}
 .cmd-btn.active{background:#3a4b52;border-color:#dfc486;color:#ffffff}
 
-@media(min-width:1800px){.inspector-top{padding-top:35px}.inspector-section{padding:29px 25px 20px}.topbar{padding-inline:26px}}
-@media(max-width:1250px){.topbar{gap:18px;padding-inline:15px}.brand{min-width:165px}.brand b{font-size:16px}.nav{gap:16px}.concept-tag{display:none}.top-right{gap:13px}.inspector-section{padding:24px 19px 13px}.inspector-top{padding:30px 19px 16px}.inspector-actions{padding:25px 19px 15px}.map-notice{display:none}.map-title{left:21px}.clock b{font-size:18px}.top-right .help-button span{display:none}.footer{font-size:7px}}
+@media(min-width:1800px){.inspector-top{padding-top:20px}.inspector-section{padding:12px 16px}.topbar{padding-inline:26px}}
+@media(max-width:1250px){.topbar{gap:18px;padding-inline:15px}.brand{min-width:165px}.brand b{font-size:16px}.nav{gap:16px}.concept-tag{display:none}.top-right{gap:13px}.inspector-section{padding:10px 14px}.inspector-top{padding:14px 14px 10px}.inspector-actions{padding:10px 14px}.map-notice{display:none}.map-title{left:21px}.clock b{font-size:18px}.top-right .help-button span{display:none}.footer{font-size:7px}}
 @media(max-width:1050px){.topbar .nav{gap:13px}.topbar .brand{min-width:155px}.topbar{gap:15px}.subbar{gap:12px}.hide-tablet{display:none}.map-stamp{right:22px}.top-right{gap:14px}}
 @media(max-width:700px){.app{grid-template-rows:54px 39px minmax(0,1fr)}.topbar{padding:0 12px;gap:10px}.brand{min-width:auto!important;gap:7px}.brand b{font-size:13px;letter-spacing:2px}.brand small{font-size:6px;letter-spacing:1.4px}.brand-mark{width:22px;height:25px}.nav{display:none}.clock b{font-size:15px}.clock span{display:none}.top-right{gap:13px}.help-button{padding:0}.subbar{padding:0 12px;font-size:9px;gap:8px}.subbar .weather,.subbar .divider,.hide-phone{display:none}.subbar .right{gap:6px}.control{padding:0 7px;font-size:10px}.map-title{top:20px;left:17px}.title-heading{font-size:19px;letter-spacing:3px}.title-details>span{font-size:7px;letter-spacing:1px}.map-stamp{right:13px;top:23px}.compass-wrap{right:10px;top:128px;width:47px;height:69px}.compass-wrap .compass{left:6px;width:35px;height:53px}.map-tools{right:12px;top:215px}.layer-dock{right:12px;bottom:13px}.layer-card{width:min(258px,calc(100vw - 24px))}.layer-toggle{padding:18px 10px 8px;gap:7px;font-size:10px}.layer-toggle svg{width:12px;height:12px}.scale{bottom:13px;padding:18px 9px 6px}.scale-caption{font-size:7px;letter-spacing:0}.footer{left:13px;bottom:19px;font-size:7px;letter-spacing:0;max-width:68px;gap:4px}.footer .footer-grid{display:none}.inspector{top:93px;width:min(300px,86vw)}.toast{bottom:97px;text-align:center;width:85%;font-size:10px}}
 @media(max-height:700px) and (min-width:1051px){.inspector-top{padding-bottom:10px}.inspector-section{padding-top:21px;padding-bottom:10px}.unit-display{margin:12px 0}.metric{margin-top:8px}.strength{margin-bottom:9px}.inspector-actions{padding-top:21px}}
@@ -232,7 +232,7 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 <g id="labelsLayer"><text x="105" y="479" class="place-label" font-size="18" transform="rotate(-7 105 479)">NOVAYA</text><text x="96" y="500" class="carto-label" font-size="10">新村</text><text x="480" y="313" class="place-label" font-size="17">DUBROVKA</text><text x="482" y="331" class="carto-label" font-size="10">杜布罗夫卡</text><text x="868" y="249" class="place-label" font-size="17">BEREZINO</text><text x="870" y="267" class="carto-label" font-size="10">白桦镇</text><text x="354" y="744" class="place-label" font-size="16">ZELENAYA</text><text x="355" y="762" class="carto-label" font-size="10">绿原</text><text x="742" y="131" class="terrain-label" font-size="13" transform="rotate(75 742 131)">B E R E Z A</text><text x="696" y="722" class="terrain-label" font-size="12" transform="rotate(35 696 722)">白 桦 河</text><text x="122" y="223" class="terrain-label" font-size="13" transform="rotate(-18 122 223)">北 部 林 区</text><text x="821" y="592" class="terrain-label" font-size="14" transform="rotate(-24 821 592)">216 高 地</text><text x="168" y="536" class="tactical-label" fill="#94774f">MSR 06</text><text x="1028" y="163" class="sector-label">36 U / 08</text><text x="965" y="744" class="sector-label">36 U / 12</text><text x="156" y="782" class="sector-label">36 U / 04</text></g>
 <g id="frontLayer"><path d="M838-90Q777 90 837 178T809 324Q770 408 783 491T866 640Q917 720 841 970L1250 970V-90Z" fill="#ae7769" opacity=".085"/><path d="M838-90Q777 90 837 178T809 324Q770 408 783 491T866 640Q917 720 841 970L894 970Q970 720 919 640T836 491Q823 408 862 324T890 178Q830 90 891-90Z" fill="url(#frontHatch)"/><path d="M838-90Q777 90 837 178T809 324Q770 408 783 491T866 640Q917 720 841 970" fill="none" stroke="#a65143" stroke-width="2.2" opacity=".75"/><text x="830" y="668" transform="rotate(55 830 668)" class="tactical-label" fill="#a05f4d">推定接触线 / ESTIMATED</text></g>
 <g id="intelLayer" class="view-hidden"><ellipse cx="833" cy="251" rx="118" ry="73" fill="#b59b5920" stroke="#9b844e" stroke-dasharray="5 5"/><text x="758" y="170" class="tactical-label" fill="#927540">接触位置不确定区 / LOW CONF.</text><ellipse cx="898" cy="489" rx="70" ry="57" fill="#b59b5915" stroke="#9b844e" stroke-dasharray="5 5"/></g>
-<g id="routesLayer"><path id="plannedRoute" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#f0e8cf" stroke-width="5"/><path id="plannedRouteInk" class="route-line" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#927445" stroke-width="1.9" marker-end="url(#routeArrow)"/><circle cx="560" cy="414" r="5" class="route-end"/><circle cx="690" cy="339" r="8" fill="#e5dab9" stroke="#8e7145" stroke-width="1.3"/><path d="M676 339h28m-14-14v28" stroke="#8e7145" stroke-width="1"/><rect x="508" y="436" width="106" height="22" fill="#ece5cf" stroke="#aba181" stroke-width=".6"/><text id="routeLabel" x="518" y="450" font-size="9" font-family="Consolas,monospace" fill="#7f6845">ROUTE / STANDBY</text><text x="703" y="330" class="tactical-label" fill="#7f6845">OBJ. A / 河桥</text></g>
+<g id="routesLayer" class="view-hidden"><path id="plannedRoute" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#f0e8cf" stroke-width="5"/><path id="plannedRouteInk" class="route-line" d="M455 505Q472 433 560 414T690 339" fill="none" stroke="#927445" stroke-width="1.9" marker-end="url(#routeArrow)"/><circle cx="560" cy="414" r="5" class="route-end"/><circle cx="690" cy="339" r="8" fill="#e5dab9" stroke="#8e7145" stroke-width="1.3"/><path d="M676 339h28m-14-14v28" stroke="#8e7145" stroke-width="1"/><rect x="508" y="436" width="106" height="22" fill="#ece5cf" stroke="#aba181" stroke-width=".6"/><text id="routeLabel" x="518" y="450" font-size="9" font-family="Consolas,monospace" fill="#7f6845">ROUTE / STANDBY</text><text x="703" y="330" class="tactical-label" fill="#7f6845">OBJ. A / 河桥</text></g>
 <g id="fireLayer" class="view-hidden"><circle id="rangeCircle" cx="455" cy="505" r="223" fill="none" stroke="#9c5247" stroke-width="1" stroke-dasharray="5 5" opacity=".57"/><path id="fireLive" d="M455 505 666 370" fill="none" stroke="#ad5446" stroke-width="1.8"/><path id="fireBlocked" d="M666 370 791 286" fill="none" stroke="#665c52" stroke-width="1.3" stroke-dasharray="4 5" marker-end="url(#fireArrow)"/><ellipse id="dispersion" cx="666" cy="370" rx="39" ry="16" transform="rotate(-33 666 370)" fill="#b3944820" stroke="#997b40" stroke-width="1.2" stroke-dasharray="4 3"/><path id="blockCross" d="m661 365 10 10m-10 0 10-10" stroke="#7e6642" stroke-width="2"/><text id="fireLabel" x="654" y="398" class="tactical-label" fill="#87693b">FIRE SECTOR / LIVE</text><text id="rangeLabel" x="330" y="714" class="tactical-label" fill="#9a584b">FIRE ENVELOPE / K_REG</text></g>
 <g id="drawDraftLayer"></g>
 <g id="virtualInstancesLayer"></g>
@@ -604,20 +604,25 @@ function symbolMarkup(u,light=false){const stroke=u.enemy?'#984d42':(light?'#c2d
 function calculateUnitOrderMetrics(u){
   if(!u) return { distanceStr: '0.0 km', etaStr: '待命 · 现地' };
   if(u.enemy) return { distanceStr: '位置待核实', etaStr: '' };
-  if(!u.order || u.order==='维持警戒' || u.order==='待命'){
+  const ord = String(u.order || '').toUpperCase();
+  if(!u.order || ord === '维持警戒' || ord === '待命' || ord === 'HOLD' || ord === 'STOP' || ord === 'NONE'){
     return { distanceStr: '0.0 km', etaStr: '待命 · 现地' };
   }
-  const target = units.find(v=>v.id==='e1') || units.find(v=>v.enemy) || {x: u.x+80, y: u.y-60};
-  const dx = (target.x - u.x) * 8.0;
-  const dy = (target.y - u.y) * 8.0;
-  const distM = Math.hypot(dx, dy);
-  const distKm = distM / 1000.0;
-  const speedKmh = u.speed_kmh || 12.0;
-  const etaMin = Math.round((distKm / speedKmh) * 60);
-  return {
-    distanceStr: `${distKm.toFixed(1)} km`,
-    etaStr: `~ ${Math.max(1, etaMin)} min`
-  };
+  if(u.direct_plan && Array.isArray(u.direct_plan.waypoints) && u.direct_plan.waypoints.length > 0){
+    const wp = u.direct_plan.waypoints[0];
+    const wpSvg = gridToSvg(wp[0], wp[1]);
+    const { cols, cell_m } = getGridSpec();
+    const metersPerPx = (cols * cell_m) / 1000.0;
+    const distPx = Math.hypot(wpSvg.x - u.x, wpSvg.y - u.y);
+    const distKm = (distPx * metersPerPx) / 1000.0;
+    const speedKmh = u.speed_kmh || 12.0;
+    const etaMin = Math.round((distKm / speedKmh) * 60);
+    return {
+      distanceStr: `${distKm.toFixed(1)} km`,
+      etaStr: `~ ${Math.max(1, etaMin)} min`
+    };
+  }
+  return { distanceStr: '0.0 km', etaStr: '待命 · 现地' };
 }
 window.units = units;
 
@@ -635,8 +640,8 @@ function renderUnitsLayer(){
     g.addEventListener('click',()=>{
       selectUnit(u.id,true);
       const cardCount=document.querySelectorAll('.inspector.unit-card').length;
-      const offsetX=20+(cardCount%5)*45;
-      const offsetY=135+(cardCount%5)*35;
+      const offsetX=20+(cardCount%4)*35;
+      const offsetY=105+(cardCount%3)*25;
       openFloatingUnitCard(u.id,offsetX,offsetY);
     });
     g.addEventListener('contextmenu',e=>{e.preventDefault();selectUnit(u.id,true);openCmdBox('panelTask');});
@@ -654,10 +659,17 @@ function updateAnalysis(){
   if(!u)return;
   if(u.enemy){$('fireLayer').classList.add('view-hidden');$('routesLayer').classList.add('view-hidden');return;}
   $('fireLayer').classList.toggle('view-hidden',!layerState.fire);
-  $('routesLayer').classList.toggle('view-hidden',!layerState.routes);
-  const d=`M${u.x} ${u.y}Q${u.x+20} ${u.y-70} 560 414T690 339`;
-  $('plannedRoute').setAttribute('d',d);
-  $('plannedRouteInk').setAttribute('d',d);
+  const hasPlan = u.direct_plan && Array.isArray(u.direct_plan.waypoints) && u.direct_plan.waypoints.length > 0;
+  if(!layerState.routes || !hasPlan){
+    $('routesLayer').classList.add('view-hidden');
+  }else{
+    $('routesLayer').classList.remove('view-hidden');
+    const wp = u.direct_plan.waypoints[0];
+    const wpSvg = gridToSvg(wp[0], wp[1]);
+    const d = `M${u.x} ${u.y} L${wpSvg.x} ${wpSvg.y}`;
+    $('plannedRoute').setAttribute('d',d);
+    $('plannedRouteInk').setAttribute('d',d);
+  }
   const target=units.find(v=>v.id==='e1')||units.find(v=>v.enemy)||{x:791,y:286};
   const t=.62,ix=u.x+(target.x-u.x)*t,iy=u.y+(target.y-u.y)*t;
   for(const a of ['cx','cy'])$('rangeCircle').setAttribute(a,a==='cx'?u.x:u.y);
@@ -720,12 +732,36 @@ document.querySelectorAll('[data-layer]').forEach(btn=>btn.addEventListener('cli
   updateAnalysis();
 }));
 
+function getGridSpec(){
+  const st=window.__lastBackendState;
+  const rows=(st&&st.grid&&st.grid.rows)||128;
+  const cols=(st&&st.grid&&st.grid.cols)||128;
+  const cell_m=(st&&st.grid&&st.grid.cell_m)||8.0;
+  return {rows,cols,cell_m};
+}
+
+function gridToSvg(r,c){
+  const {rows,cols}=getGridSpec();
+  const svgX=((c+0.5)/cols)*1200;
+  const svgY=((r+0.5)/rows)*880;
+  return {x:svgX,y:svgY};
+}
+
+function svgToGrid(svgX,svgY){
+  const {rows,cols}=getGridSpec();
+  const c=Math.max(0,Math.min(cols-1,Math.floor((svgX/1200)*cols)));
+  const r=Math.max(0,Math.min(rows-1,Math.floor((svgY/880)*rows)));
+  return {r,c};
+}
+
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 let zoomTarget=1,zoomFrame=0;
 function updateScale(){
   const rect=$('mapSvg').getBoundingClientRect();
-  const pixelsPerMeter=Math.max(rect.width/1200,rect.height/880)*zoom/8;
-  const rawMeters=(rect.width<500?120:180)/Math.max(0.001,pixelsPerMeter);
+  const spec=getGridSpec();
+  const svgMetersPerPx=((spec.cols*spec.cell_m)/1200+(spec.rows*spec.cell_m)/880)/2;
+  const pixelsPerMeter=Math.max(0.001,(Math.max(rect.width/1200,rect.height/880)*zoom)/svgMetersPerPx);
+  const rawMeters=(rect.width<500?120:180)/pixelsPerMeter;
   const BINARY_STEPS=[16, 32, 64, 128, 256, 512, 1024, 2048];
   let distance=16;
   for(const step of BINARY_STEPS){
@@ -788,24 +824,46 @@ $('closeLayers').addEventListener('click',()=>setLayersOpen(false));
 
 $('viewport').addEventListener('wheel',e=>{e.preventDefault();zoomBy(e.deltaY<0?1.09:1/1.09);},{passive:false});
 function mapPoint(e){return new DOMPoint(e.clientX,e.clientY).matrixTransform($('mapSvg').getScreenCTM().inverse());}
+let dragCandidate=null;
 $('viewport').addEventListener('pointerdown',e=>{
-  if(e.button!==0||e.target.closest('[data-unit]'))return;
+  if(e.button!==0||e.target.closest('[data-unit]')||e.target.closest('.inspector')||e.target.closest('.unit-card'))return;
   const p=mapPoint(e);
-  drag={id:e.pointerId,x:p.x,y:p.y,px:pan.x,py:pan.y};
-  $('viewport').setPointerCapture(e.pointerId);
-  $('viewport').classList.add('dragging');
+  dragCandidate={
+    id:e.pointerId,
+    startX:e.clientX,
+    startY:e.clientY,
+    mapP:p,
+    panX:pan.x,
+    panY:pan.y
+  };
 });
 $('viewport').addEventListener('pointermove',e=>{
   const p=mapPoint(e);
+  if(dragCandidate&&!drag&&e.pointerId===dragCandidate.id){
+    const dist=Math.hypot(e.clientX-dragCandidate.startX,e.clientY-dragCandidate.startY);
+    if(dist>5){
+      drag={id:dragCandidate.id,x:dragCandidate.mapP.x,y:dragCandidate.mapP.y,px:dragCandidate.panX,py:dragCandidate.panY};
+      try{$('viewport').setPointerCapture(e.pointerId);}catch(_){}
+      $('viewport').classList.add('dragging');
+      dragCandidate=null;
+    }
+  }
   if(drag&&e.pointerId===drag.id){
     pan.x=Math.max(-550,Math.min(550,drag.px+p.x-drag.x));
     pan.y=Math.max(-420,Math.min(420,drag.py+p.y-drag.y));
     applyView();
   }
   const x=(p.x-600-pan.x)/zoom+600,y=(p.y-440-pan.y)/zoom+440;
-  $('cursorGrid').textContent='GRID 36U / '+Math.round(x/10)+' · '+Math.round(y/10);
+  const gridPt=svgToGrid(x,y);
+  $('cursorGrid').textContent=`GRID 36U / r:${gridPt.r} c:${gridPt.c}`;
 });
-function endDrag(){drag=null;$('viewport').classList.remove('dragging');}
+function endDrag(e){
+  dragCandidate=null;
+  if(drag&&(!e||e.pointerId===drag.id)){
+    drag=null;
+    $('viewport').classList.remove('dragging');
+  }
+}
 $('viewport').addEventListener('pointerup',endDrag);
 $('viewport').addEventListener('pointercancel',endDrag);
 $('viewport').addEventListener('lostpointercapture',endDrag);
@@ -887,10 +945,13 @@ function openFloatingUnitCard(unitId, offsetX = 320, offsetY = 135) {
   card.setAttribute('data-ui-id', 'UI-03');
   card.setAttribute('aria-label', `单位详情 ${u.name}`);
   card.style.left = `${offsetX}px`;
-  card.style.top = `${offsetY}px`;
+  const maxTop = Math.max(70, window.innerHeight - 520);
+  const clampedTop = Math.max(70, Math.min(offsetY, maxTop));
+  card.style.top = `${clampedTop}px`;
   card.style.zIndex = ++topZIndex;
 
   const metrics = calculateUnitOrderMetrics(u);
+  const gridPt = svgToGrid(u.x, u.y);
   card.innerHTML = `
 <div class="inspector-top" data-ui-id="UI-03A" id="cardHandle-${u.id}">
   <button class="card-close-btn" title="关闭卡片" aria-label="关闭卡片">×</button>
@@ -908,7 +969,7 @@ function openFloatingUnitCard(unitId, offsetX = 320, offsetY = 135) {
 <div class="inspector-section" data-ui-id="UI-03C">
   <div class="section-title">位置与环境 <small>POSITION</small></div>
   <div class="data-grid">
-    <div class="datum"><label>军用格网</label><b class="mono">36U ${String(Math.round(u.x/10)).padStart(3,'0')} · ${String(Math.round(u.y/10)).padStart(3,'0')}</b></div>
+    <div class="datum"><label>军用格网</label><b class="mono">36U r:${String(gridPt.r).padStart(3,'0')} · c:${String(gridPt.c).padStart(3,'0')}</b></div>
     <div class="datum"><label>所在地域</label><b>${u.terrain}</b></div>
     <div class="datum"><label>海拔</label><b class="mono">${u.height} m</b></div>
     <div class="datum"><label>态势可信度</label><b>${u.enemy?'推定 / 尚未识别':'己方实时报告'}</b></div>
@@ -1145,6 +1206,9 @@ Object.keys(REORG_EQUIP_OP_MAP).forEach(btnId=>{
         if(res.ok){
           const resData = await res.json();
           if(resData && resData.ok){
+            if(resData.queued){
+              notify(`调整指令已排入外置时间机队列（类别: ${resData.category||'op'}，预计于第 ${resData.due_sec||0} 秒生效）`);
+            }
             await fetchBackendState();
           }
         }
@@ -1241,14 +1305,20 @@ let previewDebounceTimer = null;
 function startMapPick(mode, promptText) {
   mapPickMode = mode;
   $('viewport').classList.add('crosshair-mode');
-  if ($('integratedCmdBox')) $('integratedCmdBox').style.opacity = '0.45';
+  if ($('integratedCmdBox')) {
+    $('integratedCmdBox').style.opacity = '0.45';
+    $('integratedCmdBox').style.pointerEvents = 'none';
+  }
   notify(promptText || '请在地图上点击标定目标点');
 }
 
 function cancelMapPick() {
   mapPickMode = null;
   $('viewport').classList.remove('crosshair-mode');
-  if ($('integratedCmdBox')) $('integratedCmdBox').style.opacity = '1';
+  if ($('integratedCmdBox')) {
+    $('integratedCmdBox').style.opacity = '1';
+    $('integratedCmdBox').style.pointerEvents = 'auto';
+  }
 }
 
 function renderTaskGoalMarker(x, y) {
@@ -1268,6 +1338,8 @@ function triggerPreviewPlan() {
     const startY = selected ? selected.y : 505;
     const targetX = pendingMapGoal[0];
     const targetY = pendingMapGoal[1];
+    const startGrid = svgToGrid(startX, startY);
+    const targetGrid = svgToGrid(targetX, targetY);
     const lambdaVal = parseFloat($('taskParamSlider') ? $('taskParamSlider').value : 80) / 100;
     try {
       const pRes = await fetch('/api/preview_plan', {
@@ -1276,8 +1348,8 @@ function triggerPreviewPlan() {
         body: JSON.stringify({
           plan_type: 'move',
           piece_id: selected ? selected.id : 'red_1',
-          start_pos: [startY / 10, startX / 10],
-          goal_pos: [targetY / 10, targetX / 10],
+          start_pos: [startGrid.r, startGrid.c],
+          goal_pos: [targetGrid.r, targetGrid.c],
           lambda: lambdaVal
         })
       });
@@ -1286,7 +1358,10 @@ function triggerPreviewPlan() {
         if (pData.ok && pData.streamline && pData.streamline.length >= 2) {
           const layer = $('drawDraftLayer');
           layer.querySelectorAll('.streamline-preview').forEach(el => el.remove());
-          const dStr = pData.streamline.map((pt, idx) => `${idx===0?'M':'L'}${Math.round(pt[1]*10)} ${Math.round(pt[0]*10)}`).join(' ');
+          const dStr = pData.streamline.map((pt, idx) => {
+            const svgPt = gridToSvg(pt[0], pt[1]);
+            return `${idx===0?'M':'L'}${svgPt.x.toFixed(1)} ${svgPt.y.toFixed(1)}`;
+          }).join(' ');
           svgNode('path', {
             class: 'streamline-preview',
             d: dStr,
@@ -1360,10 +1435,12 @@ async function commitTaskToQueue(){
     goal: [targetX, targetY]
   };
   unifiedQueue.push(taskItem);
+  const startGrid = svgToGrid(startX, startY);
+  const targetGrid = svgToGrid(targetX, targetY);
   stagedActions.push({
     unit_id: getActiveFriendlyUnitId(),
     action: taskItem.title,
-    goal: [Math.round(targetY / 10), Math.round(targetX / 10)],
+    goal: [targetGrid.r, targetGrid.c],
     move_mode: currentTaskMode
   });
   renderUnifiedQueue();
@@ -1378,15 +1455,18 @@ async function commitTaskToQueue(){
         body: JSON.stringify({
           plan_type: 'move',
           piece_id: selected ? selected.id : 'red_1',
-          start_pos: [startY / 10, startX / 10],
-          goal_pos: [targetY / 10, targetX / 10],
+          start_pos: [startGrid.r, startGrid.c],
+          goal_pos: [targetGrid.r, targetGrid.c],
           lambda: parseFloat($('taskParamSlider') ? $('taskParamSlider').value : 80) / 100
         })
       });
       if (pRes.ok) {
         const pData = await pRes.json();
         if (pData.ok && pData.streamline && pData.streamline.length >= 2) {
-          const dStr = pData.streamline.map((pt, idx) => `${idx===0?'M':'L'}${Math.round(pt[1]*10)} ${Math.round(pt[0]*10)}`).join(' ');
+          const dStr = pData.streamline.map((pt, idx) => {
+            const svgPt = gridToSvg(pt[0], pt[1]);
+            return `${idx===0?'M':'L'}${svgPt.x.toFixed(1)} ${svgPt.y.toFixed(1)}`;
+          }).join(' ');
           svgNode('path', {
             d: dStr,
             fill: 'none',
@@ -1490,12 +1570,14 @@ async function commitEventToQueue(){
       title: `宏:爆破破障`
     };
     unifiedQueue.push(evItem);
+    const demTargetGrid = svgToGrid(pendingDemolishTarget[0], pendingDemolishTarget[1]);
+    const demSwitchGrid = svgToGrid(pendingDemolishSwitch[0], pendingDemolishSwitch[1]);
     stagedEvents.push({
       unit_id: getActiveFriendlyUnitId(),
       kind: 'demolish',
       event_type: 'demolish',
-      target_px: [Math.round(pendingDemolishTarget[1] / 10), Math.round(pendingDemolishTarget[0] / 10)],
-      switch_px: [Math.round(pendingDemolishSwitch[1] / 10), Math.round(pendingDemolishSwitch[0] / 10)],
+      target_px: [demTargetGrid.r, demTargetGrid.c],
+      switch_px: [demSwitchGrid.r, demSwitchGrid.c],
       duration_h: 0.25
     });
     renderUnifiedQueue();
@@ -1557,11 +1639,12 @@ async function commitEventToQueue(){
   };
   unifiedQueue.push(evItem);
   const targetPt = pendingMapGoal || [originX, originY];
+  const targetGrid = svgToGrid(targetPt[0], targetPt[1]);
   stagedEvents.push({
     unit_id: getActiveFriendlyUnitId(),
     kind: currentEvent,
     event_type: currentEvent,
-    target_px: [Math.round(targetPt[1] / 10), Math.round(targetPt[0] / 10)],
+    target_px: [targetGrid.r, targetGrid.c],
     duration_h: 0.25
   });
   renderUnifiedQueue();
@@ -1800,7 +1883,9 @@ $('mapSvg').addEventListener('click', e => {
       const dx = curX - rulerStart[0];
       const dy = curY - rulerStart[1];
       const distPx = Math.hypot(dx, dy);
-      const distM = Math.round(distPx * 8 / 10);
+      const spec = getGridSpec();
+      const metersPerPx = ((spec.cols * spec.cell_m) / 1200 + (spec.rows * spec.cell_m) / 880) / 2;
+      const distM = Math.round(distPx * metersPerPx);
       const g = svgNode('g', { class: 'draft-ruler-line' }, $('drawDraftLayer'));
       svgNode('line', {
         x1: rulerStart[0], y1: rulerStart[1],
@@ -2010,6 +2095,7 @@ async function fetchBackendState(){
     if(!res.ok)return;
     const data=await res.json();
     if(!data.ok)return;
+    window.__lastBackendState=data;
     if (data.time_machine_frame && typeof TimeMachineRenderer !== 'undefined' && !TimeMachineRenderer.isPlaying) {
       TimeMachineRenderer.loadFrame(data.time_machine_frame);
     }
@@ -2025,21 +2111,20 @@ async function fetchBackendState(){
     if(typeof data.tick==='number'||typeof data.turn==='number'){
       const curTick = typeof data.tick==='number'?data.tick:(data.subtick||0);
       $('subbarDate').textContent=`22 JUN 1944 · TICK ${curTick} (16S)`;
-      $('subbarTurnState').textContent=`8m战术基准 · ${data.own_pieces?data.own_pieces.length:0}友军 / ${data.visible_enemies?data.visible_enemies.length:0}接触点`;
+      const cellM = (data.grid && data.grid.cell_m) || 8;
+      $('subbarTurnState').textContent=`${cellM}m战术基准 · ${data.own_pieces?data.own_pieces.length:0}友军 / ${data.visible_enemies?data.visible_enemies.length:0}接触点`;
     }
 
     // 2. 转换并映射真实单位
     if(Array.isArray(data.own_pieces)&&data.own_pieces.length>0){
-      const gridRows=data.grid?data.grid.rows:64;
-      const gridCols=data.grid?data.grid.cols:64;
-
       const newUnits=[];
       for(const p of data.own_pieces){
         const r=p.pos?p.pos[0]:(p.px?p.px[0]:10);
         const c=p.pos?p.pos[1]:(p.px?p.px[1]:10);
         // 映射到 1200x880 SVG 画布
-        const mapX=100+(c/gridCols)*1000;
-        const mapY=90+(r/gridRows)*700;
+        const svgPt=gridToSvg(r, c);
+        const mapX=svgPt.x;
+        const mapY=svgPt.y;
 
         let kindType='infantry';
         if(p.kind==='tank_squad'||p.vehicle_model)kindType='armor';
@@ -2084,8 +2169,9 @@ async function fetchBackendState(){
         for(const e of data.visible_enemies){
           const r=e.px?e.px[0]:20;
           const c=e.px?e.px[1]:20;
-          const mapX=100+(c/gridCols)*1000;
-          const mapY=90+(r/gridRows)*700;
+          const svgPt=gridToSvg(r, c);
+          const mapX=svgPt.x;
+          const mapY=svgPt.y;
           newUnits.push({
             id: e.id,
             name: `敌方接触 ${e.id}`,
@@ -2191,14 +2277,15 @@ const TimeMachineRenderer = {
     if (!this.isPlaying || !this.currentFrame) return;
     const elapsedMs = Math.min(16000, (now - this.startTime) * this.speed);
     const ratio = elapsedMs / 16000.0;
-    const gridRows = 64, gridCols = 64;
+    const spec = getGridSpec();
 
     // 1. 关键帧线性插值
     for (const track of this.currentFrame.particle_tracks) {
       const r = track.pos_start[0] + (track.pos_end[0] - track.pos_start[0]) * ratio;
       const c = track.pos_start[1] + (track.pos_end[1] - track.pos_start[1]) * ratio;
-      const mapX = 100 + (c / gridCols) * 1000;
-      const mapY = 90 + (r / gridRows) * 700;
+      const svgPt = gridToSvg(r, c);
+      const mapX = svgPt.x;
+      const mapY = svgPt.y;
 
       let node = track.is_prerender_skirt ?
         this.prerenderNodes.get(track.piece_id) :
@@ -2207,7 +2294,11 @@ const TimeMachineRenderer = {
       if (node) {
         node.setAttribute('transform', `translate(${mapX - 30} ${mapY - 26})`);
         if (track.is_prerender_skirt) {
-          const inSight = units.filter(u => !u.enemy).some(u => Math.hypot(u.x - mapX, u.y - mapY) < 120);
+          const inSight = units.filter(u => !u.enemy).some(u => {
+            const uGrid = svgToGrid(u.x, u.y);
+            const distM = Math.hypot((uGrid.r - r) * spec.cell_m, (uGrid.c - c) * spec.cell_m);
+            return distM <= 4500;
+          });
           node.style.visibility = inSight ? 'visible' : 'hidden';
           node.style.opacity = inSight ? '1' : '0';
         }
@@ -2242,8 +2333,9 @@ const TimeMachineRenderer = {
     if (targetTrack) {
       const r = targetTrack.pos_start[0] + (targetTrack.pos_end[0] - targetTrack.pos_start[0]) * ratio;
       const c = targetTrack.pos_start[1] + (targetTrack.pos_end[1] - targetTrack.pos_start[1]) * ratio;
-      targetX = 100 + (c / 64) * 1000;
-      targetY = 90 + (r / 64) * 700;
+      const svgPt = gridToSvg(r, c);
+      targetX = svgPt.x;
+      targetY = svgPt.y;
     }
 
     const g = svgNode('g', {
