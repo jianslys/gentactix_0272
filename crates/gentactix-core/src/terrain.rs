@@ -141,6 +141,8 @@ pub struct TerrainGrid {
     pub cover_bonus: Vec<f32>,
     pub crater_depth_m: Vec<f32>,
     pub smoke_density: Vec<f32>,
+    #[serde(default)]
+    pub mine_density: Vec<f32>,
     pub revision: u64,
     pub dirty_halo: Option<DirtyHaloBox>,
 }
@@ -162,6 +164,7 @@ impl TerrainGrid {
             cover_bonus: vec![0.0; total],
             crater_depth_m: vec![0.0; total],
             smoke_density: vec![0.0; total],
+            mine_density: vec![0.0; total],
             revision: 1,
             dirty_halo: None,
         }
@@ -249,11 +252,7 @@ impl TerrainGrid {
             self.smoke_density[i] = (self.smoke_density[i] + smk).clamp(0.0, 1.0);
         }
 
-        let mut halo_box = self
-            .dirty_halo
-            .unwrap_or_else(|| DirtyHaloBox::from_cell(coord.r, coord.c));
-        halo_box.expand_with_halo(coord.r, coord.c, 2, self.rows, self.cols);
-        self.dirty_halo = Some(halo_box);
+        self.expand_dirty_halo(coord, 2);
 
         let local_box = DirtyHaloBox {
             min_r: (coord.r - 1).max(0),
@@ -264,6 +263,40 @@ impl TerrainGrid {
         self.recompute_slope_box(local_box);
         self.revision = self.revision.wrapping_add(1);
         Ok(())
+    }
+
+    fn expand_dirty_halo(&mut self, coord: CellCoord, halo: i32) {
+        let mut halo_box = self
+            .dirty_halo
+            .unwrap_or_else(|| DirtyHaloBox::from_cell(coord.r, coord.c));
+        halo_box.expand_with_halo(coord.r, coord.c, halo, self.rows, self.cols);
+        self.dirty_halo = Some(halo_box);
+    }
+
+    pub fn add_mine_density(&mut self, coord: CellCoord, delta: f32) -> Result<(), OutsideBoundsError> {
+        let i = self.idx(coord)?;
+        if i >= self.mine_density.len() {
+            self.mine_density.resize(self.rows * self.cols, 0.0);
+        }
+        self.mine_density[i] = (self.mine_density[i] + delta).clamp(0.0, 1.0);
+        self.expand_dirty_halo(coord, 2);
+        self.revision = self.revision.wrapping_add(1);
+        Ok(())
+    }
+
+    pub fn decay_smoke(&mut self, factor: f32) {
+        let mut changed = false;
+        let f = factor.clamp(0.0, 1.0);
+        for slot in &mut self.smoke_density {
+            if *slot > 0.0 {
+                let next = *slot * f;
+                *slot = if next < 1e-3 { 0.0 } else { next };
+                changed = true;
+            }
+        }
+        if changed {
+            self.revision = self.revision.wrapping_add(1);
+        }
     }
 
     #[inline]

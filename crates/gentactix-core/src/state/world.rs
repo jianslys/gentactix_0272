@@ -91,6 +91,14 @@ pub struct WorldState {
     pub radio_zoh_filters: BTreeMap<u32, UnitZohDirectiveFilter>,
     pub combat_logs: Vec<CombatLogEntry>,
     pub unit_revision: u64,
+    #[serde(default)]
+    pub g_work_remaining: BTreeMap<usize, f32>,
+    #[serde(default = "default_next_event_id")]
+    pub next_event_id: u64,
+}
+
+const fn default_next_event_id() -> u64 {
+    1
 }
 
 impl WorldState {
@@ -125,7 +133,16 @@ impl WorldState {
             radio_zoh_filters: BTreeMap::new(),
             combat_logs: Vec::new(),
             unit_revision: 1,
+            g_work_remaining: BTreeMap::new(),
+            next_event_id: 1,
         }
+    }
+
+    #[inline]
+    pub fn alloc_event_id(&mut self) -> u64 {
+        let id = self.next_event_id.max(1);
+        self.next_event_id = id.saturating_add(1);
+        id
     }
 
     pub fn spawn_platoon(&mut self, name: String, team: Team) -> PlatoonId {
@@ -286,11 +303,14 @@ impl WorldState {
 
     pub fn load_json(s: &str) -> Result<Self, String> {
         let cleaned = s.strip_prefix('\u{feff}').unwrap_or(s);
-        let world: Self =
+        let mut world: Self =
             serde_json::from_str(cleaned).map_err(|e| format!("world load_json error: {e}"))?;
         let n_cells = world.terrain.rows * world.terrain.cols;
         if world.cell_h_blast.len() != n_cells || world.cell_s_supp.len() != n_cells {
             return Err("corrupted world save: cell field dimensions mismatch terrain".into());
+        }
+        if world.terrain.mine_density.len() != n_cells {
+            world.terrain.mine_density.resize(n_cells, 0.0);
         }
         Ok(world)
     }

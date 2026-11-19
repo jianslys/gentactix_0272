@@ -49,6 +49,7 @@ pub struct EventRecord {
 pub struct TickScratch {
     pub intents: BTreeMap<u32, IntentCandidate>,
     pub motion_proposals: Vec<MotionProposal>,
+    pub constrained_motions: Vec<MotionProposal>,
     pub blast_workspace: TransientBlastWorkspace,
     pub events: Vec<EventRecord>,
     pub terminal_statuses: BTreeMap<u64, EventTerminalStatus>,
@@ -78,6 +79,7 @@ impl TickScratch {
     pub fn is_completely_empty(&self) -> bool {
         self.intents.is_empty()
             && self.motion_proposals.is_empty()
+            && self.constrained_motions.is_empty()
             && self.blast_workspace.peak_overpressure_kpa.is_empty()
             && self.blast_workspace.fragment_flux.is_empty()
             && self.blast_workspace.source_event_ids.is_empty()
@@ -89,6 +91,7 @@ impl TickScratch {
     pub fn clear_and_assert_empty(&mut self) {
         self.intents.clear();
         self.motion_proposals.clear();
+        self.constrained_motions.clear();
         self.blast_workspace.clear_all_active();
         self.events.clear();
         self.terminal_statuses.clear();

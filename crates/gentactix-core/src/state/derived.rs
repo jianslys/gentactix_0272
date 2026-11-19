@@ -142,6 +142,20 @@ impl DerivedState {
             self.unit_radio_t_diff.insert(uid, t_diff);
         }
 
+        for (&cidx, &rem) in &world.g_work_remaining {
+            if cidx < n_cells {
+                self.g_field_cells.insert(
+                    cidx,
+                    GFieldCell {
+                        g0: rem,
+                        committed_en_route: 0.0,
+                        actual_on_site: 0.0,
+                        kind: GFieldKind::Work,
+                    },
+                );
+            }
+        }
+
         self.synced_terrain_rev = world.terrain.revision;
         self.synced_unit_rev = world.unit_revision;
         true
