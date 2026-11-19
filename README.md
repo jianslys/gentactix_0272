@@ -1,71 +1,53 @@
-# GenTactix
+# GenTactix V2 Pure Engine
 
-> **High-Fidelity Deterministic Tactical Simulation & Military Cartography Engine**
-> 
-> Pure binary $2^3 = 8\text{m}$ tactical grid doctrine, deterministic Eulerian-Lagrangian field mechanics, high-performance Rust core, and SD2/CMO-inspired military printed cartography interface.
+> **Deterministic Platoon/Squad Tactical Simulation Core (`8.0m` Binary Grid · `16s` Integer Clock · Headless HTTP API)**
+
+GenTactix V2 是彻底剥离历史包袱后的纯粹 8 大支柱战术推演引擎（主分支工作流：`v2/pure-engine`），以排/班/单车为主尺度，通过无头 Axum HTTP 服务向未来新前端提供确定性状态推进、只读战术预览与零污染时间机播片剧本。
 
 ---
 
-## 架构体系 (System Architecture)
+## 目录结构
 
-```
-D:\tools\gentactix\
+```text
+gentactix/
+├── Cargo.toml / Cargo.lock            # Rust Workspace (gentactix-core + gentactix-server)
+├── AGENTS.md / GEMINI.md              # 多端 AI 协同规约、架构红线与开发工作流
+├── FUNCTION_AND_INTERFACE_MANUAL.md   # 核心 12 模块、TacticalCommand 与 18 条 HTTP 路由速查手册
 ├── crates/
-│   ├── gentactix-core/      # 核心物理推演引擎 (13-phase deterministic transaction, 8m grid, Euler fields)
-│   └── gentactix-server/    # 高性能 Axum HTTP/WS 生产服务端 (API endpoints, seat tokens, LOS/DDA)
-├── web/
-│   ├── index.html           # 现代严肃军用印刷地图全功能图台 (SD2/CMO 风格, APP-6 兵牌, 零滚动检视器)
-│   └── assets/              # 前端静态图标与地图资源
+│   ├── gentactix-core/                # 纯无头仿真内核（三态、13步时钟、四维算子、时间机、迷雾、预览）
+│   └── gentactix-server/              # 极简 Axum HTTP 服务壳（src 合计 < 400 行，零物理业务逻辑）
 ├── data/
-│   └── items_catalog.json   # 二战武器装药、火炮射表与编制权威数据
-├── docs/
-│   └── SPEC/                # 终极物理推演法典与工程规约 (SPEC_FINAL_GENTACTIX_CORE_ENGINE.md)
-├── tests/
-│   └── e2e/                 # 无头 Chrome 端到端 UI 自动化验收套件
-├── art-direction/           # 视觉基准概念稿、设计规范与无头验证断言
-└── archive/                 # 历史 Python 单体源码、早期探索文档与过往版本备份
+│   └── items_catalog.json             # 二战单兵/班组武器、弹药、引信、枪架唯一权威目录
+├── art-direction/                     # 军用印刷地图 UI 视觉参考图（供后续新建前端对齐用）
+├── docs/                              # 历史理论与早期物理 SPEC 留档（参考用，以 V2 代码为准）
+└── LICENSE
 ```
+
+*(历史 V0/V1 单体内核与旧版 HTML 前端完整留档于远端 `main` 与 `refactor/pure-engine` 分支。)*
 
 ---
 
-## 核心技术准则 (Core Principles)
+## 快速编译、测试与启动
 
-1. **纯二进制 $2^3 = 8\text{m}$ 基准网格**：
-   - 彻底废除十进制近似，全图基于定点与二进制网格（$8\text{m}$ 最小网格，全图 $8192\text{m} = 8.192\text{km}$）。
-   - 严格的坐标整数网格转换算子，杜绝浮点穿透与边界非确定性。
+```bash
+# 1. 全工作区编译检查（零警告门禁）
+cargo check --workspace --all-targets
 
-2. **十三阶段确定性事务时钟（13-Phase Deterministic Transaction）**：
-   - 每回合基准步长 $\Delta t = 16\text{s}$。
-   - 严格单点提交运动（`commit_motions`），整段路径采样拦截高空穿隧。
-   - 强类型欧拉伤害场、散布椭圆与 DDA 视线阻挡遮挡判定。
+# 2. 运行全部单元测试、集成测试与 HTTP 端到端闭环测试
+cargo test --workspace
 
-3. **现代军用印刷地图图台（Military Cartography Web UI）**：
-   - SD2 / CMO 现代严肃军用印刷地图质感（暖灰纸底色 `#ded8be`、低饱和等高线与植被、APP-6 战术兵牌体系）。
-   - 双顶级容器（Inspector + Viewport），桌面分辨率主要操作零垂直滚动条。
-   - 内置德军编制母树（ORBAT）抽屉与多图层实时过滤。
+# 3. 启动无头引擎服务（默认监听 127.0.0.1:8767，初始 64x64 @ 8.0m 白板地图）
+cargo run -p gentactix-server -- --listen 127.0.0.1:8767 --rows 64 --cols 64
+```
+
+服务就绪后可访问：
+- `GET http://127.0.0.1:8767/health` — 健康检查与 `8.0m` / `16s` 基准确认
+- `GET http://127.0.0.1:8767/api/schema` — 获取自描述指令集、预设规则与全套接口清单
 
 ---
 
-## 构建与运行 (Build & Run)
+## 协同开发入口
 
-### 1. 运行核心推演引擎测试
-```bash
-cargo test --manifest-path Cargo.toml --workspace
-```
-
-### 2. 启动生产服务端
-```bash
-cargo run --manifest-path Cargo.toml -p gentactix-server --bin gentactix-server -- --web-index web/index.html
-```
-默认服务端口：`http://127.0.0.1:8767`
-
-### 3. 运行端到端 UI 自动化验证
-```bash
-node tests/e2e/verify_production_ui.mjs
-```
-
----
-
-## 许可协议 (License)
-
-本项目遵循 [MIT License](LICENSE)。历史探索资产已统一封存于 `archive/`。
+- 多设备 AI 协同规范与分支流程：请先通读 [AGENTS.md](AGENTS.md)
+- 全量 API 入参/出参与数据结构：请查阅 [FUNCTION_AND_INTERFACE_MANUAL.md](FUNCTION_AND_INTERFACE_MANUAL.md)
+- 新建前端请独立建在 `frontend/` 目录，仅通过 HTTP 接口驱动引擎。
