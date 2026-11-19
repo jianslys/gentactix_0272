@@ -30,6 +30,7 @@ pub const BASE_SPEED_KMH: [f32; 3] = [3.5, 12.0, 12.0]; // Foot, Wheeled, Tracke
 
 /// Zero-churn CSR linked bucket grid rebuilt in O(N) every 5-minute subtick.
 /// Strictly eliminates O(N^2) spatial scans and per-tick Vec heap allocations.
+#[derive(Debug, Clone)]
 pub struct SpatialBucketGrid {
     pub bucket_shift: u32, // 2 => 4x4 px = 800m buckets
     pub b_rows: usize,

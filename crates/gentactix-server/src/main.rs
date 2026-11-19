@@ -2596,7 +2596,7 @@ async fn post_unit_op(State(st): State<AppState>, Json(body): Json<Value>) -> (S
             let team = player_s.and_then(|s| w.commanders.str_to_id.get(s)).map(|c| w.commanders.team[c.0]).unwrap_or(TeamId::Red);
             let w_ref = &mut *w;
             let rep = gentactix_core::combat_logistics::resolve_cell_strike_bucketed(
-                &mut w_ref.grid, &mut w_ref.units, &w_ref.commanders, &mut w_ref.events, Some(&w_ref.buckets),
+                &mut w_ref.grid, &mut w_ref.units, &w_ref.commanders, &mut w_ref.events, Some(&w_ref.derived.buckets),
                 target_px, team, fire, "howitzer_152", op_pos, false, "detonate", false, None
             );
             st.mp.lock().unwrap().state_revision += 1;

@@ -1,22 +1,23 @@
 //! Gentactix V3.1 Pure-CPU Deterministic Tactical Simulation Core
-//! Modular 8-pillar Rust architecture: `domain` (terrain/ecs/combat/command/catalog) + `math_ops` + runtime pillars.
+//! Modular 8-pillar Rust architecture: `state` (tripartite boundaries), `clock` (13-stage 16s),
+//! `domain`, `math_ops`, and runtime pillars.
 
+pub mod clock;
 pub mod domain;
 pub mod math_ops;
+pub mod state;
 
 pub mod baseline_test;
 pub mod events;
 pub mod intent;
 pub mod motion;
 pub mod publication;
-pub mod sim_loop;
-pub mod state;
 #[cfg(test)]
 pub mod stress_test;
 pub mod time_machine;
-pub mod transaction;
 
-// Thin compatibility shims preserving 100% existing module import paths during Phase 1 -> Phase 5 transition.
+// Thin compatibility shims preserving 100% existing module import paths during Phase 2 -> Phase 5 transition.
+pub use clock::phases as transaction;
 pub use domain::catalog;
 pub use domain::combat as combat_logistics;
 pub use domain::command as command_log;
@@ -24,6 +25,12 @@ pub use domain::command::autonomy as spatial_autonomy;
 pub use domain::ecs as units_ecs;
 pub use domain::terrain as world_grid;
 pub use domain::terrain::mutation as operators;
+
+pub mod sim_loop {
+    pub use crate::clock::pathfinding::plan_grid_path_f32;
+    pub use crate::state::presets::*;
+    pub use crate::state::world_state::*;
+}
 
 pub mod geometry {
     pub use crate::math_ops::geometry_8m::*;
@@ -62,7 +69,8 @@ pub use publication::{
 };
 pub use state::{
     ClockState, DerivedState, EntityAuthorityRecord, EntityState, InventoryLedger,
-    PersistentFieldState, StateKind, TerrainState, TickScratch, WorldState,
+    PersistentFieldState, SimDerivedState, SimTickScratch, StateKind, TerrainState, TickScratch,
+    WorldState,
 };
 pub use time_machine::*;
 pub use transaction::{

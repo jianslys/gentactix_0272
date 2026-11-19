@@ -286,7 +286,7 @@ fn main() {
 
     // Measure pure SpatialBucketGrid rebuild time
     let t_b0 = Instant::now();
-    w1.buckets.rebuild(&w1.units, w1.grid.rows, w1.grid.cols);
+    w1.derived.buckets.rebuild(&w1.units, w1.grid.rows, w1.grid.cols);
     let bucket_ms = t_b0.elapsed().as_secs_f64() * 1000.0;
     println!("CSR SpatialBucketGrid rebuild (50k units): {:.3} ms", bucket_ms);
 
