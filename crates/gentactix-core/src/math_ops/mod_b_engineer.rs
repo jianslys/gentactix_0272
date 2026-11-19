@@ -304,7 +304,7 @@ pub enum ConstructionFsmState {
 }
 
 /// 增广弧长施工巡回积分器
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AugmentedArcIntegrator {
     pub waypoints: Vec<[f32; 2]>,
     pub current_wp_idx: usize,

@@ -1,75 +1,7 @@
 use super::*;
-use crate::events::{EventBuffer, EventFinalStatus};
-use crate::geometry::CellCoord;
-use crate::state::WorldState;
-use rustc_hash::FxHashMap;
 
-    use crate::geometry::{GridGeometry, WorldPos};
-    use crate::state::EntityAuthorityRecord;
-
-    #[test]
-    fn test_phase_06_fire_slice_ammo_deduct_damage_and_workspace_cleanup() {
-        let geom = GridGeometry::standard_1024(1, [0.0, 0.0]);
-        let mut world = WorldState::new(geom, 0, 100.0);
-        let mut events = EventBuffer::default();
-        let mut workspace = TransientBlastWorkspace::default();
-
-        // 设定炮手与初始弹药
-        let shooter_id = 1;
-        let mut stocks = FxHashMap::default();
-        stocks.insert("105mm_he".to_string(), 1); // 仅有 1 发弹药
-        world.inventory.entity_stocks.insert(shooter_id, stocks);
-
-        // 设定目标实体 (位于 80m, 80m 处，即 cell (10, 10))
-        let target_entity_id = 2;
-        world.entities.insert(EntityAuthorityRecord {
-            id: target_entity_id,
-            str_id: "target_inf".into(),
-            team_id: 2,
-            pos: WorldPos::new(84.0, 84.0), // center of (10, 10)
-            facing_deg: 0.0,
-            alive: true,
-            persons: 10,
-            org: 100.0,
-        });
-
-        let target_cell = CellCoord::new(10, 10);
-
-        // 第一次开火：弹药充裕，成功命中并破坏地形
-        let res1 = execute_single_fire_slice(
-            &mut world,
-            &mut events,
-            &mut workspace,
-            shooter_id,
-            target_cell,
-            "105mm_he",
-            1001,
-        ).unwrap();
-
-        assert!(matches!(res1, EventFinalStatus::Resolved { .. }));
-        assert_eq!(world.inventory.entity_stocks[&shooter_id]["105mm_he"], 0, "Ammo must be decremented to 0");
-        assert!(world.entities.entities[&target_entity_id].org < 100.0, "Target org must take blast damage");
-        assert_eq!(world.terrain.elevation_m[world.terrain.idx(10, 10)], 98.5, "Crater must drop elevation by 1.5m");
-        assert_eq!(workspace.peak_overpressure_kpa.len(), 0, "Transient workspace must be thoroughly cleaned!");
-
-        // 第二次开火：弹药已空，必须拒绝，绝不造成二次伤害
-        let org_before = world.entities.entities[&target_entity_id].org;
-        let res2 = execute_single_fire_slice(
-            &mut world,
-            &mut events,
-            &mut workspace,
-            shooter_id,
-            target_cell,
-            "105mm_he",
-            1002,
-        ).unwrap();
-
-        assert!(matches!(res2, EventFinalStatus::Rejected { .. }));
-        assert_eq!(world.entities.entities[&target_entity_id].org, org_before, "No damage on rejected out-of-ammo fire");
-    }
-
-    #[test]
-    fn test_phase_01_dual_field_four_antifraud_iron_rules() {
+#[test]
+fn test_phase_01_dual_field_four_antifraud_iron_rules() {
         // 铁律一测试：在途预扣 vs 到场实扣
         let g0 = 100.0;
         let mut on_site = 20.0;

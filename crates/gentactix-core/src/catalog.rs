@@ -7,12 +7,22 @@
 //! 3. Fuzes are independent items modifying shell detonation state & effects.
 //! 4. GPMG mounts are independent items toggling heavy-weapon/deployment/RPM traits.
 
-use crate::units_ecs::DamageType;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock, RwLock};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DamageType {
+    AntiPersonnel,
+    Suppression,
+    AntiSoft,
+    AntiArmor,
+    Destructive,
+    Incendiary,
+}
 
 pub const EMBEDDED_ITEMS_CATALOG_JSON: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/items_catalog.json"));
 

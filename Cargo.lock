@@ -137,15 +137,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
-name = "bitflags"
-version = "2.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
-dependencies = [
- "serde_core",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -356,9 +347,8 @@ dependencies = [
 
 [[package]]
 name = "gentactix-core"
-version = "0.3.1"
+version = "2.0.0"
 dependencies = [
- "bitflags 2.13.2",
  "png",
  "rayon",
  "rustc-hash",
@@ -369,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "gentactix-server"
-version = "0.3.1"
+version = "2.0.0"
 dependencies = [
  "axum",
  "clap",
@@ -570,7 +560,7 @@ version = "0.17.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82151a2fc869e011c153adc57cf2789ccb8d9906ce52c0b39a6b5697749d7526"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags",
  "crc32fast",
  "fdeflate",
  "flate2",

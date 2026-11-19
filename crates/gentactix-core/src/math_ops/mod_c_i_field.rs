@@ -1,6 +1,4 @@
-use crate::events::{EventBuffer, EventFinalStatus, EventKind, EventPayload, InstantEvent};
-use crate::geometry::{CellCoord, GridGeometry};
-use crate::state::WorldState;
+use super::geometry_8m::{CellCoord, GridGeometry};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
@@ -83,90 +81,6 @@ impl TransientBlastWorkspace {
         cleared
     }
 }
-
-/// 执行单条火力竖切业务链路
-pub fn execute_single_fire_slice(
-    world: &mut WorldState,
-    events: &mut EventBuffer,
-    workspace: &mut TransientBlastWorkspace,
-    shooter_entity_id: u32,
-    target_cell: CellCoord,
-    ammo_item: &str,
-    event_id: u64,
-) -> Result<EventFinalStatus, &'static str> {
-    // 步骤 1: 权限与库存核验
-    if let Err(e) = world.inventory.deduct_ammo(shooter_entity_id, ammo_item, 1) {
-        let status = EventFinalStatus::Rejected {
-            code: "OUT_OF_AMMO".into(),
-            detail: format!("Cannot fire: {e}"),
-        };
-        events.record_terminal(event_id, status.clone());
-        return Ok(status);
-    }
-
-    // 步骤 2: 生成即时事件
-    events.push(InstantEvent {
-        event_id,
-        kind: EventKind::BlastImpact,
-        resolve_phase: 8,
-        source_entity_id: shooter_entity_id,
-        target_key: format!("cell_{}_{}", target_cell.r, target_cell.c),
-        model_revision: 1,
-        payload: EventPayload::Blast {
-            origin: target_cell,
-            radius_m: 16.0,
-            overpressure_kpa: 120.0,
-        },
-        sequence: 0,
-    });
-
-    // 步骤 3: 瞬态杀伤场工作区构建 (半径16m，即覆射周围 2 格)
-    let affected = workspace.splat_explosion(
-        &world.geometry,
-        target_cell,
-        16.0,
-        120.0,
-        200,
-        event_id,
-    )?;
-
-    // 步骤 4: 目标实体采样并受击
-    for entity in world.entities.entities.values_mut() {
-        if !entity.alive {
-            continue;
-        }
-        if let Ok(c) = world.geometry.world_to_cell(entity.pos) {
-            let idx = (c.r as usize) * (world.geometry.cols as usize) + (c.c as usize);
-            if let Some(&p) = workspace.peak_overpressure_kpa.get(&idx) {
-                // 超压致损
-                let dmg = p * 0.1;
-                entity.org = (entity.org - dmg).max(0.0);
-                if entity.org <= 0.0 && entity.persons > 0 {
-                    entity.persons = entity.persons.saturating_sub(1);
-                }
-            }
-        }
-    }
-
-    // 步骤 5: 地形破坏 (生成弹坑)
-    let crater_elev_drop = 1.5;
-    let idx = world.terrain.idx(target_cell.r, target_cell.c);
-    let cur_elev = world.terrain.elevation_m[idx];
-    world.terrain.mutate_cell(target_cell.r, target_cell.c, cur_elev - crater_elev_drop, None);
-
-    // 步骤 6: 终态记录
-    let status = EventFinalStatus::Resolved {
-        code: "BLAST_RESOLVED".into(),
-        detail: format!("Explosion resolved: {affected} cells affected, terrain mutated"),
-    };
-    events.record_terminal(event_id, status.clone());
-
-    // 步骤 7: 瞬态工作区必须清理
-    workspace.clear_all_active();
-
-    Ok(status)
-}
-
 
 /// 算子 B-1 · 双时间尺度爆炸危害与敌方压制施密特三态姿态机
 /// tau_blast = 9.0s -> alpha_blast = 0.1690 (快衰减瞬态爆炸)

@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-bitflags = { version = "2.6", features = ["serde"] }
 png = "0.17"
 rayon = "1.10"
 rustc-hash = "2.1"

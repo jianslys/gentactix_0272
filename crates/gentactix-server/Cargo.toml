@@ -17,7 +17,3 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal
 [[bin]]
 name = "gentactix-server"
 path = "src/main.rs"
-
-[[bin]]
-name = "bench_50k"
-path = "src/bin/bench_50k.rs"
