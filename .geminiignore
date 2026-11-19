@@ -38,3 +38,7 @@ probe_result.json
 *.webp
 *.mp4
 *.webm
+
+# ---- Large Theoretical Papers (tracked in Git, read on demand only) ----
+docs/research-theory/
+*.html

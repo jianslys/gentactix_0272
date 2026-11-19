@@ -1,0 +1,1498 @@
+<!-- Chosen Palette: Warm Ivory & Academic Slate (Alabaster #FAF8F5, Soft Stone #F2EFE9, Deep Indigo #2C4A7E, Terracotta #C05621, Sage Teal #2F6F6D) -->
+<!-- Application Structure Plan: Task-oriented interactive mathematical modeling workbench organized into 6 thematic modules: (1) Axioms & Macro Overview, (2) Non-Convex Geometry & Eikonal/Screened Poisson Flow Lab, (3) Multi-Body Self-Consistent Field Stability & Bessel Sidelobe Analyzer, (4) Saddle Point Cusp Catastrophe & Helmholtz-Hodge Gyroscopic Curl Lab, (5) Continuum Lanchester & Radiative Transfer PN Reduction Explorer, and (6) Computational Complexity Benchmarks & Theoretical Solvability Matrix. Chosen to translate dense PDE derivations, bifurcation manifolds, and GFLOP scaling laws into intuitive, interactive numerical experiments rather than passive linear reading. -->
+<!-- Visualization & Content Choices: 1) Custom HTML5 Canvas 2D PDE Field Simulator comparing Euclidean local minima traps vs Screened Poisson (Hopf-Cole) geodesic flow around U-shaped obstacles (Goal: Compare/Change, interactive target placement & viscosity slider). 2) Chart.js Line Charts for Hard-Cutoff Bessel J1(kR)/(kR) vs Bochner Gaussian spectral kernels and discrete-time stiffness stability trajectories (Goal: Inform/Relationships, interactive stiffness & read-write delay toggles). 3) Chart.js Potential Curve + Custom HTML5 Canvas Vector Field for René Thom Cusp Catastrophe and Helmholtz-Hodge solenoidal curl bypass (Goal: Organize/Relationships, interactive control parameters & curl strength). 4) Chart.js Bar Chart for GFLOPs complexity reduction across grid sizes (Goal: Compare, interactive grid & agent count selectors). 5) Structured HTML/Tailwind interactive matrices for RTE PN moments, 4 GPU reduction paradigms, and Hadamard/NP-hard solvability boundaries. NO SVG and NO Mermaid JS used anywhere. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>双场无状态战术推演架构：数学形式化建模与奇异点交互推演台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-canvas: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F2EFE9;
+      --text-primary: #1E293B;
+      --text-secondary: #475569;
+      --accent-indigo: #2C4A7E;
+      --accent-terra: #C05621;
+      --accent-teal: #2F6F6D;
+      --border-warm: #E2DDD5;
+    }
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      overflow-x: hidden;
+      background-color: var(--bg-canvas);
+    }
+    .math-font {
+      font-family: "Cambria Math", "STIXGeneral", "Times New Roman", Georgia, serif;
+      letter-spacing: 0.01em;
+    }
+    .mono-font {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .math-block {
+      background-color: #F7F5F0;
+      border-left: 3px solid var(--accent-indigo);
+      padding: 0.85rem 1.1rem;
+      border-radius: 0.375rem;
+      font-family: "Cambria Math", "STIXGeneral", "Times New Roman", Georgia, serif;
+      font-size: 1.02rem;
+      overflow-x: auto;
+      color: #0F172A;
+    }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      margin: 0 0.2em;
+      font-size: 0.9em;
+      line-height: 1.1;
+    }
+    .frac > span:first-child {
+      border-bottom: 1px solid currentColor;
+      padding: 0 0.2em 0.1em;
+    }
+    .frac > span:last-child {
+      padding: 0.1em 0.2em 0;
+    }
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+      height: 300px;
+      max-height: 380px;
+    }
+    @media (min-width: 768px) {
+      .chart-container {
+        height: 340px;
+      }
+    }
+    .sim-canvas-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+      height: 330px;
+      max-height: 400px;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      border: 1px solid var(--border-warm);
+      background: #F4F1EA;
+    }
+    .nav-pill.active {
+      background-color: var(--accent-indigo);
+      color: #FFFFFF;
+    }
+    input[type="range"] {
+      accent-color: var(--accent-indigo);
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-amber-100 selection:text-slate-900">
+
+  <header class="sticky top-0 z-40 border-b border-[#E2DDD5] bg-[#FAF8F5]/95 backdrop-blur">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3 gap-2">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[#2C4A7E] text-white font-bold text-lg math-font">∇Φ</span>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">双场无状态战术推演架构 · 数学形式化与奇异点推演台</h1>
+            <p class="text-xs text-slate-500">欧拉化平均场极限 (N → ∞) · 偏微分方程组与计算复杂度评估</p>
+          </div>
+        </div>
+        <nav class="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm" id="top-nav">
+          <a href="#sec-axioms" class="nav-pill active px-2.5 py-1.5 rounded-md font-medium transition hover:bg-[#E8E3D9]">0. 公理映射</a>
+          <a href="#sec-eikonal" class="nav-pill px-2.5 py-1.5 rounded-md font-medium text-slate-700 transition hover:bg-[#E8E3D9]">1. 程函测地流</a>
+          <a href="#sec-scf" class="nav-pill px-2.5 py-1.5 rounded-md font-medium text-slate-700 transition hover:bg-[#E8E3D9]">2. 自洽场震荡</a>
+          <a href="#sec-catastrophe" class="nav-pill px-2.5 py-1.5 rounded-md font-medium text-slate-700 transition hover:bg-[#E8E3D9]">3. 尖点突变与旋度</a>
+          <a href="#sec-lanchester" class="nav-pill px-2.5 py-1.5 rounded-md font-medium text-slate-700 transition hover:bg-[#E8E3D9]">4. 辐射传输交火</a>
+          <a href="#sec-compute" class="nav-pill px-2.5 py-1.5 rounded-md font-medium text-slate-700 transition hover:bg-[#E8E3D9]">5. 算力降维与边界</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <section id="sec-axioms" class="bg-white rounded-2xl border border-[#E2DDD5] p-6 sm:p-8 shadow-sm">
+      <div class="max-w-4xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F2EFE9] text-[#2C4A7E] text-xs font-semibold mb-3">
+          <span>理论物理与连续介质映射总览</span>
+          <span>•</span>
+          <span class="math-font">Ω ⊂ ℝᵈ (d ∈ {2, 3})</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">从微观离散状态机到宏观非局部平均场偏微分方程</h2>
+        <p class="text-slate-600 leading-relaxed text-sm sm:text-base">
+          本应用为您结构化呈现“信息场（排斥）—任务场（吸引）”无状态推演架构的严密数学边界。在微观多智能体博弈的<strong>欧拉化（Eulerianization）与连续统平均场极限（N → ∞）</strong>下，离散实体寻路、避障、朝向对齐与交火裁决完全收敛为定义在带边界欧氏流形上的偏微分方程组与变分泛函。点击下方四个核心公理卡片，查看其对应的形式化PDE算子与工程痛点。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-4">
+          <div class="text-xs font-medium text-slate-500">频域卷积算力加速比</div>
+          <div class="text-2xl sm:text-3xl font-bold text-[#2C4A7E] mt-1">159.1×</div>
+          <div class="text-xs text-slate-600 mt-1">1024²网格下从 34.36G 降至 0.216 GFLOPs</div>
+        </div>
+        <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-4">
+          <div class="text-xs font-medium text-slate-500">单帧射线步进消除量</div>
+          <div class="text-2xl sm:text-3xl font-bold text-[#2F6F6D] mt-1">966.4 亿次</div>
+          <div class="text-xs text-slate-600 mt-1">RTE球谐 P₁ 椭圆方程替代 Ray-marching</div>
+        </div>
+        <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-4">
+          <div class="text-xs font-medium text-slate-500">降维后单帧理论复杂度</div>
+          <div class="text-2xl sm:text-3xl font-bold text-slate-900 mt-1 math-font">O(N + K·M log M)</div>
+          <div class="text-xs text-slate-600 mt-1">彻底消除 O(N²) 多体遍历与 O(M·K²) 卷积</div>
+        </div>
+        <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-4">
+          <div class="text-xs font-medium text-slate-500">工业级实时吞吐包络</div>
+          <div class="text-2xl sm:text-3xl font-bold text-[#C05621] mt-1">30–60 FPS</div>
+          <div class="text-xs text-slate-600 mt-1">N = 10⁴~10⁵ 实体，单帧预算 16.67–33.33 ms</div>
+        </div>
+      </div>
+
+      <div class="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5" id="axiom-selector">
+          <button type="button" data-axiom="0" class="axiom-btn text-left p-3.5 rounded-xl border-2 border-[#2C4A7E] bg-[#F2EFE9] transition">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-900 text-sm">公理 I · 信息场与排斥/朝向</span>
+              <span class="math-font text-xs font-bold text-[#C05621]">ℱ_info(x, t)</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">客观现实输入、McKean-Vlasov卷积排斥力与主战术朝向对齐</p>
+          </button>
+          <button type="button" data-axiom="1" class="axiom-btn text-left p-3.5 rounded-xl border border-[#E2DDD5] bg-white hover:bg-[#FAF8F5] transition">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-900 text-sm">公理 II · 任务场与测地吸引</span>
+              <span class="math-font text-xs font-bold text-[#2C4A7E]">ℱ_task(x, t)</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">主观指令目标、黎曼测地距离泛函与非线性程函方程粘性解</p>
+          </button>
+          <button type="button" data-axiom="2" class="axiom-btn text-left p-3.5 rounded-xl border border-[#E2DDD5] bg-white hover:bg-[#FAF8F5] transition">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-900 text-sm">公理 III · 双场特征共振交火</span>
+              <span class="math-font text-xs font-bold text-[#2F6F6D]">ℛ(x, y, t)</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">特征丛双线性张量缩并、连续兰彻斯特耗散与视线辐射传输</p>
+          </button>
+          <button type="button" data-axiom="3" class="axiom-btn text-left p-3.5 rounded-xl border border-[#E2DDD5] bg-white hover:bg-[#FAF8F5] transition">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-900 text-sm">公理 IV · 运动合成与霍奇分解</span>
+              <span class="math-font text-xs font-bold text-slate-700">V⃗_move(x)</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">无旋保守梯度叠加、共线鞍点拓扑奇异性与螺线管旋度场注入</p>
+          </button>
+        </div>
+
+        <div class="lg:col-span-7 bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-5 sm:p-6" id="axiom-detail-panel">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#E2DDD5]">
+            <h3 class="text-lg font-bold text-slate-900" id="axiom-title">公理 I：信息场卷积生成与球面正则化朝向</h3>
+            <span class="px-2.5 py-0.5 rounded text-xs font-semibold bg-[#C05621]/10 text-[#C05621]" id="axiom-tag">McKean-Vlasov 自洽闭环</span>
+          </div>
+          <p class="text-sm text-slate-700 mt-3 leading-relaxed" id="axiom-desc">
+            信息场由静态环境阻抗 I_env(x) 与宏观实体密度 ρ(x, t) 经感知核 K_rep 空间卷积生成。为防止平坦区或对称威胁中心发生 ∇ℱ_info ≈ 0 导致的零除航向跳变，主朝向 ĥ 必须定义为球面约束 Tikhonov 变分泛函的近端闭式解。
+          </p>
+          <div class="math-block mt-4" id="axiom-formula">
+            ℱ_info(x, t) = I_env(x) + (K_rep * ρ)(x, t) = I_env(x) + ∫_Ω K_rep(x − y) ρ(y, t) dy<br>
+            ĥⁿ⁺¹ = [ −∇ℱ_info(xⁿ) + (κ_rot / Δt) ĥⁿ + λ_align v̂_moveⁿ ] / ‖ · ‖
+          </div>
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="bg-white p-3 rounded-lg border border-[#E2DDD5]">
+              <span class="font-bold text-[#C05621] block mb-1">深水区奇异点警告：</span>
+              <span class="text-slate-600" id="axiom-risk">若使用硬截断圆盘核，频域负旁瓣将破坏 Lasry-Lions 单调性，引发波长约 1.2235R 的空间驻波团簇。</span>
+            </div>
+            <div class="bg-white p-3 rounded-lg border border-[#E2DDD5]">
+              <span class="font-bold text-[#2F6F6D] block mb-1">闭式/降维解决路径：</span>
+              <span class="text-slate-600" id="axiom-fix">采用 Bochner 双正定高斯核 + 频域 2D FFT 单次乘积融合梯度提取，复杂度降至 O(M log M)。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-eikonal" class="bg-white rounded-2xl border border-[#E2DDD5] p-6 sm:p-8 shadow-sm">
+      <div class="max-w-4xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F2EFE9] text-[#2C4A7E] text-xs font-semibold mb-2">
+          <span>核心问题 1 · 非凸几何流向与测地度量</span>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">程函方程（Eikonal Equation）与 Hopf-Cole 屏蔽泊松线性化</h2>
+        <p class="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">
+          在U型峡谷或工事防线等非凸区域，欧氏直线引力会在凹陷处与障碍物排斥力平衡，形成严格局部极小值死锁（Local Minima）。根据贝尔曼最优性原理，无死锁任务势能 T(x) 等价于求解一阶非线性<strong>程函方程 ‖∇T(x)‖ = v(x)⁻¹</strong> 的粘性解。引入二阶人工粘性 εΔT 并实施 <strong>Hopf-Cole 指数变换 φ(x) = exp(−T_ε(x)/ε)</strong>，可将强非线性PDE精确转化为对称正定的<strong>线性屏蔽泊松方程</strong>，彻底规避串行优先队列（FMM）瓶颈并支持多目标线性叠加。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 items-start">
+        <div class="lg:col-span-5 space-y-4">
+          <div class="math-block text-sm">
+            <div class="text-xs font-sans font-semibold text-[#2C4A7E] mb-1">1. 非线性粘性程函方程：</div>
+            ‖∇T_ε(x)‖² − ε ΔT_ε(x) = c(x)², &nbsp; c(x) = v(x)⁻¹
+            <div class="text-xs font-sans font-semibold text-[#2F6F6D] mt-2.5 mb-1">2. Hopf-Cole 变换后线性屏蔽泊松方程：</div>
+            ( Δ − <span class="frac"><span>c(x)²</span><span>ε²</span></span> ) φ(x) = 0, &nbsp; φ|_Γ = 1
+            <div class="text-xs font-sans font-semibold text-slate-700 mt-2.5 mb-1">3. 无需对数还原的直接任务引力提取：</div>
+            F⃗_task(x) = −<span class="frac"><span>∇T_ε(x)</span><span>‖∇T_ε(x)‖</span></span> = <span class="frac"><span>∇φ(x)</span><span>‖∇φ(x)‖</span></span>
+          </div>
+
+          <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800">流场模式切换（交互实验）：</span>
+              <span class="text-xs px-2 py-0.5 rounded bg-white border border-[#E2DDD5] text-slate-600" id="eikonal-status-badge">屏蔽泊松测地流（无死锁）</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" id="btn-mode-poisson" class="px-3 py-2 rounded-lg text-xs font-bold bg-[#2C4A7E] text-white transition">屏蔽泊松测地流 (Hopf-Cole)</button>
+              <button type="button" id="btn-mode-euclidean" class="px-3 py-2 rounded-lg text-xs font-bold bg-white border border-[#E2DDD5] text-slate-700 hover:bg-[#F2EFE9] transition">欧氏直线引力 (局部极小死锁)</button>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs text-slate-700 mb-1">
+                <span>正则化扩散尺度参数 ε (Varadhan 粘性)：</span>
+                <span class="font-bold mono-font" id="val-epsilon">1.40</span>
+              </div>
+              <input type="range" id="slider-epsilon" min="0.6" max="3.0" step="0.1" value="1.4" class="w-full">
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <button type="button" id="btn-respawn-eikonal" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#2F6F6D] text-white hover:opacity-95 transition">↻ 重新投放突击分队</button>
+              <span class="text-xs text-slate-500">提示：点击右侧画布可动态移动目标点 Γ</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7">
+          <div class="sim-canvas-wrap">
+            <canvas id="canvas-eikonal"></canvas>
+          </div>
+          <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 px-1">
+            <div class="flex items-center gap-4">
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-[#334155] inline-block"></span>U型非凸障碍 (c→∞)</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#C05621] inline-block"></span>战术目标 Γ</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#2C4A7E] inline-block"></span>智能体集群</span>
+            </div>
+            <span id="eikonal-telemetry" class="mono-font text-slate-700">到达目标率: 0%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-scf" class="bg-white rounded-2xl border border-[#E2DDD5] p-6 sm:p-8 shadow-sm">
+      <div class="max-w-4xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F2EFE9] text-[#C05621] text-xs font-semibold mb-2">
+          <span>核心问题 2 · 多体自洽场与平均场博弈（MFG）收敛性</span>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Lasry-Lions 单调性判据、Bessel 负旁瓣与高频抖动分析</h2>
+        <p class="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">
+          实例“受力位移—写入容器—更新信息场”构成了典型的 <strong>McKean-Vlasov / Fokker-Planck-Kolmogorov (FPK)</strong> 自洽场闭环。系统全局渐近收敛的充分条件是感知核满足 <strong>Lasry-Lions 单调性（傅里叶谱 K̂_rep(k) ≥ 0）</strong>。若采用硬截断圆盘核，其频谱 2J₁(kR)/(kR) 在 k*R ≈ 5.1356 处存在 −0.1323 负旁瓣，触发反向热传导空间驻波；而在离散时间步长 Δt 下，无量纲刚度参数 <strong>σ(k) = Δt ‖k‖² (D + ρ₀ β K̂_rep(k))</strong> 超过临界阈值将引发棋盘格抖动（Jitter）与延迟自激震荡。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-bold text-slate-900 text-base">A. 感知核频域谱对比：硬截断圆盘 vs Bochner 高斯核</h3>
+              <span class="text-xs px-2 py-0.5 rounded bg-[#C05621]/10 text-[#C05621] font-semibold">空间驻波机理</span>
+            </div>
+            <p class="text-xs text-slate-600 mb-3">
+              硬截断圆盘核在 kR ∈ (3.83, 7.02) 频谱为负，当 ρ₀β > 7.56 D 时，波长 λ ≈ 1.2235R 的密度波指数放大为非物理团簇。
+            </p>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-bessel"></canvas>
+          </div>
+          <div class="mt-3 text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-[#E2DDD5] flex justify-between">
+            <span>硬截断极小值：<strong class="text-[#C05621] mono-font">K̂(5.14) = −0.1323</strong></span>
+            <span>高斯核频谱：<strong class="text-[#2F6F6D] mono-font">exp(−s²k²/2) > 0 恒正</strong></span>
+          </div>
+        </div>
+
+        <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-bold text-slate-900 text-base">B. 离散积分无量纲刚度 σ(k) 与单帧延迟振荡仿真</h3>
+              <span class="text-xs px-2 py-0.5 rounded font-bold" id="scf-regime-badge">单调收敛区 (σ ≤ 0.25)</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 bg-white p-3 rounded-lg border border-[#E2DDD5]">
+              <div>
+                <div class="flex justify-between text-xs text-slate-700 mb-1">
+                  <span>耦合刚度 σ(k)：</span>
+                  <span class="font-bold mono-font text-[#2C4A7E]" id="val-sigma">0.20</span>
+                </div>
+                <input type="range" id="slider-sigma" min="0.05" max="2.20" step="0.05" value="0.20" class="w-full">
+              </div>
+              <div class="flex flex-col justify-center">
+                <label class="text-xs text-slate-700 font-medium mb-1">时间积分读写时序架构：</label>
+                <select id="select-scf-arch" class="text-xs border border-[#E2DDD5] rounded-md px-2 py-1.5 bg-[#FAF8F5] text-slate-800 font-medium">
+                  <option value="delayed">单帧读写延迟 (λ² − λ + σ = 0)</option>
+                  <option value="sync">同步显式欧拉 (G = 1 − σ)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-stability"></canvas>
+          </div>
+          <div class="mt-3 text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-[#E2DDD5]" id="scf-explanation">
+            当前参数 σ = 0.20 ≤ 0.25：特征根为实数 λ ∈ (0, 1)，密度扰动呈单调无震荡指数衰减，系统无需帧内多轮迭代即可保持稳态。
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-4 rounded-xl border border-[#E2DDD5] bg-[#FAF8F5]">
+          <div class="text-xs font-bold text-[#2F6F6D] mb-1">单遍稳态机制 ① · 正定核替换</div>
+          <p class="text-xs text-slate-600 leading-relaxed">摒弃硬截断感知域，采用空间-频域双正定高斯核，从 Bochner 定理根源上满足 Lasry-Lions 单调性并指数压制奈奎斯特高频刚度。</p>
+        </div>
+        <div class="p-4 rounded-xl border border-[#E2DDD5] bg-[#FAF8F5]">
+          <div class="text-xs font-bold text-[#2C4A7E] mb-1">单遍稳态机制 ② · IMEX 场记忆与限幅</div>
+          <p class="text-xs text-slate-600 leading-relaxed">信息场采用指数移动平均滤波 ℱⁿ = (1−η)ℱⁿ⁻¹ + η(K*ρⁿ)，并对高密度排斥梯度施加双曲饱和限幅，将特征波速锁定在 CFL 包络内。</p>
+        </div>
+        <div class="p-4 rounded-xl border border-[#E2DDD5] bg-[#FAF8F5]">
+          <div class="text-xs font-bold text-[#C05621] mb-1">单遍稳态机制 ③ · 二阶朗之万动量阻尼</div>
+          <p class="text-xs text-slate-600 leading-relaxed">引入质量惯性 m 与速度阻尼 γ_damp，配合半隐式欧拉积分（零额外耗时），充当天然二阶低通滤波器滤除帧间高频毛刺。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-catastrophe" class="bg-white rounded-2xl border border-[#E2DDD5] p-6 sm:p-8 shadow-sm">
+      <div class="max-w-4xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F2EFE9] text-[#2C4A7E] text-xs font-semibold mb-2">
+          <span>核心问题 3 · 势能鞍点分岔与矢量场拓扑重构</span>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">勒内·托姆尖点突变（Cusp Catastrophe）与亥姆霍兹-霍奇旋度场</h2>
+        <p class="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">
+          根据微分拓扑 <strong>Poincaré-Hopf 指数定理</strong>，含 q 个障碍物的流形上任意光滑势场至少存在 q 个鞍点。当任务引力与信息斥力共线反向（∇U ≈ 0）时，取向势能同构于<strong>尖点突变标准型 V(θ̃) = ¼θ̃⁴ + ½ũ₁θ̃² + ũ₂θ̃</strong>。一旦微扰跨过半立方抛物线分岔集 <strong>Δ = 27ũ₂² + 4ũ₁³ = 0</strong>，吸引盆瞬间湮灭引发 180° 航向跳变。基于<strong>亥姆霍兹-霍奇分解</strong>注入无散度螺线管旋度场 <strong>F⃗_gyro = γ σ_chirality J∇ℱ_info</strong>，可确保原鞍点处合速度模长严格非零。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-bold text-slate-900 text-base">A. 尖点突变取向势能 V(θ̃) 与分岔跳变实验</h3>
+              <span class="text-xs px-2 py-0.5 rounded font-mono font-bold" id="cusp-discriminant-badge">Δ = +0.50 (单稳态)</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-3 bg-white p-3 rounded-lg border border-[#E2DDD5]">
+              <div>
+                <div class="flex justify-between text-xs text-slate-700 mb-1">
+                  <span>纵向力差 ũ₁ (F_T − F_I)：</span>
+                  <span class="font-bold mono-font text-[#2C4A7E]" id="val-u1">-1.20</span>
+                </div>
+                <input type="range" id="slider-u1" min="-2.0" max="1.0" step="0.1" value="-1.2" class="w-full">
+              </div>
+              <div>
+                <div class="flex justify-between text-xs text-slate-700 mb-1">
+                  <span>横向破缺微扰 ũ₂：</span>
+                  <span class="font-bold mono-font text-[#C05621]" id="val-u2">0.15</span>
+                </div>
+                <input type="range" id="slider-u2" min="-1.2" max="1.2" step="0.05" value="0.15" class="w-full">
+              </div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-cusp"></canvas>
+          </div>
+          <div class="mt-3 text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-[#E2DDD5]" id="cusp-explanation">
+            当 ũ₁ < 0 且 Δ = 27ũ₂² + 4ũ₁³ < 0 时，势能曲面处于双稳态折叠区（存在两个局部极小值与一个中间不稳定鞍点），微调 ũ₂ 跨过 ±0.48 边界将触发灾难性 180° 航向坍塌跳变。
+          </div>
+        </div>
+
+        <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-bold text-slate-900 text-base">B. 亥姆霍兹-霍奇分解：螺线管旋度场消除鞍点死锁</h3>
+              <span class="text-xs px-2 py-0.5 rounded bg-[#2F6F6D]/10 text-[#2F6F6D] font-bold mono-font">‖V⃗‖² = γ²σ²‖∇ℱ_info‖² > 0</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-3 bg-white p-3 rounded-lg border border-[#E2DDD5]">
+              <div>
+                <div class="flex justify-between text-xs text-slate-700 mb-1">
+                  <span>旋度耦合强度 γ (J∇ℱ_info)：</span>
+                  <span class="font-bold mono-font text-[#2F6F6D]" id="val-gamma">0.85</span>
+                </div>
+                <input type="range" id="slider-gamma" min="0.0" max="1.6" step="0.05" value="0.85" class="w-full">
+              </div>
+              <div>
+                <div class="flex justify-between text-xs text-slate-700 mb-1">
+                  <span>全局手性破缺偏置 ε₀：</span>
+                  <span class="font-bold mono-font text-slate-700" id="val-chirality">+0.35</span>
+                </div>
+                <input type="range" id="slider-chirality" min="-1.0" max="1.0" step="0.05" value="0.35" class="w-full">
+              </div>
+            </div>
+          </div>
+          <div class="sim-canvas-wrap">
+            <canvas id="canvas-hodge"></canvas>
+          </div>
+          <div class="mt-3 text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-[#E2DDD5] flex justify-between">
+            <span>将 γ 调至 0.00 可观察中心流线在共线鞍点处的停滞死锁</span>
+            <span class="font-bold text-[#2F6F6D]" id="hodge-status">平滑侧翼包抄绕流中</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-lanchester" class="bg-white rounded-2xl border border-[#E2DDD5] p-6 sm:p-8 shadow-sm">
+      <div class="max-w-4xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F2EFE9] text-[#2F6F6D] text-xs font-semibold mb-2">
+          <span>核心问题 4 · 高维特征共振与视线通透性闭式表征</span>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">连续介质兰彻斯特耗散 PDE 与稳态辐射传输（RTE）球谐 P_N 展开</h2>
+        <p class="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">
+          将离散属性掩码提升为秩 K 向量丛截面上的双线性张量缩并 <strong>Ψ_taskᵀ W Φ_info</strong>，可导出包含战术机动平流、阵型扩散与非局部交火损耗的连续兰彻斯特方程。针对视线遮蔽线积分 <strong>𝒯_LoS = exp(−∫ σ_occ ds)</strong>，通过将其转化为钱德拉塞卡<strong>稳态辐射传输方程（RTE）</strong>并实施<strong>球谐函数 P₁ 矩截断</strong>，可将 O(M·D_θ·R_pix) 的全图射线扫描规约为局部二阶椭圆扩散-吸收 PDE，且一阶通量负方向 <strong>−F⃗₁(x)</strong> 自动给出经掩体遮蔽修正后的真实受火威胁朝向。
+        </p>
+      </div>
+
+      <div class="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7 space-y-4">
+          <div class="math-block text-sm">
+            <div class="text-xs font-sans font-semibold text-[#2C4A7E] mb-1">1. 高维连续介质平流-扩散-兰彻斯特偏微分方程：</div>
+            <span class="frac"><span>∂Φ_info</span><span>∂t</span></span> + ∇·(Φ_info ⊗ V⃗_move) = ∇·(D ∇Φ_info) − Φ_info ⊙ ∫_Ω 𝒜(x−y, ĥ) 𝒯_LoS(y, x) (Wᵀ Ψ_task) dy
+            <div class="text-xs font-sans font-semibold text-[#2F6F6D] mt-3 mb-1">2. RTE 球谐 P₁ 阶矩椭圆型扩散-吸收方程（替代 Ray-marching）：</div>
+            ( −∇·( <span class="frac"><span>1</span><span>d · σ_tr,1(x)</span></span> ∇ ) + σ_tr,0(x) ) E₀(x) = Q₀(x) − ∇·( <span class="frac"><span>1</span><span>σ_tr,1(x)</span></span> Q⃗₁(x) )
+            <div class="text-xs font-sans font-semibold text-[#C05621] mt-3 mb-1">3. 闭式交火耗散与遮蔽修正威胁朝向：</div>
+            ( <span class="frac"><span>∂Φ_info</span><span>∂t</span></span> )_combat = −Φ_info(x, t) ⊙ E₀(x, t), &nbsp;&nbsp; ĥ_threat(x) = −<span class="frac"><span>F⃗₁(x)</span><span>‖F⃗₁(x)‖</span></span>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base mb-2">RTE P₁ 辐射传输瞬时衰减交互测算器</h3>
+            <p class="text-xs text-slate-600 mb-3">调整掩体消光系数 σ_occ 与武器射界集中度，观察传统射线步进与 RTE 椭圆求解的等效透射率及算力对比。</p>
+            <div class="space-y-3 bg-white p-3.5 rounded-lg border border-[#E2DDD5]">
+              <div>
+                <div class="flex justify-between text-xs text-slate-700 mb-1">
+                  <span>环境/烟幕消光系数 σ_occ (m⁻¹)：</span>
+                  <span class="font-bold mono-font text-[#C05621]" id="val-sigma-occ">0.045</span>
+                </div>
+                <input type="range" id="slider-sigma-occ" min="0.005" max="0.150" step="0.005" value="0.045" class="w-full">
+              </div>
+              <div>
+                <div class="flex justify-between text-xs text-slate-700 mb-1">
+                  <span>交战距离 r = ‖x − y‖ (像素)：</span>
+                  <span class="font-bold mono-font text-[#2C4A7E]" id="val-los-dist">40</span>
+                </div>
+                <input type="range" id="slider-los-dist" min="5" max="120" step="5" value="40" class="w-full">
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="bg-white p-3 rounded-lg border border-[#E2DDD5]">
+              <div class="text-xs text-slate-500">等效视线通透率 𝒯_LoS</div>
+              <div class="text-xl font-bold text-[#2F6F6D] mono-font mt-0.5" id="res-transmittance">16.53%</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">exp(−σ_occ · r) 连续衰减</div>
+            </div>
+            <div class="bg-white p-3 rounded-lg border border-[#E2DDD5]">
+              <div class="text-xs text-slate-500">P₁ 特征扩散长度 L_d</div>
+              <div class="text-xl font-bold text-[#2C4A7E] mono-font mt-0.5" id="res-diff-len">15.71 px</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">(2 · σ_tr,0 · σ_tr,1)⁻¹/²</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-compute" class="bg-white rounded-2xl border border-[#E2DDD5] p-6 sm:p-8 shadow-sm">
+      <div class="max-w-4xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F2EFE9] text-[#2C4A7E] text-xs font-semibold mb-2">
+          <span>核心问题 5 & 理论边界 · 科学计算降维与实时吞吐</span>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-900">复杂度压制基准（30–60 FPS）与计算数学同构映射</h2>
+        <p class="text-slate-600 text-sm sm:text-base mt-2 leading-relaxed">
+          当网格规模达到 1024×1024 至 2048×2048 且动态实例 N = 10⁴~10⁵ 时，朴素空间卷积与射线轮询单帧算力需求超过千亿次运算。通过<strong>粒子-网格混合投影 + 频域 FFT 卷积 + SVD 奇异值低秩分解 + 多重网格</strong>管线，可将单帧复杂度压制在 16.67–33.33 ms 实时预算内。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 items-start">
+        <div class="lg:col-span-7 bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 class="font-bold text-slate-900 text-base">单通道空间算子算力对比 (GFLOPs / 帧)</h3>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-slate-600 font-medium">网格分辨率：</label>
+              <select id="select-grid-res" class="text-xs border border-[#E2DDD5] rounded-md px-2.5 py-1 bg-white font-bold text-[#2C4A7E]">
+                <option value="512">512 × 512 (M = 0.26M)</option>
+                <option value="1024" selected>1024 × 1024 (M = 1.05M)</option>
+                <option value="2048">2048 × 2048 (M = 4.19M)</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-compute"></canvas>
+          </div>
+          <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs bg-white p-2.5 rounded-lg border border-[#E2DDD5]">
+            <div>
+              <span class="text-slate-500 block">直接空间卷积 (K=128)</span>
+              <strong class="text-[#C05621] mono-font text-sm" id="stat-direct-gflops">34.360 GFLOPs</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 block">频域 2D FFT 卷积</span>
+              <strong class="text-[#2F6F6D] mono-font text-sm" id="stat-fft-gflops">0.2160 GFLOPs</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 block">单帧算力加速比</span>
+              <strong class="text-[#2C4A7E] mono-font text-sm" id="stat-speedup">159.1×</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3">
+          <h3 class="font-bold text-slate-900 text-base">GPU 实时吞吐四大科学计算降维范式</h3>
+          <div class="p-3.5 rounded-xl border border-[#E2DDD5] bg-[#FAF8F5]">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-sm text-slate-900">1. 粒子-网格平均场投影 (Particle-Mesh)</span>
+              <span class="mono-font text-xs font-bold text-[#2F6F6D]">O(N²) → O(N)</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">实例通过平滑插值核向网格原子累加密度（Splat），移动时双线性采样读取合成力（Gather），彻底消除两两碰撞检测。</p>
+          </div>
+          <div class="p-3.5 rounded-xl border border-[#E2DDD5] bg-[#FAF8F5]">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-sm text-slate-900">2. 卷积核奇异值低秩分解 (SVD Separable)</span>
+              <span class="mono-font text-xs font-bold text-[#2C4A7E]">O(M K²) → O(2R M K)</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">对中小尺度感知核作截断 SVD（高斯核精确秩 R=1），转化为行列 1D GEMM 乘加，直接映射至 GPU Tensor Cores。</p>
+          </div>
+          <div class="p-3.5 rounded-xl border border-[#E2DDD5] bg-[#FAF8F5]">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-sm text-slate-900">3. 频域 FFT 卷积与梯度算子融合</span>
+              <span class="mono-font text-xs font-bold text-[#C05621]">145× ~ 159× 加速</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">利用 ∇(K*ρ) = ℱ⁻¹(ik K̂(k) ρ̂(k))，在频域单次逐点乘积内核中同步完成大半径卷积与空间梯度求导，消除中间显存读写。</p>
+          </div>
+          <div class="p-3.5 rounded-xl border border-[#E2DDD5] bg-[#FAF8F5]">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-sm text-slate-900">4. 多重网格与稀疏基函数 (Multigrid)</span>
+              <span class="mono-font text-xs font-bold text-slate-700">线性 O(M) 收敛</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">利用前帧势场作 Warm-start 初值，通过多分辨率纹理层次松弛求解屏蔽泊松任务场与 P₁ 辐射传输椭圆方程。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-[#E2DDD5]">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 class="font-bold text-slate-900 text-lg">理论可解性边界与工程应对矩阵</h3>
+          <div class="flex flex-wrap gap-1.5 text-xs" id="boundary-filters">
+            <button type="button" data-filter="all" class="filter-btn px-3 py-1 rounded-full bg-[#2C4A7E] text-white font-semibold">全部子问题</button>
+            <button type="button" data-filter="closed" class="filter-btn px-3 py-1 rounded-full bg-[#F2EFE9] text-slate-700 font-semibold hover:bg-[#E2DDD5]">精确闭式解</button>
+            <button type="button" data-filter="asymptotic" class="filter-btn px-3 py-1 rounded-full bg-[#F2EFE9] text-slate-700 font-semibold hover:bg-[#E2DDD5]">渐近线性PDE</button>
+            <button type="button" data-filter="illposed" class="filter-btn px-3 py-1 rounded-full bg-[#F2EFE9] text-slate-700 font-semibold hover:bg-[#E2DDD5]">Hadamard病态</button>
+            <button type="button" data-filter="nphard" class="filter-btn px-3 py-1 rounded-full bg-[#F2EFE9] text-slate-700 font-semibold hover:bg-[#E2DDD5]">NP-Hard / 分岔</button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-[#E2DDD5]">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-[#F2EFE9] text-slate-800 border-b border-[#E2DDD5]">
+                <th class="py-3 px-4 font-bold">战术推演数学子问题</th>
+                <th class="py-3 px-4 font-bold">数学可解性分类</th>
+                <th class="py-3 px-4 font-bold">严格数学界定与理论依据</th>
+                <th class="py-3 px-4 font-bold">工业级工程实现策略</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#E2DDD5]" id="boundary-tbody">
+              <tr data-cat="closed" class="hover:bg-[#FAF8F5]">
+                <td class="py-3 px-4 font-semibold text-slate-900">局部运动合成、球面朝向正则化与均匀场兰彻斯特损耗</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-[#2F6F6D]/15 text-[#2F6F6D] font-bold text-xs">精确闭式解</span></td>
+                <td class="py-3 px-4 text-slate-600">球面 Tikhonov 变分问题与矢量叠加具备代数解析解；均匀全通视下兰彻斯特方程具备平方律守恒闭式积分。</td>
+                <td class="py-3 px-4 text-slate-700">编译为无分支 SIMD / GPU 寄存器级内联代数指令。</td>
+              </tr>
+              <tr data-cat="asymptotic" class="hover:bg-[#FAF8F5]">
+                <td class="py-3 px-4 font-semibold text-slate-900">非凸动态地形下的全局无死锁任务场 T(x)</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-[#2C4A7E]/15 text-[#2C4A7E] font-bold text-xs">线性PDE渐近逼近</span></td>
+                <td class="py-3 px-4 text-slate-600">粘性程函方程经 Hopf-Cole 变换同构于线性屏蔽泊松方程，当 ε → 0⁺ 时依 Varadhan 公式渐近收敛于真实测地距离。</td>
+                <td class="py-3 px-4 text-slate-700">采用屏蔽泊松方程或 Crane 热流法，通过线性稀疏求解器实时刷新流向场。</td>
+              </tr>
+              <tr data-cat="illposed" class="hover:bg-[#FAF8F5]">
+                <td class="py-3 px-4 font-semibold text-slate-900">违反 Lasry-Lions 单调性的紧支集硬截断排斥核演化</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-[#C05621]/15 text-[#C05621] font-bold text-xs">Hadamard 病态问题</span></td>
+                <td class="py-3 px-4 text-slate-600">当感知核频谱出现负旁瓣且 ρ₀β > D/|K̂_rep| 时，有效扩散系数为负，演化算子同构于反向热传导方程，扰动指数放大。</td>
+                <td class="py-3 px-4 text-slate-700">摒弃硬截断核，强制采用 Bochner 正定高斯核 + IMEX 时间滤波 + 二阶阻尼。</td>
+              </tr>
+              <tr data-cat="nphard" class="hover:bg-[#FAF8F5]">
+                <td class="py-3 px-4 font-semibold text-slate-900">非单调多智能体全时域博弈与非凸精确几何避碰</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-800 text-white font-bold text-xs">NP-Hard / 非唯一分岔</span></td>
+                <td class="py-3 px-4 text-slate-600">离散非凸协同寻路具有指数组合复杂度；连续 MFG 破坏单调性后前向-后向系统丧失唯一性并发生均衡分岔。</td>
+                <td class="py-3 px-4 text-slate-700">放弃跨全时域后向 HJB 不动点迭代，采用欧拉密度场 + 霍奇螺线管绕流实现单步局部自洽。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-4">
+            <div class="text-xs font-bold text-[#2C4A7E] uppercase tracking-wider mb-1">同构映射 I · 可压缩流体力学 (CFD)</div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              近距防碰撞排斥力 β∇(K_rep*ρ) 充当防止密度坍缩的<strong>有效热力学压强梯度 −∇P(ρ)</strong>，粘性程函项 −εΔT 对应抑制激波折角的<strong>人工粘性耗散</strong>，可直接引入迎风通量限制器处理高密度集结锋面。
+            </p>
+          </div>
+          <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-4">
+            <div class="text-xs font-bold text-[#2F6F6D] uppercase tracking-wider mb-1">同构映射 II · 动态最优传输 (Optimal Transport)</div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              将初始兵力分布 ρ₀(x) 沿最小阻抗与最小威胁暴露路径推进至目标集，在数学上等价于受 FPK 方程约束的<strong>变分最优控制与动态 Wasserstein 最优传输问题</strong>，可借鉴增广拉格朗日算子分裂求解。
+            </p>
+          </div>
+          <div class="bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl p-4">
+            <div class="text-xs font-bold text-[#C05621] uppercase tracking-wider mb-1">同构映射 III · 离散外微分 (DEC / Hodge)</div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              将运动向量场置于外微分 1-形式框架下分解为无旋梯度与无散旋度分量，在网格对偶交错存储（标量势存网格中心，梯度 1-形式存网格边）下从离散代数底层保证正交性。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-[#E2DDD5] bg-[#F2EFE9] py-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
+      <span>双场无状态战术推演架构 · 理论物理与科学计算交互推演台</span>
+      <span class="mono-font">Eulerian Mean-Field PDEs · Eikonal · Lasry-Lions MFG · Cusp Catastrophe · RTE P_N</span>
+    </div>
+  </footer>
+
+  <script>
+    (function() {
+      const axiomData = [
+        {
+          title: "公理 I：信息场卷积生成与球面正则化朝向",
+          tag: "McKean-Vlasov 自洽闭环",
+          tagClass: "bg-[#C05621]/10 text-[#C05621]",
+          desc: "信息场由静态环境阻抗 I_env(x) 与宏观实体密度 ρ(x, t) 经感知核 K_rep 空间卷积生成。为防止平坦区或对称威胁中心发生 ∇ℱ_info ≈ 0 导致的零除航向跳变，主朝向 ĥ 必须定义为球面约束 Tikhonov 变分泛函的近端闭式解。",
+          formula: "ℱ_info(x, t) = I_env(x) + (K_rep * ρ)(x, t) = I_env(x) + ∫_Ω K_rep(x − y) ρ(y, t) dy<br>ĥⁿ⁺¹ = [ −∇ℱ_info(xⁿ) + (κ_rot / Δt) ĥⁿ + λ_align v̂_moveⁿ ] / ‖ · ‖",
+          risk: "若使用硬截断圆盘核，频域负旁瓣将破坏 Lasry-Lions 单调性，引发波长约 1.2235R 的空间驻波团簇。",
+          fix: "采用 Bochner 双正定高斯核 + 频域 2D FFT 单次乘积融合梯度提取，复杂度降至 O(M log M)。"
+        },
+        {
+          title: "公理 II：任务场测地距离泛函与屏蔽泊松线性化",
+          tag: "非线性程函方程粘性解",
+          tagClass: "bg-[#2C4A7E]/10 text-[#2C4A7E]",
+          desc: "简单的欧氏直线引力在U型障碍下会与排斥力平衡形成局部极小值死锁。将任务势能定义为最小到达时间泛函，等价于求解程函方程 ‖∇T(x)‖ = v(x)⁻¹；通过人工粘性与 Hopf-Cole 变换可精确线性化为屏蔽泊松方程。",
+          formula: "‖∇T_ε(x)‖² − ε ΔT_ε(x) = v(x)⁻² &nbsp;⟹&nbsp; ( Δ − c(x)² / ε² ) φ(x) = 0<br>F⃗_task(x) = −∇T_ε(x) / ‖∇T_ε(x)‖ = ∇φ(x) / ‖∇φ(x)‖",
+          risk: "直接用快速行进法（FMM）存在强串行堆排序依赖，难以在 GPU 上并行应对动态地形破坏。",
+          fix: "利用屏蔽泊松线性叠加原理或 Crane 热流法，在向量归一化步直接提取全局无死锁测地流向。"
+        },
+        {
+          title: "公理 III：特征丛双线性共振与辐射传输 P₁ 降维",
+          tag: "连续兰彻斯特与 RTE 矩展开",
+          tagClass: "bg-[#2F6F6D]/10 text-[#2F6F6D]",
+          desc: "离散属性掩码升级为秩 K 向量丛上的双线性张量缩并 Ψ_taskᵀ W Φ_info。视线遮蔽线积分 𝒯_LoS = exp(−∫ σ_occ ds) 通过稳态辐射传输方程（RTE）及其球谐 P₁ 阶矩截断，规约为局部二阶椭圆扩散-吸收方程。",
+          formula: "( −∇·( (d · σ_tr,1)⁻¹ ∇ ) + σ_tr,0 ) E₀(x) = Q₀(x) − ∇·( σ_tr,1⁻¹ Q⃗₁(x) )<br>( ∂Φ_info / ∂t )_combat = −Φ_info(x, t) ⊙ E₀(x, t)",
+          risk: "在每个像素上沿全方向做 Ray-marching 视线步进单帧需 966.4 亿次采样，彻底破坏实时吞吐。",
+          fix: "求解常数个线性椭圆 PDE 通道，且一阶通量负方向 −F⃗₁(x) 自动给出经掩体修正后的真实受火威胁朝向。"
+        },
+        {
+          title: "公理 IV：运动合成与亥姆霍兹-霍奇螺线管旋度场",
+          tag: "尖点突变消除与外微分分解",
+          tagClass: "bg-slate-200 text-slate-800",
+          desc: "纯无旋保守梯度叠加 αF⃗_task + βF⃗_info 在威胁正前方必然存在 Poincaré-Hopf 共线鞍点，诱导尖点突变 180° 航向跳变。注入与排斥梯度正交的无散度螺线管旋度场，将对称分岔转化为平滑侧翼包抄流线。",
+          formula: "V⃗_move(x) = −α ∇T(x) − β ∇ℱ_info(x) + γ σ_chirality(x) J ∇ℱ_info(x)<br>‖V⃗_move(x_saddle)‖² = γ² σ_chirality² ‖∇ℱ_info‖² > 0",
+          risk: "在尖点分岔边界 Δ = 27ũ₂² + 4ũ₁³ = 0 处，微扰会导致吸引盆瞬间坍塌，引发剧烈航向震荡。",
+          fix: "保持旋转算子正交性 J∇ℱ_info · ∇ℱ_info = 0，在不改变信息势能的前提下实现非零速度平滑绕流。"
+        }
+      ];
+
+      document.querySelectorAll(".axiom-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = parseInt(btn.getAttribute("data-axiom"), 10);
+          document.querySelectorAll(".axiom-btn").forEach(b => {
+            b.className = "axiom-btn text-left p-3.5 rounded-xl border border-[#E2DDD5] bg-white hover:bg-[#FAF8F5] transition";
+          });
+          btn.className = "axiom-btn text-left p-3.5 rounded-xl border-2 border-[#2C4A7E] bg-[#F2EFE9] transition";
+          const d = axiomData[idx];
+          document.getElementById("axiom-title").textContent = d.title;
+          const tagEl = document.getElementById("axiom-tag");
+          tagEl.textContent = d.tag;
+          tagEl.className = "px-2.5 py-0.5 rounded text-xs font-semibold " + d.tagClass;
+          document.getElementById("axiom-desc").textContent = d.desc;
+          document.getElementById("axiom-formula").innerHTML = d.formula;
+          document.getElementById("axiom-risk").textContent = d.risk;
+          document.getElementById("axiom-fix").textContent = d.fix;
+        });
+      });
+
+      const sections = document.querySelectorAll("section[id]");
+      const navLinks = document.querySelectorAll("#top-nav a");
+      window.addEventListener("scroll", () => {
+        let current = "";
+        sections.forEach(sec => {
+          const top = sec.offsetTop - 110;
+          if (window.scrollY >= top) current = sec.getAttribute("id");
+        });
+        navLinks.forEach(a => {
+          a.classList.remove("active");
+          a.classList.add("text-slate-700");
+          if (a.getAttribute("href") === "#" + current) {
+            a.classList.add("active");
+            a.classList.remove("text-slate-700");
+          }
+        });
+      });
+
+      const eikCanvas = document.getElementById("canvas-eikonal");
+      const eikCtx = eikCanvas.getContext("2d");
+      const NX = 48, NY = 32;
+      let eikMode = "poisson";
+      let eikEpsilon = 1.4;
+      let targetCell = { x: 40, y: 16 };
+      const obstacleGrid = new Uint8Array(NX * NY);
+      const phiField = new Float64Array(NX * NY);
+      const gradX = new Float32Array(NX * NY);
+      const gradY = new Float32Array(NX * NY);
+      let eikAgents = [];
+
+      function initObstacle() {
+        obstacleGrid.fill(0);
+        for (let y = 7; y <= 24; y++) {
+          for (let x = 26; x <= 28; x++) {
+            obstacleGrid[y * NX + x] = 1;
+          }
+        }
+        for (let x = 15; x <= 28; x++) {
+          for (let y = 7; y <= 9; y++) obstacleGrid[y * NX + x] = 1;
+          for (let y = 22; y <= 24; y++) obstacleGrid[y * NX + x] = 1;
+        }
+      }
+
+      function solveEikonalField() {
+        phiField.fill(0);
+        const tIdx = targetCell.y * NX + targetCell.x;
+        phiField[tIdx] = 1.0;
+        const cFree2 = 1.0 / (eikEpsilon * eikEpsilon);
+        const cObs2 = 25.0;
+        const omega = 1.65;
+
+        for (let iter = 0; iter < 220; iter++) {
+          for (let y = 1; y < NY - 1; y++) {
+            for (let x = 1; x < NX - 1; x++) {
+              const idx = y * NX + x;
+              if (x === targetCell.x && y === targetCell.y) {
+                phiField[idx] = 1.0;
+                continue;
+              }
+              if (obstacleGrid[idx] === 1) {
+                phiField[idx] = 0.0;
+                continue;
+              }
+              const sumN = phiField[idx - 1] + phiField[idx + 1] + phiField[idx - NX] + phiField[idx + NX];
+              const denom = 4.0 + (obstacleGrid[idx] ? cObs2 : cFree2);
+              const gs = sumN / denom;
+              phiField[idx] = (1.0 - omega) * phiField[idx] + omega * gs;
+            }
+          }
+        }
+
+        for (let y = 1; y < NY - 1; y++) {
+          for (let x = 1; x < NX - 1; x++) {
+            const idx = y * NX + x;
+            if (obstacleGrid[idx] === 1) {
+              gradX[idx] = 0;
+              gradY[idx] = 0;
+              continue;
+            }
+            if (eikMode === "poisson") {
+              let gx = (phiField[idx + 1] - phiField[idx - 1]) * 0.5;
+              let gy = (phiField[idx + NX] - phiField[idx - NX]) * 0.5;
+              const mag = Math.hypot(gx, gy);
+              if (mag > 1e-12) {
+                gradX[idx] = gx / mag;
+                gradY[idx] = gy / mag;
+              } else {
+                const dx = targetCell.x - x;
+                const dy = targetCell.y - y;
+                const d = Math.hypot(dx, dy) || 1;
+                gradX[idx] = dx / d;
+                gradY[idx] = dy / d;
+              }
+            } else {
+              const dx = targetCell.x - x;
+              const dy = targetCell.y - y;
+              const d = Math.hypot(dx, dy) || 1;
+              let fx = dx / d;
+              let fy = dy / d;
+              for (let oy = -2; oy <= 2; oy++) {
+                for (let ox = -2; ox <= 2; ox++) {
+                  const nx = x + ox, ny = y + oy;
+                  if (nx >= 0 && nx < NX && ny >= 0 && ny < NY && obstacleGrid[ny * NX + nx] === 1) {
+                    const dist = Math.hypot(ox, oy) || 0.5;
+                    const rep = 1.15 / (dist * dist);
+                    fx -= (ox / dist) * rep;
+                    fy -= (oy / dist) * rep;
+                  }
+                }
+              }
+              const mag = Math.hypot(fx, fy);
+              gradX[idx] = mag > 0.05 ? fx / mag : 0;
+              gradY[idx] = mag > 0.05 ? fy / mag : 0;
+            }
+          }
+        }
+      }
+
+      function spawnEikonalAgents() {
+        eikAgents = [];
+        for (let i = 0; i < 36; i++) {
+          eikAgents.push({
+            x: 17.5 + (i % 6) * 1.1,
+            y: 12.0 + Math.floor(i / 6) * 1.4,
+            trail: [],
+            reached: false
+          });
+        }
+      }
+
+      function renderEikonal() {
+        const rect = eikCanvas.parentElement.getBoundingClientRect();
+        if (eikCanvas.width !== Math.floor(rect.width) || eikCanvas.height !== Math.floor(rect.height)) {
+          eikCanvas.width = Math.floor(rect.width);
+          eikCanvas.height = Math.floor(rect.height);
+        }
+        const W = eikCanvas.width;
+        const H = eikCanvas.height;
+        const cw = W / NX;
+        const ch = H / NY;
+
+        eikCtx.clearRect(0, 0, W, H);
+
+        let maxLog = 0;
+        for (let i = 0; i < NX * NY; i++) {
+          if (phiField[i] > 1e-12) {
+            const v = Math.max(0, 1 + Math.log10(phiField[i]) / 8);
+            if (v > maxLog) maxLog = v;
+          }
+        }
+
+        for (let y = 0; y < NY; y++) {
+          for (let x = 0; x < NX; x++) {
+            const idx = y * NX + x;
+            if (obstacleGrid[idx] === 1) {
+              eikCtx.fillStyle = "#334155";
+              eikCtx.fillRect(x * cw, y * ch, cw + 0.6, ch + 0.6);
+            } else {
+              let shade = 0;
+              if (eikMode === "poisson") {
+                const val = phiField[idx] > 1e-12 ? Math.max(0, 1 + Math.log10(phiField[idx]) / 7) : 0;
+                shade = Math.min(1, val);
+                eikCtx.fillStyle = `rgba(44, 74, 126, ${0.04 + shade * 0.22})`;
+              } else {
+                const d = Math.hypot(targetCell.x - x, targetCell.y - y);
+                shade = Math.max(0, 1 - d / 42);
+                eikCtx.fillStyle = `rgba(192, 86, 33, ${0.04 + shade * 0.18})`;
+              }
+              eikCtx.fillRect(x * cw, y * ch, cw + 0.6, ch + 0.6);
+            }
+          }
+        }
+
+        eikCtx.strokeStyle = eikMode === "poisson" ? "rgba(44, 74, 126, 0.35)" : "rgba(192, 86, 33, 0.35)";
+        eikCtx.lineWidth = 1;
+        for (let y = 2; y < NY - 1; y += 2) {
+          for (let x = 2; x < NX - 1; x += 2) {
+            const idx = y * NX + x;
+            if (obstacleGrid[idx] === 1) continue;
+            const gx = gradX[idx];
+            const gy = gradY[idx];
+            if (Math.hypot(gx, gy) < 0.05) continue;
+            const px = (x + 0.5) * cw;
+            const py = (y + 0.5) * ch;
+            const len = Math.min(cw, ch) * 0.7;
+            eikCtx.beginPath();
+            eikCtx.moveTo(px, py);
+            eikCtx.lineTo(px + gx * len, py + gy * len);
+            eikCtx.stroke();
+          }
+        }
+
+        let reachedCount = 0;
+        eikAgents.forEach(ag => {
+          const distT = Math.hypot(ag.x - (targetCell.x + 0.5), ag.y - (targetCell.y + 0.5));
+          if (distT < 1.1) {
+            ag.reached = true;
+          }
+          if (ag.reached) {
+            reachedCount++;
+          } else {
+            const gxIdx = Math.max(1, Math.min(NX - 2, Math.floor(ag.x)));
+            const gyIdx = Math.max(1, Math.min(NY - 2, Math.floor(ag.y)));
+            const idx = gyIdx * NX + gxIdx;
+            const vx = gradX[idx];
+            const vy = gradY[idx];
+            const nx = ag.x + vx * 0.14;
+            const ny = ag.y + vy * 0.14;
+            const checkCell = Math.floor(ny) * NX + Math.floor(nx);
+            if (nx > 1 && nx < NX - 1 && ny > 1 && ny < NY - 1 && obstacleGrid[checkCell] === 0) {
+              ag.x = nx;
+              ag.y = ny;
+            }
+            if (ag.trail.length === 0 || Math.hypot(ag.x - ag.trail[ag.trail.length - 1].x, ag.y - ag.trail[ag.trail.length - 1].y) > 0.25) {
+              ag.trail.push({ x: ag.x, y: ag.y });
+              if (ag.trail.length > 26) ag.trail.shift();
+            }
+          }
+
+          if (ag.trail.length > 1) {
+            eikCtx.beginPath();
+            eikCtx.strokeStyle = eikMode === "poisson" ? "rgba(47, 111, 109, 0.45)" : "rgba(192, 86, 33, 0.45)";
+            eikCtx.lineWidth = 1.3;
+            ag.trail.forEach((pt, idx) => {
+              if (idx === 0) eikCtx.moveTo(pt.x * cw, pt.y * ch);
+              else eikCtx.lineTo(pt.x * cw, pt.y * ch);
+            });
+            eikCtx.stroke();
+          }
+
+          eikCtx.beginPath();
+          eikCtx.fillStyle = ag.reached ? "#2F6F6D" : "#2C4A7E";
+          eikCtx.arc(ag.x * cw, ag.y * ch, 3.6, 0, Math.PI * 2);
+          eikCtx.fill();
+        });
+
+        eikCtx.beginPath();
+        eikCtx.fillStyle = "#C05621";
+        eikCtx.arc((targetCell.x + 0.5) * cw, (targetCell.y + 0.5) * ch, 7, 0, Math.PI * 2);
+        eikCtx.fill();
+        eikCtx.strokeStyle = "#FFFFFF";
+        eikCtx.lineWidth = 2;
+        eikCtx.stroke();
+
+        document.getElementById("eikonal-telemetry").textContent =
+          `到达目标率: ${Math.round((reachedCount / eikAgents.length) * 100)}% (${reachedCount}/${eikAgents.length})`;
+        requestAnimationFrame(renderEikonal);
+      }
+
+      initObstacle();
+      solveEikonalField();
+      spawnEikonalAgents();
+      renderEikonal();
+
+      document.getElementById("btn-mode-poisson").addEventListener("click", () => {
+        eikMode = "poisson";
+        document.getElementById("btn-mode-poisson").className = "px-3 py-2 rounded-lg text-xs font-bold bg-[#2C4A7E] text-white transition";
+        document.getElementById("btn-mode-euclidean").className = "px-3 py-2 rounded-lg text-xs font-bold bg-white border border-[#E2DDD5] text-slate-700 hover:bg-[#F2EFE9] transition";
+        document.getElementById("eikonal-status-badge").textContent = "屏蔽泊松测地流（无死锁）";
+        solveEikonalField();
+        spawnEikonalAgents();
+      });
+
+      document.getElementById("btn-mode-euclidean").addEventListener("click", () => {
+        eikMode = "euclidean";
+        document.getElementById("btn-mode-euclidean").className = "px-3 py-2 rounded-lg text-xs font-bold bg-[#C05621] text-white transition";
+        document.getElementById("btn-mode-poisson").className = "px-3 py-2 rounded-lg text-xs font-bold bg-white border border-[#E2DDD5] text-slate-700 hover:bg-[#F2EFE9] transition";
+        document.getElementById("eikonal-status-badge").textContent = "欧氏直线引力（U型腔局部极小死锁）";
+        solveEikonalField();
+        spawnEikonalAgents();
+      });
+
+      document.getElementById("slider-epsilon").addEventListener("input", (e) => {
+        eikEpsilon = parseFloat(e.target.value);
+        document.getElementById("val-epsilon").textContent = eikEpsilon.toFixed(2);
+        solveEikonalField();
+      });
+
+      document.getElementById("btn-respawn-eikonal").addEventListener("click", () => {
+        spawnEikonalAgents();
+      });
+
+      eikCanvas.addEventListener("click", (e) => {
+        const rect = eikCanvas.getBoundingClientRect();
+        const cx = Math.floor(((e.clientX - rect.left) / rect.width) * NX);
+        const cy = Math.floor(((e.clientY - rect.top) / rect.height) * NY);
+        if (cx > 1 && cx < NX - 1 && cy > 1 && cy < NY - 1 && obstacleGrid[cy * NX + cx] === 0) {
+          targetCell = { x: cx, y: cy };
+          solveEikonalField();
+          eikAgents.forEach(a => { a.reached = false; });
+        }
+      });
+
+      function besselJ1(x) {
+        if (x === 0) return 0;
+        let sum = 0;
+        let term = x / 2.0;
+        for (let m = 0; m < 24; m++) {
+          sum += term;
+          term *= -(x * x) / (4.0 * (m + 1) * (m + 2));
+        }
+        return sum;
+      }
+
+      const kRValues = [];
+      const besselSpec = [];
+      const gaussSpec = [];
+      const zeroLine = [];
+      for (let i = 0; i <= 120; i++) {
+        const kr = i * 0.1;
+        kRValues.push(kr.toFixed(1));
+        besselSpec.push(kr === 0 ? 1.0 : (2.0 * besselJ1(kr)) / kr);
+        gaussSpec.push(Math.exp(-0.22 * kr * kr));
+        zeroLine.push(0);
+      }
+
+      function wrapLabel(str) {
+        if (str.length <= 16) return str;
+        const mid = Math.floor(str.length / 2);
+        return [str.slice(0, mid), str.slice(mid)];
+      }
+
+      new Chart(document.getElementById("chart-bessel"), {
+        type: "line",
+        data: {
+          labels: kRValues,
+          datasets: [
+            {
+              label: "硬截断圆盘核 2J₁(kR)/(kR)",
+              data: besselSpec,
+              borderColor: "#C05621",
+              backgroundColor: "rgba(192, 86, 33, 0.08)",
+              borderWidth: 2.2,
+              pointRadius: 0,
+              tension: 0.2
+            },
+            {
+              label: "Bochner 正定高斯核 exp(−s²k²/2)",
+              data: gaussSpec,
+              borderColor: "#2F6F6D",
+              borderWidth: 2.2,
+              pointRadius: 0,
+              tension: 0.2
+            },
+            {
+              label: "Lasry-Lions 单调性零线",
+              data: zeroLine,
+              borderColor: "#94A3B8",
+              borderDash: [4, 4],
+              borderWidth: 1.2,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                title: (items) => `无量纲波数 kR = ${items[0].label}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: "无量纲空间波数 kR", font: { size: 11 } },
+              ticks: { maxTicksLimit: 9, font: { size: 10 } }
+            },
+            y: {
+              title: { display: true, text: "频域传输增益 K̂_rep(k)", font: { size: 11 } },
+              min: -0.25,
+              max: 1.05,
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      const stabilityChart = new Chart(document.getElementById("chart-stability"), {
+        type: "line",
+        data: {
+          labels: Array.from({ length: 25 }, (_, i) => `t=${i}`),
+          datasets: [{
+            label: "傅里叶密度扰动模态幅值 ρ̂_kⁿ",
+            data: [],
+            borderColor: "#2C4A7E",
+            backgroundColor: "rgba(44, 74, 126, 0.12)",
+            borderWidth: 2.2,
+            pointRadius: 2.5,
+            fill: true,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "top", labels: { boxWidth: 12, font: { size: 11 } } }
+          },
+          scales: {
+            x: { ticks: { maxTicksLimit: 9, font: { size: 10 } } },
+            y: {
+              title: { display: true, text: "归一化扰动振幅", font: { size: 11 } },
+              suggestedMin: -1.5,
+              suggestedMax: 1.5,
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      function updateStabilityChart() {
+        const sigma = parseFloat(document.getElementById("slider-sigma").value);
+        const arch = document.getElementById("select-scf-arch").value;
+        document.getElementById("val-sigma").textContent = sigma.toFixed(2);
+
+        const series = [1.0];
+        if (arch === "delayed") {
+          series.push(1.0 - sigma * 0.5);
+          for (let n = 1; n < 24; n++) {
+            const next = series[n] - sigma * series[n - 1];
+            series.push(Math.max(-8, Math.min(8, next)));
+          }
+        } else {
+          for (let n = 0; n < 24; n++) {
+            const next = (1.0 - sigma) * series[n];
+            series.push(Math.max(-8, Math.min(8, next)));
+          }
+        }
+
+        stabilityChart.data.datasets[0].data = series;
+        const badge = document.getElementById("scf-regime-badge");
+        const expText = document.getElementById("scf-explanation");
+
+        if (arch === "delayed") {
+          if (sigma <= 0.25) {
+            badge.textContent = "单调衰减稳态 (σ ≤ 0.25)";
+            badge.className = "text-xs px-2 py-0.5 rounded font-bold bg-[#2F6F6D]/15 text-[#2F6F6D]";
+            stabilityChart.data.datasets[0].borderColor = "#2F6F6D";
+            expText.textContent = `当前延迟耦合刚度 σ = ${sigma.toFixed(2)} ≤ 0.25：特征根为实数 λ ∈ (0, 1)，密度扰动呈单调无震荡指数衰减，系统无需帧内多轮迭代即可保持稳态。`;
+          } else if (sigma <= 1.0) {
+            badge.textContent = "周期性阻尼震荡 (0.25 < σ ≤ 1)";
+            badge.className = "text-xs px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800";
+            stabilityChart.data.datasets[0].borderColor = "#D97706";
+            expText.textContent = `当前延迟耦合刚度 σ = ${sigma.toFixed(2)} ∈ (0.25, 1.0]：特征根为共轭复根且 |λ| = √σ ≤ 1，部队呈现周期性群聚-散开阻尼呼吸震荡。`;
+          } else {
+            badge.textContent = "无条件振荡发散 (σ > 1.0)";
+            badge.className = "text-xs px-2 py-0.5 rounded font-bold bg-[#C05621]/15 text-[#C05621]";
+            stabilityChart.data.datasets[0].borderColor = "#C05621";
+            expText.textContent = `警告：延迟耦合刚度 σ = ${sigma.toFixed(2)} > 1.0！特征根模长 |λ| = √σ > 1，单帧读写延迟导致高频自激振荡指数爆炸。`;
+          }
+        } else {
+          if (sigma <= 1.0) {
+            badge.textContent = "同步单调收敛 (σ ≤ 1.0)";
+            badge.className = "text-xs px-2 py-0.5 rounded font-bold bg-[#2F6F6D]/15 text-[#2F6F6D]";
+            stabilityChart.data.datasets[0].borderColor = "#2F6F6D";
+            expText.textContent = `同步显式欧拉下 σ = ${sigma.toFixed(2)} ≤ 1.0：放大因子 G = 1 − σ ∈ [0, 1)，无符号反转，扰动单调收敛归零。`;
+          } else if (sigma <= 2.0) {
+            badge.textContent = "高频棋盘格抖动 Jitter (1 < σ ≤ 2)";
+            badge.className = "text-xs px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800";
+            stabilityChart.data.datasets[0].borderColor = "#D97706";
+            expText.textContent = `同步显式欧拉下 σ = ${sigma.toFixed(2)} ∈ (1.0, 2.0]：放大因子 G = 1 − σ ∈ [-1, 0)，扰动每帧正负符号反转，表现为典型高频棋盘格抖动（Jitter）。`;
+          } else {
+            badge.textContent = "抛物CFL数值爆炸 (σ > 2.0)";
+            badge.className = "text-xs px-2 py-0.5 rounded font-bold bg-[#C05621]/15 text-[#C05621]";
+            stabilityChart.data.datasets[0].borderColor = "#C05621";
+            expText.textContent = `警告：σ = ${sigma.toFixed(2)} > 2.0 违反抛物稳定性上限，|G| > 1，奈奎斯特高频模态发生交替指数级数值爆炸！`;
+          }
+        }
+        stabilityChart.update();
+      }
+
+      document.getElementById("slider-sigma").addEventListener("input", updateStabilityChart);
+      document.getElementById("select-scf-arch").addEventListener("change", updateStabilityChart);
+      updateStabilityChart();
+
+      const thetaVals = [];
+      for (let i = -22; i <= 22; i++) thetaVals.push((i * 0.1).toFixed(1));
+
+      const cuspChart = new Chart(document.getElementById("chart-cusp"), {
+        type: "line",
+        data: {
+          labels: thetaVals,
+          datasets: [{
+            label: "取向势能 V(θ̃) = ¼θ̃⁴ + ½ũ₁θ̃² + ũ₂θ̃",
+            data: [],
+            borderColor: "#2C4A7E",
+            backgroundColor: "rgba(44, 74, 126, 0.08)",
+            borderWidth: 2.3,
+            pointRadius: 0,
+            fill: true,
+            tension: 0.25
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "top", labels: { boxWidth: 12, font: { size: 11 } } }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: "重标度偏航状态角 θ̃ (rad)", font: { size: 11 } },
+              ticks: { maxTicksLimit: 9, font: { size: 10 } }
+            },
+            y: {
+              title: { display: true, text: "有效取向势能 V(θ̃)", font: { size: 11 } },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      function updateCuspChart() {
+        const u1 = parseFloat(document.getElementById("slider-u1").value);
+        const u2 = parseFloat(document.getElementById("slider-u2").value);
+        document.getElementById("val-u1").textContent = u1.toFixed(2);
+        document.getElementById("val-u2").textContent = u2.toFixed(2);
+
+        const pts = thetaVals.map(ts => {
+          const t = parseFloat(ts);
+          return 0.25 * Math.pow(t, 4) + 0.5 * u1 * t * t + u2 * t;
+        });
+        cuspChart.data.datasets[0].data = pts;
+        cuspChart.update();
+
+        const disc = 27 * u2 * u2 + 4 * Math.pow(u1, 3);
+        const badge = document.getElementById("cusp-discriminant-badge");
+        const exp = document.getElementById("cusp-explanation");
+        if (disc < 0) {
+          const critU2 = Math.sqrt((-4 * Math.pow(u1, 3)) / 27);
+          badge.textContent = `Δ = ${disc.toFixed(2)} < 0 (双稳态折叠区)`;
+          badge.className = "text-xs px-2 py-0.5 rounded font-mono font-bold bg-[#C05621]/15 text-[#C05621]";
+          exp.textContent = `当前处于尖点分岔集内部（Δ < 0）：存在左右两个非对称稳定航向极小值与中间共线鞍点。当 |ũ₂| 跨过临界边界 ±${critU2.toFixed(2)} 时，原吸引盆发生鞍结分岔湮灭，航向发生 180° 灾难跳变。`;
+        } else {
+          badge.textContent = `Δ = +${disc.toFixed(2)} ≥ 0 (全局单稳态)`;
+          badge.className = "text-xs px-2 py-0.5 rounded font-mono font-bold bg-[#2F6F6D]/15 text-[#2F6F6D]";
+          exp.textContent = `当前 Δ ≥ 0：势能曲面仅存在唯一全局稳定极小值，航向角随横向扰动 ũ₂ 连续光滑演化，无多值折叠滞回跳变。`;
+        }
+      }
+
+      document.getElementById("slider-u1").addEventListener("input", updateCuspChart);
+      document.getElementById("slider-u2").addEventListener("input", updateCuspChart);
+      updateCuspChart();
+
+      const hodgeCanvas = document.getElementById("canvas-hodge");
+      const hodgeCtx = hodgeCanvas.getContext("2d");
+
+      function computeHodgeVel(nx, ny, gamma, chirality) {
+        const tx = 0.88, ty = 0.5;
+        const ox = 0.48, oy = 0.5;
+
+        const dtx = tx - nx, dty = ty - ny;
+        const dt = Math.hypot(dtx, dty) || 1e-4;
+        const ftx = dtx / dt, fty = dty / dt;
+
+        const drx = nx - ox, dry = ny - oy;
+        const dr = Math.hypot(drx, dry) || 1e-4;
+        const repMag = 0.032 / (dr * dr + 0.008);
+        const gradInfoX = -(drx / dr) * repMag;
+        const gradInfoY = -(dry / dr) * repMag;
+
+        const frepX = -gradInfoX;
+        const frepY = -gradInfoY;
+
+        const crossZ = (-ftx) * gradInfoY - (-fty) * gradInfoX;
+        const sigmaChir = Math.tanh((crossZ * 18.0 + chirality) / 0.35);
+
+        const jGradX = -gradInfoY;
+        const jGradY = gradInfoX;
+
+        const vx = ftx + frepX + gamma * sigmaChir * jGradX;
+        const vy = fty + frepY + gamma * sigmaChir * jGradY;
+        return { vx, vy };
+      }
+
+      function renderHodgeCanvas() {
+        const rect = hodgeCanvas.parentElement.getBoundingClientRect();
+        if (hodgeCanvas.width !== Math.floor(rect.width) || hodgeCanvas.height !== Math.floor(rect.height)) {
+          hodgeCanvas.width = Math.floor(rect.width);
+          hodgeCanvas.height = Math.floor(rect.height);
+        }
+        const W = hodgeCanvas.width;
+        const H = hodgeCanvas.height;
+        const gamma = parseFloat(document.getElementById("slider-gamma").value);
+        const chirality = parseFloat(document.getElementById("slider-chirality").value);
+        document.getElementById("val-gamma").textContent = gamma.toFixed(2);
+        document.getElementById("val-chirality").textContent = (chirality >= 0 ? "+" : "") + chirality.toFixed(2);
+
+        hodgeCtx.clearRect(0, 0, W, H);
+
+        const grad = hodgeCtx.createRadialGradient(0.48 * W, 0.5 * H, 8, 0.48 * W, 0.5 * H, 0.32 * W);
+        grad.addColorStop(0, "rgba(192, 86, 33, 0.25)");
+        grad.addColorStop(1, "rgba(192, 86, 33, 0)");
+        hodgeCtx.fillStyle = grad;
+        hodgeCtx.fillRect(0, 0, W, H);
+
+        hodgeCtx.strokeStyle = "rgba(100, 116, 139, 0.28)";
+        hodgeCtx.lineWidth = 1;
+        for (let gy = 0.08; gy <= 0.94; gy += 0.08) {
+          for (let gx = 0.06; gx <= 0.94; gx += 0.06) {
+            if (Math.hypot(gx - 0.48, gy - 0.5) < 0.08) continue;
+            const { vx, vy } = computeHodgeVel(gx, gy, gamma, chirality);
+            const mag = Math.hypot(vx, vy) || 1;
+            const ux = vx / mag, uy = vy / mag;
+            const px = gx * W, py = gy * H;
+            hodgeCtx.beginPath();
+            hodgeCtx.moveTo(px, py);
+            hodgeCtx.lineTo(px + ux * 11, py + uy * 11);
+            hodgeCtx.stroke();
+          }
+        }
+
+        const startYs = [0.34, 0.40, 0.45, 0.485, 0.50, 0.515, 0.55, 0.60, 0.66];
+        startYs.forEach((sy, idx) => {
+          let sx = 0.08, cy = sy;
+          const isCenter = idx === 4;
+          hodgeCtx.beginPath();
+          hodgeCtx.strokeStyle = isCenter ? "#C05621" : "#2C4A7E";
+          hodgeCtx.lineWidth = isCenter ? 2.5 : 1.6;
+          hodgeCtx.moveTo(sx * W, cy * H);
+
+          let stalled = false;
+          for (let step = 0; step < 160; step++) {
+            const { vx, vy } = computeHodgeVel(sx, cy, gamma, chirality);
+            const speed = Math.hypot(vx, vy);
+            if (speed < 0.06) {
+              stalled = true;
+              break;
+            }
+            sx += (vx / speed) * 0.007;
+            cy += (vy / speed) * 0.007;
+            hodgeCtx.lineTo(sx * W, cy * H);
+            if (Math.hypot(sx - 0.88, cy - 0.5) < 0.03 || sx > 0.96 || cy < 0.04 || cy > 0.96) break;
+          }
+          hodgeCtx.stroke();
+
+          if (stalled) {
+            hodgeCtx.beginPath();
+            hodgeCtx.fillStyle = "#C05621";
+            hodgeCtx.arc(sx * W, cy * H, 5.5, 0, Math.PI * 2);
+            hodgeCtx.fill();
+          }
+        });
+
+        hodgeCtx.beginPath();
+        hodgeCtx.fillStyle = "rgba(192, 86, 33, 0.85)";
+        hodgeCtx.arc(0.48 * W, 0.5 * H, 18, 0, Math.PI * 2);
+        hodgeCtx.fill();
+        hodgeCtx.fillStyle = "#FFFFFF";
+        hodgeCtx.font = "bold 10px sans-serif";
+        hodgeCtx.textAlign = "center";
+        hodgeCtx.fillText("威胁源", 0.48 * W, 0.5 * H + 3);
+
+        hodgeCtx.beginPath();
+        hodgeCtx.fillStyle = "#2F6F6D";
+        hodgeCtx.arc(0.88 * W, 0.5 * H, 9, 0, Math.PI * 2);
+        hodgeCtx.fill();
+        hodgeCtx.fillStyle = "#1E293B";
+        hodgeCtx.fillText("目标 Γ", 0.88 * W, 0.5 * H - 13);
+
+        const statusEl = document.getElementById("hodge-status");
+        if (gamma < 0.05) {
+          statusEl.textContent = "警告：γ ≈ 0，中心流线停滞于共线鞍点死锁！";
+          statusEl.className = "font-bold text-[#C05621]";
+        } else {
+          statusEl.textContent = "螺线管旋度激活：鞍点速度严格非零，平滑侧翼绕流";
+          statusEl.className = "font-bold text-[#2F6F6D]";
+        }
+      }
+
+      document.getElementById("slider-gamma").addEventListener("input", renderHodgeCanvas);
+      document.getElementById("slider-chirality").addEventListener("input", renderHodgeCanvas);
+      window.addEventListener("resize", renderHodgeCanvas);
+      renderHodgeCanvas();
+
+      function updateRteCalculator() {
+        const sigmaOcc = parseFloat(document.getElementById("slider-sigma-occ").value);
+        const dist = parseFloat(document.getElementById("slider-los-dist").value);
+        document.getElementById("val-sigma-occ").textContent = sigmaOcc.toFixed(3);
+        document.getElementById("val-los-dist").textContent = dist.toFixed(0);
+
+        const trans = Math.exp(-sigmaOcc * dist) * 100;
+        const diffLen = 1.0 / Math.sqrt(2.0 * sigmaOcc * (sigmaOcc + 0.005));
+        document.getElementById("res-transmittance").textContent = trans.toFixed(2) + "%";
+        document.getElementById("res-diff-len").textContent = diffLen.toFixed(2) + " px";
+      }
+
+      document.getElementById("slider-sigma-occ").addEventListener("input", updateRteCalculator);
+      document.getElementById("slider-los-dist").addEventListener("input", updateRteCalculator);
+      updateRteCalculator();
+
+      const computeChart = new Chart(document.getElementById("chart-compute"), {
+        type: "bar",
+        data: {
+          labels: [
+            wrapLabel("朴素空间直接卷积 (K=128)"),
+            wrapLabel("离散LoS全图射线步进"),
+            wrapLabel("SVD低秩可分离核 (R=1)"),
+            wrapLabel("频域2D FFT卷积融合"),
+            wrapLabel("RTE P₁椭圆PDE求解")
+          ],
+          datasets: [{
+            label: "单通道算力开销 (GFLOPs / 帧)",
+            data: [34.36, 96.64, 0.268, 0.216, 0.084],
+            backgroundColor: ["#C05621", "#D97706", "#2C4A7E", "#2F6F6D", "#475569"],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { font: { size: 10 } } },
+            y: {
+              type: "logarithmic",
+              title: { display: true, text: "单帧算力开销 GFLOPs (对数刻度)", font: { size: 11 } },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      function updateComputeBenchmark() {
+        const res = parseInt(document.getElementById("select-grid-res").value, 10);
+        const M = res * res;
+        const K = 128;
+        const directG = (2 * M * K * K) / 1e9;
+        const losG = (M * 360 * 256) / 1e9;
+        const svdG = (2 * 1 * M * K) / 1e9;
+        const fftG = (10 * M * Math.log2(M) + 6 * M) / 1e9;
+        const pdeG = (80 * M) / 1e9;
+        const speedup = directG / fftG;
+
+        computeChart.data.datasets[0].data = [
+          parseFloat(directG.toFixed(4)),
+          parseFloat(losG.toFixed(4)),
+          parseFloat(svdG.toFixed(4)),
+          parseFloat(fftG.toFixed(4)),
+          parseFloat(pdeG.toFixed(4))
+        ];
+        computeChart.update();
+
+        document.getElementById("stat-direct-gflops").textContent = directG.toFixed(3) + " GFLOPs";
+        document.getElementById("stat-fft-gflops").textContent = fftG.toFixed(4) + " GFLOPs";
+        document.getElementById("stat-speedup").textContent = speedup.toFixed(1) + "×";
+      }
+
+      document.getElementById("select-grid-res").addEventListener("change", updateComputeBenchmark);
+      updateComputeBenchmark();
+
+      document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const filter = btn.getAttribute("data-filter");
+          document.querySelectorAll(".filter-btn").forEach(b => {
+            b.className = "filter-btn px-3 py-1 rounded-full bg-[#F2EFE9] text-slate-700 font-semibold hover:bg-[#E2DDD5]";
+          });
+          btn.className = "filter-btn px-3 py-1 rounded-full bg-[#2C4A7E] text-white font-semibold";
+
+          document.querySelectorAll("#boundary-tbody tr").forEach(row => {
+            if (filter === "all" || row.getAttribute("data-cat") === filter) {
+              row.style.display = "";
+            } else {
+              row.style.display = "none";
+            }
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
