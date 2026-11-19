@@ -1324,9 +1324,10 @@ fn test_phase_00_golden_20_subtick_determinism_lock() {
         "6242f06f0a5805f29ce9e594b82a23ec088e5756e7bb73b7c8f414c59327ba10",
         "demo 20-subtick golden fingerprint drifted"
     );
+    // Phase 2B re-locked after verified physics fixes (Deygout 5-pt non-decaying radio + 8m scan scale)
     assert_eq!(
         fp_birch1,
-        "3291acb2e1959de5847883ef27c792b6d6cd00bf16062659f5e188ea1620c30a",
+        "d81d666bf52834c533a18f8b11590963c05095e6c76946c71a1c08ace32329b5",
         "birch river 512 20-subtick golden fingerprint drifted"
     );
 }

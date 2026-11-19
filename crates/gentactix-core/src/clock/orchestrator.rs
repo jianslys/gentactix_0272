@@ -4,16 +4,21 @@ use crate::combat_logistics::{
     resolve_cell_strike, resolve_registration_bonus, run_air_subtick_1h,
 };
 use crate::command_log::{update_war_councils, CommanderDriver, MathRecursiveDriver};
-use crate::fields::{
-    run_deterministic_multi_capacity_auction, AuctionBid, DeygoutRadioOperator, SchmidtPostureState,
-    ALPHA_BLAST, ALPHA_SUPP,
+use crate::geometry::WorldPos;
+use crate::intent::{IntentCandidate, IntentSource};
+use crate::math_ops::{
+    apply_g_work_consumption, compute_g_alloc, run_deterministic_multi_capacity_auction, AuctionBid,
+    DeygoutRadioOperator, GFieldKind, SchmidtPostureState, ALPHA_BLAST, ALPHA_SUPP,
 };
 use crate::spatial_autonomy::{step_world_autonomy_5m, ORG_ROUT_THRESHOLD};
-use crate::state::{SimWorld, SubtickReport, TurnReport, SUBTICK_HOURS, SUBTICK_SECONDS};
+use crate::state::{
+    GFieldCellState, SimWorld, SubtickReport, TurnReport, SUBTICK_HOURS, SUBTICK_SECONDS,
+};
 use crate::units_ecs::{
     aggregate_modifiers, equipment_spec, tick_overload_faults_5m, AtomicAction, CommanderId,
     LockFlags, UnitId,
 };
+use crate::world_grid::FrontlineRole;
 use sha2::{Digest, Sha256};
 
 impl SimWorld {
@@ -135,6 +140,7 @@ impl SimWorld {
             }
             TransactionPhase::PersistentFieldEvolve => {
                 self.ensure_aux_states();
+                // Fix 1: 无衰减 Deygout 5 点电台地形剖面重算 (可随掩蔽物消散而完全恢复)
                 for ci in 0..self.commanders.id.len() {
                     let cid = CommanderId(ci);
                     let c_pos = self.commander_pos_f32(cid);
@@ -144,21 +150,42 @@ impl SimWorld {
                         }
                         let u_pos = self.units.pos[uid];
                         let dist_tot = self.grid.distance_km(c_pos, u_pos) * 1000.0;
+                        let mut t_diff = 1.0f32;
                         if dist_tot > 1.0 {
-                            let mut profile = Vec::with_capacity(3);
-                            profile.push((0.0, self.elevation_at_pos(c_pos)));
-                            let mid_pos = [(c_pos[0] + u_pos[0]) * 0.5, (c_pos[1] + u_pos[1]) * 0.5];
-                            profile.push((dist_tot * 0.5, self.elevation_at_pos(mid_pos)));
-                            profile.push((dist_tot, self.elevation_at_pos(u_pos)));
-                            let dominant_edge = DeygoutRadioOperator::find_dominant_knife_edge(&profile);
-                            if let Some(edge_idx) = dominant_edge {
-                                let nu = (profile[edge_idx].1 - profile[0].1).abs() / 10.0;
-                                let t_diff = DeygoutRadioOperator::rational_diffraction_transmission(nu);
-                                if t_diff < 0.5 {
-                                    self.units.control_radius_km[uid] = (self.units.control_radius_km[uid] * (0.5 + 0.5 * t_diff)).max(0.1);
+                            let mut profile = Vec::with_capacity(5);
+                            for step in 0..=4 {
+                                let frac = (step as f32) * 0.25;
+                                let p = [
+                                    c_pos[0] + (u_pos[0] - c_pos[0]) * frac,
+                                    c_pos[1] + (u_pos[1] - c_pos[1]) * frac,
+                                ];
+                                profile.push((dist_tot * frac, self.elevation_at_pos(p)));
+                            }
+                            if let Some(edge_idx) = DeygoutRadioOperator::find_dominant_knife_edge(&profile) {
+                                let (s_a, h_a) = profile[0];
+                                let (s_b, h_b) = *profile.last().unwrap();
+                                let (s_k, z_k) = profile[edge_idx];
+                                let chord_h = h_a + (h_b - h_a) * ((s_k - s_a) / (s_b - s_a).max(1e-3));
+                                let clearance_diff = (z_k - chord_h).max(0.0);
+                                if clearance_diff > 1e-3 {
+                                    let nu = clearance_diff / 10.0;
+                                    t_diff = DeygoutRadioOperator::rational_diffraction_transmission(nu);
                                 }
                             }
                         }
+                        if uid < self.derived.unit_radio_t_diff.len() {
+                            self.derived.unit_radio_t_diff[uid] = t_diff;
+                        }
+                        let base_r = self
+                            .base_control_radius_km
+                            .get(uid)
+                            .copied()
+                            .unwrap_or(self.units.control_radius_km[uid]);
+                        self.units.control_radius_km[uid] = if t_diff < 0.5 {
+                            (base_r * (0.5 + 0.5 * t_diff)).max(0.1)
+                        } else {
+                            base_r
+                        };
 
                         let target_w = if self.units.autonomy_state[uid] == AtomicAction::Attack {
                             1.0f32
@@ -176,9 +203,67 @@ impl SimWorld {
                     }
                 }
 
+                // Fix 2: G 场占坑 / 做功销账刷新 + compute_g_alloc 在途预扣与多容量确定性拍卖真接线
+                self.derived.g_field_cells.retain(|_, v| v.kind == GFieldKind::Work);
+                for v in self.derived.g_field_cells.values_mut() {
+                    v.committed_en_route = 0.0;
+                    v.actual_on_site = 0.0;
+                }
+                for fl in &self.grid.frontlines {
+                    if !fl.active
+                        || !matches!(fl.role, FrontlineRole::Deploy | FrontlineRole::Move | FrontlineRole::Attack)
+                    {
+                        continue;
+                    }
+                    for &(fr, fc) in &fl.cells {
+                        if self.grid.in_bounds(fr, fc) {
+                            let cidx = self.grid.idx(fr, fc);
+                            let entry = self.derived.g_field_cells.entry(cidx).or_insert(GFieldCellState {
+                                g0: 0.0,
+                                committed_en_route: 0.0,
+                                actual_on_site: 0.0,
+                                kind: GFieldKind::State,
+                            });
+                            if entry.kind == GFieldKind::State {
+                                entry.g0 = entry.g0.max(fl.attraction_weight.max(1.0));
+                            }
+                        }
+                    }
+                }
+
+                let mut active_g_cells: Vec<usize> = self.derived.g_field_cells.keys().copied().collect();
+                active_g_cells.sort_unstable();
+                self.derived.g_auction_assignments.clear();
+
                 for uid in 0..self.units.id.len() {
                     if !self.units.alive[uid] || self.units.persons(UnitId(uid)) == 0 {
                         continue;
+                    }
+                    let has_direct = self.direct_unit_plans.contains_key(&self.units.str_id[uid]);
+                    if !has_direct && !active_g_cells.is_empty() && active_g_cells.len() <= 256 {
+                        let mut bid_added = false;
+                        for &cidx in &active_g_cells {
+                            let gcell = &self.derived.g_field_cells[&cidx];
+                            let g_alloc = compute_g_alloc(gcell.g0, gcell.actual_on_site, gcell.committed_en_route);
+                            if g_alloc <= 0.0 {
+                                continue;
+                            }
+                            let gr = (cidx / self.grid.cols) as i32;
+                            let gc = (cidx % self.grid.cols) as i32;
+                            let center = [gr as f32 + 0.5, gc as f32 + 0.5];
+                            let dist_m = self.grid.distance_km(self.units.pos[uid], center) * 1000.0;
+                            self.scratch.auction_bids.push(AuctionBid {
+                                cost_fixed: (dist_m * 1000.0) as i64,
+                                unit_id: uid as u32,
+                                cell_idx: cidx,
+                            });
+                            let cap = g_alloc.ceil().max(1.0) as usize;
+                            self.scratch.auction_capacities.insert(cidx, cap);
+                            bid_added = true;
+                        }
+                        if bid_added {
+                            continue;
+                        }
                     }
                     let target_px = if let Some(plan) = self.direct_unit_plans.get(&self.units.str_id[uid]) {
                         if let Some(wp) = plan.waypoints.first() {
@@ -208,9 +293,17 @@ impl SimWorld {
                     for (winner_uid, cell_idx) in allocations {
                         let u_idx = winner_uid as usize;
                         if u_idx < self.units.id.len() && self.units.alive[u_idx] {
+                            self.derived.g_auction_assignments.insert(u_idx, cell_idx);
+                            let ar = (cell_idx / self.grid.cols) as i32;
+                            let ac = (cell_idx % self.grid.cols) as i32;
+                            if let Some(gcell) = self.derived.g_field_cells.get_mut(&cell_idx) {
+                                if self.units.px[u_idx] == (ar, ac) {
+                                    gcell.actual_on_site += 1.0;
+                                } else {
+                                    gcell.committed_en_route += 1.0;
+                                }
+                            }
                             if !self.direct_unit_plans.contains_key(&self.units.str_id[u_idx]) {
-                                let ar = (cell_idx / self.grid.cols) as i32;
-                                let ac = (cell_idx % self.grid.cols) as i32;
                                 if self.grid.in_bounds(ar, ac) && self.units.px[u_idx] == (ar, ac) {
                                     self.units.moved_last_turn[u_idx] = false;
                                 }
@@ -222,22 +315,50 @@ impl SimWorld {
                 None
             }
             TransactionPhase::DerivedRefresh => {
-                self.scratch.saved_direct_positions = self
-                    .direct_unit_plans
-                    .keys()
-                    .filter_map(|sid| self.units.str_to_id.get(sid).copied())
-                    .map(|u| {
-                        (
-                            u.0,
-                            (self.units.pos[u.0], self.units.px[u.0], self.units.facing_deg[u.0]),
-                        )
-                    })
-                    .collect();
                 self.derived.synced_terrain_rev = self.grid.terrain_revision;
                 self.scratch.executed_phases.push(phase);
                 None
             }
             TransactionPhase::SenseAndArbitrate => {
+                // Fix 4: 所有直控与自主需求统一通过 IntentArbitrator 仲裁，杜绝旁路互相踩踏
+                for uid in 0..self.units.id.len() {
+                    if !self.units.alive[uid] {
+                        continue;
+                    }
+                    let u_pos = self.units.pos[uid];
+                    let facing = self.units.facing_deg[uid];
+                    self.scratch.arbitrator.push_candidate(IntentCandidate {
+                        entity_id: uid as u32,
+                        source: IntentSource::AutonomousAi,
+                        desired_speed_mps: 1.0,
+                        target_pos: None,
+                        heading_deg: facing,
+                        timestamp_sec: self.clock_seconds as f64,
+                    });
+                    if let Some(plan) = self.direct_unit_plans.get(&self.units.str_id[uid]) {
+                        let tgt = plan.target_pos.map(|p| WorldPos::new(p[0], p[1]));
+                        self.scratch.arbitrator.push_candidate(IntentCandidate {
+                            entity_id: uid as u32,
+                            source: IntentSource::DirectOrder,
+                            desired_speed_mps: 3.5,
+                            target_pos: tgt.or(Some(WorldPos::new(u_pos[0], u_pos[1]))),
+                            heading_deg: facing,
+                            timestamp_sec: self.clock_seconds as f64,
+                        });
+                    }
+                }
+                let winners = self.scratch.arbitrator.arbitrate();
+                for w in winners {
+                    if w.winning_source == IntentSource::DirectOrder {
+                        let u = w.entity_id as usize;
+                        self.scratch.direct_controlled_uids.insert(u);
+                        self.scratch.saved_direct_positions.insert(
+                            u,
+                            (self.units.pos[u], self.units.px[u], self.units.facing_deg[u]),
+                        );
+                    }
+                }
+
                 let auto_stats = step_world_autonomy_5m(
                     &mut self.grid,
                     &mut self.units,
@@ -310,6 +431,11 @@ impl SimWorld {
                         if self.grid.in_bounds(px.0, px.1) {
                             let gi = self.grid.idx(px.0, px.1);
                             self.grid.terrain_attrition_day[gi] = (self.grid.terrain_attrition_day[gi] * 0.5).max(0.0);
+                            if let Some(gcell) = self.derived.g_field_cells.get_mut(&gi) {
+                                if gcell.kind == GFieldKind::Work {
+                                    apply_g_work_consumption(&mut gcell.g0, 1.0);
+                                }
+                            }
                         }
                     }
                 }
@@ -347,8 +473,9 @@ impl SimWorld {
                     let pos = self.units.pos[uid];
                     let px = self.units.px[uid];
                     let team = self.units.team[uid];
+                    let scan_px = (3000.0 / self.grid.cell_m.max(1.0)).ceil().min(512.0) as i32;
                     let mut best_target: Option<(UnitId, f32)> = None;
-                    self.derived.buckets.query_neighbors_within_px(px.0, px.1, 15, |eid| {
+                    self.derived.buckets.query_neighbors_within_px(px.0, px.1, scan_px, |eid| {
                         let j = eid.0;
                         if !self.units.alive[j] || self.units.team[j] == team || self.units.persons(eid) == 0 {
                             return;

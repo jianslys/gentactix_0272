@@ -111,7 +111,13 @@ pub fn compute_fire_arc(
 ) -> Vec<FireArcCell> {
     let or = origin_pos[0].round() as i32;
     let oc = origin_pos[1].round() as i32;
-    let scan_cap = if indirect { 96.0 } else { 72.0 };
+    let scan_cap = if grid.cell_m <= 16.0 {
+        if indirect { 256.0 } else { 192.0 }
+    } else if indirect {
+        96.0
+    } else {
+        72.0
+    };
     let scan_px = (max_scan_m / grid.cell_m).ceil().min(scan_cap) as i32;
     let mut out = Vec::new();
     for dr in -scan_px..=scan_px {
