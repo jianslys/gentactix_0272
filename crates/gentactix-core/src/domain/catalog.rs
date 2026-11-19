@@ -14,7 +14,7 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock, RwLock};
 
-pub const EMBEDDED_ITEMS_CATALOG_JSON: &str = include_str!("../../../data/items_catalog.json");
+pub const EMBEDDED_ITEMS_CATALOG_JSON: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/items_catalog.json"));
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemAttr {
