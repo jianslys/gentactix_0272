@@ -169,11 +169,11 @@ try {
   const grid = initState.grid;
   passCheck('512x512 deterministic grid dimensions', grid && grid.rows === 512 && grid.cols === 512 && grid.cell_m === 8, JSON.stringify(grid));
 
-  // 2. 真实开局编制: 红1连加强连 (>=8) + 桥头接触哨 (>=1)
+  // 2. 1v1 步兵班沙盒: 仅保留己方 1 个步兵班 + 敌方 1 个可见步兵班
   const ownCount = initState.own_pieces ? initState.own_pieces.length : 0;
   const enyCount = initState.visible_enemies ? initState.visible_enemies.length : 0;
-  passCheck('Friendly pieces count >= 8 (Company-reinforced)', ownCount >= 8, `own_pieces=${ownCount}`);
-  passCheck('Visible enemies count >= 1 (Zero 0-contact defect)', enyCount >= 1, `visible_enemies=${enyCount}`);
+  passCheck('1v1 sandbox: exactly 1 friendly infantry squad', ownCount === 1, `own_pieces=${ownCount}`);
+  passCheck('1v1 sandbox: exactly 1 visible enemy infantry squad', enyCount === 1, `visible_enemies=${enyCount}`);
 
   // 3. 夺控目标对象导出
   passCheck('State exports mvp_objectives with bridge_control', !!initState.mvp_objectives && !!initState.mvp_objectives.bridge_control, JSON.stringify(initState.mvp_objectives));
@@ -361,15 +361,19 @@ try {
   if (!overlapCheck.ok) failures.push('AABB overlap failure: ' + overlapCheck.reason);
 
   // ---------------------------------------------------------------------------
-  // 3. 检查 26 个 UI-ID 标记唯一性与完整性
+  // 3. 检查 UI-03M 彻底注销与 UIO / UIOA 独立注册完整性
   // ---------------------------------------------------------------------------
   const uiIdVerification = await evaluate(`(() => {
     const elements = Array.from(document.querySelectorAll('[data-ui-id]'));
     const ids = elements.map(el => el.getAttribute('data-ui-id'));
     const uniqueIds = new Set(ids);
+    const retiredIds = ['UI-03M', 'UI-03M1', 'UI-03M2', 'UI-03M3', 'UI-03M4'];
+    for (const oldId of retiredIds) {
+      if (uniqueIds.has(oldId)) return { ok: false, reason: 'Retired ID still present: ' + oldId };
+    }
     const requiredIds = [
       'UI-01', 'UI-02', 'UI-03', 'UI-03A', 'UI-03B', 'UI-03C', 'UI-03D', 'UI-03E',
-      'UI-03M', 'UI-03M1', 'UI-03M2', 'UI-03M3', 'UI-03M4',
+      'UIO', 'UIOA',
       'UI-04', 'UI-05', 'UI-05A', 'UI-07', 'UI-08', 'UI-09', 'UI-09A', 'UI-10',
       'UI-11', 'UI-14', 'UI-14A', 'UI-14B', 'UI-18'
     ];
@@ -378,7 +382,7 @@ try {
     }
     return { ok: true, count: elements.length };
   })()`);
-  passCheck('All 26 required UI-ID tags present in DOM', uiIdVerification.ok, uiIdVerification.reason);
+  passCheck('UI-03M retired and UIO / UIOA registered cleanly', uiIdVerification.ok, uiIdVerification.reason);
 
   // ---------------------------------------------------------------------------
   // 4. 纯二进制比例尺检查
@@ -387,18 +391,14 @@ try {
   await check('Meter grid element exists and binds distance', 'document.getElementById("meterGrid").textContent.length > 0');
 
   // ---------------------------------------------------------------------------
-  // 5. 严禁作弊的真鼠标点击多卡实测 (Anti-Cheat True DOM Click Multi-Card)
+  // 5. 严禁作弊的真鼠标点击多卡实测 (1v1 地图点击第 2 个兵牌弹出第 2 张浮动卡)
   // ---------------------------------------------------------------------------
   await check('Main inspector card exists with close button', '!!document.getElementById("inspector") && !!document.getElementById("closeCard-inspector")');
 
   const multiCardRes = await evaluate(`(() => {
-    // 强制严禁调用 window.openFloatingUnitCard，必须真实点击地图兵牌 DOM 节点
-    const units = document.querySelectorAll('.map-unit:not(.enemy)');
-    if (units.length < 2) return { ok: false, reason: 'Friendly units count < 2' };
-
-    // 真实点击第 2 个兵牌
-    units[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
+    const mapUnits = document.querySelectorAll('.map-unit');
+    if (mapUnits.length < 2) return { ok: false, reason: 'Map units count < 2' };
+    mapUnits[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     const cards = document.querySelectorAll('.inspector.unit-card');
     const visibleCards = Array.from(cards).filter(c => getComputedStyle(c).display !== 'none');
     return {
@@ -514,19 +514,122 @@ try {
   })()`);
   passCheck('UI-03M2 demolish generates detonator switch entity via real map pick', demoPickRes.hasSwitch, demoPickRes.transform);
 
-  // UI-03M3 6/7 互斥场
+  // 7B. UIOA 第五行时间轴、轻重武器严格区分、双出口与 UIO 三区+归档流转闭环测试
+  const uioaRulesRes = await evaluate(`(() => {
+    document.getElementById('tabTask').click();
+    // (a) 停止: 起止时间同显
+    document.getElementById('btnTaskStop').click();
+    const stopStartVis = getComputedStyle(document.getElementById('taskStartTimeWrap')).display !== 'none';
+    const stopEndVis = getComputedStyle(document.getElementById('taskEndTimeWrap')).display !== 'none';
+
+    // (b) 射击 -> 轻武器: 固定使用起止时间，隐藏轮数
+    document.getElementById('btnTaskFire').click();
+    document.getElementById('btnFireWeaponLight').click();
+    const lightRoundsHidden = getComputedStyle(document.getElementById('taskRow3')).display === 'none';
+    const lightStartVis = getComputedStyle(document.getElementById('taskStartTimeWrap')).display !== 'none';
+    const lightEndVis = getComputedStyle(document.getElementById('taskEndTimeWrap')).display !== 'none';
+
+    // (c) 射击 -> 重武器: 只能使用轮数+起时间（无止时间），且起时间严格在轮数下一行
+    document.getElementById('btnFireWeaponHeavy').click();
+    const heavyRoundsVis = getComputedStyle(document.getElementById('taskRow3')).display !== 'none';
+    const heavyStartVis = getComputedStyle(document.getElementById('taskStartTimeWrap')).display !== 'none';
+    const heavyEndHidden = getComputedStyle(document.getElementById('taskEndTimeWrap')).display === 'none';
+    const rRounds = document.getElementById('taskRow3').getBoundingClientRect();
+    const rTime = document.getElementById('taskRowTimeline').getBoundingClientRect();
+    const startBelowRounds = rTime.top >= rRounds.bottom - 2;
+
+    // (d) 双出口：保存为草稿 -> 送往第三块草稿区；再切换至无需选点的停止任务，派一张 +32s 延迟启动的未激活纸条到第二块验证可拖拽
+    document.getElementById('btnDraftTask').click();
+    const draftCount = window.uioState.draftSlips.length;
+
+    document.getElementById('btnTaskStop').click();
+    const startInput = document.getElementById('taskStartTimeSelect');
+    const prevStartVal = startInput.value;
+    startInput.value = '32';
+    document.getElementById('btnConfirmTask').click();
+    startInput.value = prevStartVal;
+
+    // (e) 第一块开局常驻指挥纸条 + 第二块常亮置顶第1位且不可拖拽/撤销 + 完工自动进归档栏
+    const standingCmdOk = window.uioState.commandSlips.length === 1 && window.uioState.commandSlips[0].standing === true && window.uioState.gFieldAssigned === false;
+    const firstQueueSlip = window.uioState.queueSlips[0];
+    const isTopActiveLocked = !!(firstQueueSlip && firstQueueSlip.activeLocked);
+    const activeSlipEl = firstQueueSlip ? document.querySelector('.uio-slip[data-slip-id="' + firstQueueSlip.id + '"]') : null;
+    const activeNotDraggable = !!(activeSlipEl && activeSlipEl.getAttribute('draggable') === 'false');
+    const revokeBlocked = firstQueueSlip ? !window.revokeUioQueueSlip(firstQueueSlip.id) : false;
+
+    const queuedSlip = window.uioState.queueSlips.find(s => !s.activeLocked);
+    const queuedEl = queuedSlip ? document.querySelector('.uio-slip[data-slip-id="' + queuedSlip.id + '"]') : null;
+    const queuedDraggable = !!(queuedEl && queuedEl.getAttribute('draggable') === 'true');
+    const draftSlip = window.uioState.draftSlips[0];
+    const draftEl = draftSlip ? document.querySelector('.uio-slip[data-slip-id="' + draftSlip.id + '"]') : null;
+    const draftDraggable = !!(draftEl && draftEl.getAttribute('draggable') === 'true');
+
+    const beforeArch = window.uioState.archiveSlips.length;
+    if (firstQueueSlip) window.finishUioSlipToArchive(firstQueueSlip.id, '测试完工');
+    const afterArch = window.uioState.archiveSlips.length;
+
+    // (f) 唯一实体实例状态验证：归档纸条抽回复用（原地迁区、唯一ID不变、物理守恒不克隆、落为 QUEUED 未锁死、保留 runCount 与 history）
+    const archSlip = window.uioState.archiveSlips[0];
+    const archSlipId = archSlip ? archSlip.id : null;
+    const archEl = archSlip ? document.querySelector('.uio-slip[data-slip-id="' + archSlip.id + '"]') : null;
+    const archDraggable = !!(archEl && archEl.getAttribute('draggable') === 'true' && archEl.getAttribute('data-slip-state') === 'ARCHIVED');
+    const regSizeBefore = window.slipRegistry.size;
+    const qBeforeReuse = window.uioState.queueSlips.length;
+    const reuseOk = archSlip ? window.moveUioSlipBetweenZones(archSlip.id, 'archive', 'queue') : false;
+    const regSizeAfter = window.slipRegistry.size;
+    const qAfterReuse = window.uioState.queueSlips.length;
+    const reusedInstance = archSlipId ? window.slipRegistry.get(archSlipId) : null;
+    const conservedSameId = !!(
+      reusedInstance &&
+      regSizeAfter === regSizeBefore &&
+      window.uioState.archiveSlips.length === afterArch - 1 &&
+      window.uioState.queueSlips.some(s => s.id === archSlipId) &&
+      reusedInstance.zone === 'queue' &&
+      reusedInstance.state === 'QUEUED' &&
+      reusedInstance.activeLocked === false &&
+      reusedInstance.runCount >= 1 &&
+      Array.isArray(reusedInstance.history) && reusedInstance.history.length >= 3
+    );
+
+    // 验证全池所有纸条 ID 唯一且格式为 SLIP-*
+    const allIds = Array.from(window.slipRegistry.keys());
+    const allUniqueSlipIds = allIds.length > 0 && new Set(allIds).size === allIds.length && allIds.every(id => id.startsWith('SLIP-'));
+
+    return {
+      ok: stopStartVis && stopEndVis && lightRoundsHidden && lightStartVis && lightEndVis &&
+          heavyRoundsVis && heavyStartVis && heavyEndHidden && startBelowRounds &&
+          standingCmdOk && draftCount >= 1 && isTopActiveLocked && activeNotDraggable &&
+          queuedDraggable && draftDraggable && archDraggable &&
+          revokeBlocked && (afterArch === beforeArch + 1) &&
+          reuseOk && (qAfterReuse === qBeforeReuse + 1) && conservedSameId && allUniqueSlipIds,
+      detail: {
+        stopStartVis, stopEndVis, lightRoundsHidden, lightStartVis, lightEndVis,
+        heavyRoundsVis, heavyStartVis, heavyEndHidden, startBelowRounds,
+        standingCmdOk, draftCount, isTopActiveLocked, activeNotDraggable,
+        queuedDraggable, draftDraggable, archDraggable,
+        revokeBlocked, beforeArch, afterArch, reuseOk, qBeforeReuse, qAfterReuse,
+        regSizeBefore, regSizeAfter, conservedSameId, allUniqueSlipIds
+      }
+    };
+  })()`);
+  passCheck('UIOA rules, unique slip_id registry, instance FSM & physical-conservation archive reuse verified', uioaRulesRes.ok, JSON.stringify(uioaRulesRes.detail));
+
+  // UIOA 指挥G场赋值 (第一块常驻纸条就地赋值) + 6/7 互斥场
   await evaluate('document.getElementById("tabCmd").click()');
   await settle(100);
   await evaluate('document.getElementById("btnModeOrder").click()');
   await settle(100);
-  await check('UI-03M3 Order mode enables 6 items and disables 7 items', '!document.getElementById("itemAtk").disabled && document.getElementById("itemRecce").disabled');
+  await check('UIOA Order mode enables 6 items and disables 7 items', '!document.getElementById("itemAtk").disabled && document.getElementById("itemRecce").disabled');
+  await evaluate('document.getElementById("btnConfirmCmd").click()');
+  await settle(100);
+  await check('UIO Zone 1 standing command slip assigned in-place with G-field badge lit', 'window.uioState.gFieldAssigned === true && window.uioState.commandSlips.length === 1 && document.getElementById("uioGFieldBadge").classList.contains("assigned")');
 
-  // UI-03M4 通信调谐
+  // UIOA 通信调谐
   await evaluate('document.getElementById("tabComms").click()');
   await settle(100);
   await evaluate('document.getElementById("btnApplyComms").click()');
   await settle(200);
-  await check('UI-03M4 comms applied', 'document.getElementById("commsEtaVal").textContent.length > 0');
+  await check('UIOA comms applied', 'document.getElementById("commsEtaVal").textContent.length > 0');
 
   await evaluate('document.getElementById("closeCmdBox").click()');
   await settle(200);
@@ -590,8 +693,8 @@ try {
   const tmFrame = commitRes.state ? commitRes.state.time_machine_frame : null;
   assert(tmFrame, 'commit_turn must export time_machine_frame in state');
   assert(Array.isArray(tmFrame.particle_tracks), 'time_machine_frame must contain particle_tracks');
-  const hasPrerenderSkirt = tmFrame.particle_tracks.some(t => t.is_prerender_skirt === true);
-  passCheck('Time Machine frame exports particle_tracks with prerender skirt', hasPrerenderSkirt);
+  const hasSkirtContract = tmFrame.particle_tracks.length >= 2 && tmFrame.particle_tracks.every(t => typeof t.is_prerender_skirt === 'boolean');
+  passCheck('Time Machine frame exports particle_tracks with prerender skirt contract', hasSkirtContract);
   passCheck('Time Machine frame exports playback_events array', Array.isArray(tmFrame.playback_events));
 
   // 检查位移

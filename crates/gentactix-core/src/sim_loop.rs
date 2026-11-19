@@ -3281,34 +3281,16 @@ pub fn build_birch_river_512_world(_seed: u64) -> SimWorld {
     let mut w = SimWorld::new(grid);
     w.role_echelon = Echelon::Company;
 
-    // 4. Red Force (Player: Red 1st Reinforced Company)
+    // 4. Red Force (1v1 Infantry Squad Sandbox: strictly 1 Red Infantry Squad)
     let cmd_co = w.commanders.spawn_commander(
         "cmd-co-1",
         "红1连连部",
         TeamId::Red,
-        (246, 170),
+        (246, 210),
         Echelon::Company,
         Rank::Captain,
         0,
     );
-    let hq_uid = w.units.spawn_unit_4ledger(
-        "red-co-hq",
-        "红1连连部直辖班",
-        TeamId::Red,
-        (246, 170),
-        Echelon::Squad,
-        "hq_squad",
-        4,
-        1,
-        1,
-        eq_map(&[("rifle", 5), ("radio", 1)]),
-        0,
-    );
-    w.commanders.hq_piece_id[cmd_co.0] = Some(hq_uid);
-    w.units.direct_commander_id[hq_uid.0] = Some(cmd_co);
-    w.commanders.sync_hq_ledger_authority(cmd_co, &w.units);
-
-    // Red 1st Platoon (Forward assault echelons near bridge west approach)
     let cmd_pl1 = w.commanders.spawn_commander(
         "cmd-pl-1",
         "红1排排部",
@@ -3324,134 +3306,15 @@ pub fn build_birch_river_512_world(_seed: u64) -> SimWorld {
         "red-1pl-sq1",
         "红1排1班(步兵)",
         TeamId::Red,
-        (245, 235),
+        (248, 224),
         Echelon::Squad,
         "rifle_squad",
         9,
         1,
-        eq_map(&[("rifle", 9), ("lmg", 1)]),
-        0,
-    );
-    let u_1pl_2 = w.units.spawn_unit(
-        "red-1pl-sq2",
-        "红1排2班(步兵)",
-        TeamId::Red,
-        (247, 235),
-        Echelon::Squad,
-        "rifle_squad",
-        9,
-        1,
-        eq_map(&[("rifle", 9), ("lmg", 1)]),
-        0,
-    );
-    let u_1pl_3 = w.units.spawn_unit(
-        "red-1pl-sq3",
-        "红1排3班(步兵)",
-        TeamId::Red,
-        (249, 232),
-        Echelon::Squad,
-        "rifle_squad",
-        9,
-        1,
-        eq_map(&[("rifle", 9), ("lmg", 1)]),
+        eq_map(&[("rifle", 9), ("lmg", 1), ("radio", 1)]),
         0,
     );
     w.commanders.link_subordinate_unit(cmd_pl1, u_1pl_1, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_pl1, u_1pl_2, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_pl1, u_1pl_3, &mut w.units);
-
-    // Red 2nd Platoon (Maneuver reserve)
-    let cmd_pl2 = w.commanders.spawn_commander(
-        "cmd-pl-2",
-        "红2排排部",
-        TeamId::Red,
-        (210, 190),
-        Echelon::Platoon,
-        Rank::Lieutenant,
-        0,
-    );
-    w.commanders.link_subordinate_cmd(cmd_co, cmd_pl2);
-
-    let u_2pl_1 = w.units.spawn_unit(
-        "red-2pl-sq1",
-        "红2排1班(步兵)",
-        TeamId::Red,
-        (208, 195),
-        Echelon::Squad,
-        "rifle_squad",
-        9,
-        1,
-        eq_map(&[("rifle", 9), ("lmg", 1)]),
-        0,
-    );
-    let u_2pl_2 = w.units.spawn_unit(
-        "red-2pl-sq2",
-        "红2排2班(步兵)",
-        TeamId::Red,
-        (212, 195),
-        Echelon::Squad,
-        "rifle_squad",
-        9,
-        1,
-        eq_map(&[("rifle", 9), ("lmg", 1)]),
-        0,
-    );
-    w.commanders.link_subordinate_unit(cmd_pl2, u_2pl_1, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_pl2, u_2pl_2, &mut w.units);
-
-    // Red Specialized Support Units
-    let u_tk = w.units.spawn_unit(
-        "red-tk-1",
-        "红坦支援排(T-34/85)",
-        TeamId::Red,
-        (246, 220),
-        Echelon::Squad,
-        "tank_squad",
-        3,
-        1,
-        eq_map(&[("tank_medium", 1), ("radio", 1)]),
-        0,
-    );
-    let u_mtr = w.units.spawn_unit(
-        "red-mtr-1",
-        "红82mm迫击炮班",
-        TeamId::Red,
-        (242, 200),
-        Echelon::Squad,
-        "mortar_squad",
-        6,
-        1,
-        eq_map(&[("mortar_81", 1), ("rifle", 6), ("radio", 1)]),
-        0,
-    );
-    let u_eng = w.units.spawn_unit(
-        "red-eng-1",
-        "红工兵工程班",
-        TeamId::Red,
-        (252, 210),
-        Echelon::Squad,
-        "engineer_squad",
-        7,
-        1,
-        eq_map(&[("rifle", 7), ("radio", 1)]),
-        0,
-    );
-    let u_rec = w.units.spawn_unit(
-        "red-rec-1",
-        "红前出侦察组",
-        TeamId::Red,
-        (240, 242),
-        Echelon::Squad,
-        "recon_squad",
-        3,
-        1,
-        eq_map(&[("rifle", 3), ("radio", 1)]),
-        0,
-    );
-    w.commanders.link_subordinate_unit(cmd_co, u_tk, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_co, u_mtr, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_co, u_eng, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_co, u_rec, &mut w.units);
 
     // Red Depot
     w.depots.push(Depot {
@@ -3464,7 +3327,7 @@ pub fn build_birch_river_512_world(_seed: u64) -> SimWorld {
         replacements: 50.0,
     });
 
-    // 5. Blue Force (AI: Blue Bridgehead Defense Company)
+    // 5. Blue Force (1v1 Infantry Squad Sandbox: strictly 1 Blue Infantry Squad)
     let cmd_bco = w.commanders.spawn_commander(
         "cmd-blue-co",
         "蓝桥头防御连部",
@@ -3485,86 +3348,19 @@ pub fn build_birch_river_512_world(_seed: u64) -> SimWorld {
     );
     w.commanders.link_subordinate_cmd(cmd_bco, cmd_bpl1);
 
-    // Blue Outpost at (247, 262) ~216m from Red 1st Platoon (guaranteed visible enemy contact)
     let ub_outpost = w.units.spawn_unit(
         "blue-outpost-1",
-        "蓝桥西前哨观察组",
+        "蓝桥头1班(步兵)",
         TeamId::Blue,
-        (247, 262),
-        Echelon::Squad,
-        "rifle_squad",
-        7,
-        1,
-        eq_map(&[("rifle", 7), ("radio", 1)]),
-        1,
-    );
-    let ub_def1 = w.units.spawn_unit(
-        "blue-def-1",
-        "蓝桥东堡垒1班",
-        TeamId::Blue,
-        (245, 285),
+        (248, 260),
         Echelon::Squad,
         "rifle_squad",
         9,
         1,
-        eq_map(&[("rifle", 9), ("lmg", 1)]),
-        1,
-    );
-    let ub_def2 = w.units.spawn_unit(
-        "blue-def-2",
-        "蓝桥东堡垒2班",
-        TeamId::Blue,
-        (251, 285),
-        Echelon::Squad,
-        "rifle_squad",
-        9,
-        1,
-        eq_map(&[("rifle", 9), ("lmg", 1)]),
-        1,
-    );
-    let ub_hmg = w.units.spawn_unit(
-        "blue-hmg-1",
-        "蓝桥头机枪火力组",
-        TeamId::Blue,
-        (248, 290),
-        Echelon::Squad,
-        "mg_squad",
-        5,
-        1,
-        eq_map(&[("hmg", 1), ("rifle", 5)]),
+        eq_map(&[("rifle", 9), ("lmg", 1), ("radio", 1)]),
         1,
     );
     w.commanders.link_subordinate_unit(cmd_bpl1, ub_outpost, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_bpl1, ub_def1, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_bpl1, ub_def2, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_bpl1, ub_hmg, &mut w.units);
-
-    let ub_tk = w.units.spawn_unit(
-        "blue-tk-1",
-        "蓝装甲支援组(IV号)",
-        TeamId::Blue,
-        (255, 310),
-        Echelon::Squad,
-        "tank_squad",
-        3,
-        1,
-        eq_map(&[("tank_medium", 1), ("radio", 1)]),
-        1,
-    );
-    let ub_art = w.units.spawn_unit(
-        "blue-art-1",
-        "蓝支援炮兵阵地",
-        TeamId::Blue,
-        (230, 360),
-        Echelon::Squad,
-        "howitzer_squad",
-        7,
-        1,
-        eq_map(&[("howitzer_105", 1), ("rifle", 7), ("radio", 1)]),
-        1,
-    );
-    w.commanders.link_subordinate_unit(cmd_bco, ub_tk, &mut w.units);
-    w.commanders.link_subordinate_unit(cmd_bco, ub_art, &mut w.units);
 
     w
 }

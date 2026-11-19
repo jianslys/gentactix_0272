@@ -114,7 +114,7 @@ fn build_time_machine_frame(
     let intel = gather_intel(obs_team, &w.grid, &w.units, w.night);
     let visible_set: std::collections::HashSet<usize> = intel.iter()
         .filter(|c| {
-            if c.fog_level > 2 {
+            if c.fog_level < 2 {
                 return false;
             }
             let cpos = [c.px.0 as f32, c.px.1 as f32];
@@ -409,7 +409,7 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
     let visible_enemies: Vec<Value> = intel
         .into_iter()
         .filter(|c| {
-            if c.fog_level > 2 {
+            if c.fog_level < 2 {
                 return false;
             }
             let cpos = [c.px.0 as f32, c.px.1 as f32];
@@ -426,9 +426,9 @@ fn serialize_state(w: &SimWorld, commander_str: Option<&str>, observer_team: Opt
         })
         .map(|c| {
             let intel_clarity = match c.fog_level {
-                0 => 1.0f32,
-                1 => 0.65f32,
-                2 => 0.35f32,
+                3 => 1.0f32,
+                2 => 0.70f32,
+                1 => 0.35f32,
                 _ => 0.15f32,
             };
             let vis_tier = if intel_clarity >= 0.75 {
@@ -3573,16 +3573,18 @@ mod tests {
         assert_eq!(st_val["ok"], json!(true));
 
         let own_pieces = st_val["own_pieces"].as_array().expect("own_pieces array");
-        assert!(
-            own_pieces.len() >= 10,
-            "红方必须拥有不少于 10 个战斗/保障兵牌，实际: {}",
+        assert_eq!(
+            own_pieces.len(),
+            1,
+            "1v1 步兵班沙盒下红方只保留 1 个步兵班，实际: {}",
             own_pieces.len()
         );
 
         let visible_enemies = st_val["visible_enemies"].as_array().expect("visible_enemies array");
-        assert!(
-            !visible_enemies.is_empty(),
-            "白桦河战场开局必须拥有至少 1 个可见敌军接触点，彻底告别 0-contact 假象！实际: {}",
+        assert_eq!(
+            visible_enemies.len(),
+            1,
+            "1v1 步兵班沙盒下敌方只保留 1 个可见步兵班，实际: {}",
             visible_enemies.len()
         );
 
@@ -3598,8 +3600,8 @@ mod tests {
             State(st.clone()),
             Json(json!({
                 "op": "deploy_heavy_unit",
-                "piece_id": "red-mtr-1",
-                "weapon": "mortar_81",
+                "piece_id": "red-1pl-sq1",
+                "weapon": "lmg",
                 "keep_manned": true,
             })),
         )

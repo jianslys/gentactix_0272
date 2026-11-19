@@ -74,17 +74,18 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 @keyframes tracerPulse{0%{opacity:1;stroke-width:3}100%{opacity:0.2;stroke-width:1}}
 @keyframes dmgFloat{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-18px)}}
 
-/* UI-09 右上角参谋地图工具包 (内含指北针、UI-09A 绘图工具组、UI-05 图层项) */
+/* UI-09 右上角参谋地图工具包 (内含 UI-09A 绘图工具组与指北针) */
 .map-tools-pack{position:absolute;right:18px;top:20px;z-index:6}
 .tool-pack-unified{display:flex;align-items:center;gap:6px;background:#1c2529ee;border:1px solid #3e4c52;padding:4px 8px;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
 .tool-pack-row{display:flex;align-items:center;gap:6px;padding-left:48px;position:relative}
 .draw-tool-btn{width:26px;height:26px;display:grid;place-items:center;color:#b6c1be;border:1px solid #4a595f;background:#243035;cursor:pointer;border-radius:2px;font-size:11px}
 .draw-tool-btn:hover,.draw-tool-btn.active{background:#384850;border-color:var(--gold);color:#ffffff}
 .compass-box{width:32px;height:32px;display:grid;place-items:center;color:#a2ad9b;margin:0 2px}
-.layer-dock{position:relative}
-.layer-card{position:absolute;top:calc(100% + 6px);right:0;width:274px}
-.tool-pack-unified .layer-toggle{padding:4px 10px 4px 44px;height:26px;box-sizing:border-box;background:#243035;border-color:#4a595f;color:#c6d2ce}
-.tool-pack-unified .layer-toggle:hover,.tool-pack-unified .layer-toggle[aria-expanded=true]{background:#384850;border-color:var(--gold);color:#ffffff}
+/* UI-05 / UI-05A 移至画面右下角 */
+.layer-dock{position:absolute;right:18px;bottom:14px;z-index:8;display:flex;flex-direction:column;align-items:flex-end;gap:8px;color:#414b42}
+.layer-card{position:absolute;bottom:calc(100% + 6px);top:auto;right:0;width:274px;transform-origin:bottom right}
+.layer-dock .layer-toggle{padding:5px 12px 5px 46px;height:30px;box-sizing:border-box;background:#1c2529f2;border:1px solid #4a595f;color:#d6dfd9;border-radius:3px;box-shadow:0 4px 14px rgba(0,0,0,0.35)}
+.layer-dock .layer-toggle:hover,.layer-dock .layer-toggle[aria-expanded=true]{background:#2e3d44;border-color:var(--gold);color:#ffffff}
 .card-close-btn{position:absolute;right:10px;top:8px;width:18px;height:18px;line-height:16px;text-align:center;font-size:16px;color:#91a5aa;cursor:pointer;border-radius:2px;border:1px solid transparent;background:none;padding:0;z-index:10}
 .card-close-btn:hover{color:#fff;background:#384850;border-color:#52646b}
 .inspector-heading .card-unit-id{position:absolute;right:34px;top:10px;font-size:9px}
@@ -93,26 +94,66 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:#1c2529f2;border:1px solid #4a585e;color:#e2dfc6;padding:8px 20px;font:11px var(--mono);border-radius:3px;box-shadow:0 8px 24px #00000088;z-index:99;pointer-events:none;opacity:0;transition:opacity .2s ease,transform .2s ease;white-space:nowrap}
 .toast.visible{opacity:1;transform:translateX(-50%) translateY(-4px)}
 
-/* UI-03M 集成指令框与子面板 (UI-03M1 ~ UI-03M4) */
-.integrated-cmd-box{position:fixed;top:70px;left:50%;transform:translateX(-50%);width:480px;max-width:92vw;background:#1e272be6;border:1px solid #4a585e;box-shadow:0 12px 40px #0c141777;border-radius:3px;z-index:20;display:none;flex-direction:column;color:#d6d9d4;backdrop-filter:blur(4px)}
+/* UIO 实体军用参谋手写板 (木纹硬夹板 + 金属弹簧夹 + 横格纸面 + 便签纸条) */
+.uio-clipboard{position:fixed;right:18px;top:126px;width:338px;max-height:calc(100vh - 188px);background:linear-gradient(155deg,#634c35 0%,#4c3825 55%,#39291a 100%);border:2px solid #2b1d11;border-radius:8px;padding:22px 9px 9px;box-shadow:0 14px 36px rgba(0,0,0,0.56),inset 0 1px 0 rgba(255,238,205,0.22);z-index:7;display:flex;flex-direction:column;color:#2b251c;overflow:visible}
+.uio-clipboard.collapsed{max-height:none}
+.uio-clipboard.collapsed .uio-board-body{display:none}
+.uio-metal-clip{position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:128px;height:26px;background:linear-gradient(180deg,#b7bcc0 0%,#7e868c 45%,#5c6469 100%);border:1px solid #353c40;border-radius:5px 5px 3px 3px;box-shadow:0 3px 8px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.65);cursor:move;user-select:none;display:flex;align-items:center;justify-content:center;gap:28px;z-index:9}
+.uio-metal-clip::before,.uio-metal-clip::after{content:"";width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e2e6e8,#4f575c);border:1px solid #394044}
+.uio-paper-sheet{background:#ece4cc;background-image:repeating-linear-gradient(180deg,transparent 0,transparent 21px,rgba(138,122,92,0.14) 22px);border:1px solid #b5a886;border-radius:2px;box-shadow:0 2px 6px rgba(0,0,0,0.32),inset 0 0 18px rgba(156,136,96,0.18);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.uio-clip-metal{background:linear-gradient(180deg,#e4dac0 0%,#dad0b4 100%);border-bottom:1.5px solid #9d8f6e;padding:8px 10px 7px;display:flex;align-items:center;justify-content:space-between;cursor:move;user-select:none}
+.uio-clip-title{display:flex;flex-direction:column;gap:1px}
+.uio-clip-title b{font:700 12px "Noto Serif SC","Songti SC",SimSun,serif;letter-spacing:1.6px;color:#2b2318}
+.uio-clip-title small{font:8.5px var(--mono);color:#665c47}
+.uio-clip-actions{display:flex;align-items:center;gap:5px}
+.uio-new-slip-btn{padding:3px 8px;background:#3a4a42;border:1px solid #26332d;color:#f5edd6;font:10px var(--sans);border-radius:2px;cursor:pointer;letter-spacing:.4px;box-shadow:0 1px 2px rgba(0,0,0,0.22)}
+.uio-new-slip-btn:hover{background:#2a3a32;color:#fff}
+.uio-collapse-btn{padding:2px 6px;background:#dcd2b6;border:1px solid #9e9170;color:#4a4030;font:10px var(--mono);border-radius:2px;cursor:pointer}
+.uio-board-body{padding:7px 9px 9px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:#a59878 transparent}
+.uio-zone{background:rgba(255,252,242,0.45);border:1px solid #c7ba97;border-radius:2px;padding:6px 8px;display:flex;flex-direction:column;gap:5px;position:relative}
+.uio-zone-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed #a89b79;padding-bottom:3px;font:600 10px "Noto Serif SC",var(--sans);color:#3b3224;letter-spacing:.6px}
+.uio-zone-head small{font:8.5px var(--mono);color:#73674f}
+.g-field-badge{padding:1px 6px;border-radius:2px;font:700 8.5px var(--mono);border:1px solid #9c9075;background:#e0d7be;color:#665c49}
+.g-field-badge.assigned{border-color:#2e6d41;background:#d3ead7;color:#1e542e}
+.uio-slip-list{display:flex;flex-direction:column;gap:5px;min-height:20px}
+.uio-empty{font:9px var(--mono);color:#85795e;padding:2px 0;font-style:italic}
+.uio-slip{background:#faf5e4;border:1px solid #c2b48f;border-left:4px solid #6c7a74;border-radius:1px;padding:6px 8px;display:flex;flex-direction:column;gap:3px;font-size:10px;position:relative;box-shadow:1px 2px 4px rgba(45,35,20,0.16);transition:all .15s;color:#2c251b}
+.uio-slip.cmd-slip{border-left-color:#2f7344;background:#edf5e8}
+.uio-slip.cmd-slip.cmd-unassigned{border-left-color:#8f846b;background:#efe8d3}
+.uio-slip.draggable-slip{cursor:grab}
+.uio-slip.draggable-slip:active{cursor:grabbing}
+.uio-slip.dragging{opacity:.48;transform:rotate(-1.2deg)}
+.uio-zone.drag-over{outline:2px dashed #b57b24;background:rgba(255,244,205,0.75)}
+.drag-grip{color:#8a7d61;font:700 10px var(--mono);margin-right:2px;user-select:none}
+.uio-slip.active-locked{background:linear-gradient(135deg,#fff5cc 0%,#ffebb0 100%);border:1.5px solid #d48c1a;border-left:5px solid #c94626;box-shadow:0 0 12px rgba(230,158,34,0.48),2px 3px 6px rgba(45,30,10,0.22)}
+.uio-slip.draft-slip{border-left-color:#8a7f63;border-style:dashed;background:#f0ead6}
+.uio-slip.archive-slip{border-left-color:#8e846c;opacity:.8;background:#dfd6bc;font-size:9px;box-shadow:none}
+.uio-slip-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.uio-slip-title{font-weight:700;color:#241e15;display:flex;align-items:center;gap:4px}
+.uio-slip-badge{font:700 8px var(--mono);padding:1px 5px;border-radius:2px;background:#e4dac0;color:#4e4535;border:1px solid #b5a785}
+.uio-slip.active-locked .uio-slip-badge{background:#b8381c;color:#fff7dc;border-color:#8a240e}
+.uio-slip-meta{font:9px var(--mono);color:#5c5240;display:flex;flex-wrap:wrap;gap:8px}
+.uio-slip-actions{display:flex;justify-content:flex-end;gap:5px;margin-top:2px}
+.uio-act-btn{padding:2px 6px;font:9px var(--sans);background:#eae1c7;border:1px solid #a69876;color:#342c20;border-radius:2px;cursor:pointer}
+.uio-act-btn:hover:not(:disabled){background:#3a4a42;border-color:#25332c;color:#fff}
+.uio-act-btn:disabled,.uio-act-btn.locked{opacity:.75;cursor:not-allowed;background:#e6cfa0;border-color:#b3883e;color:#6e4b12}
+#uioZoneArchive{background:#dfd5b8;border-top:2px solid #9e8f6b}
+
+/* UIOA 新建纸条界面 (原 integrated-cmd-box 升级继承) */
+.integrated-cmd-box{position:fixed;top:68px;left:50%;transform:translateX(-50%);width:510px;max-width:92vw;background:#1e272bf2;border:1px solid #59686e;border-top:4px solid var(--gold);box-shadow:0 14px 44px #080f12aa;border-radius:3px;z-index:20;display:none;flex-direction:column;color:#d6d9d4;backdrop-filter:blur(4px)}
 .integrated-cmd-box.open,.integrated-cmd-box:not(.hidden){display:flex}
-.cmd-box-head{padding:10px 14px;border-bottom:1px solid #364449;display:flex;align-items:center;justify-content:space-between}
+.cmd-box-head{padding:10px 14px 10px 48px;border-bottom:1px solid #364449;display:flex;align-items:center;justify-content:space-between}
 .cmd-box-head b{font:12px var(--sans);letter-spacing:1.5px;color:#e2dfc6}
 .cmd-box-close{font-size:18px;color:#91a5aa;line-height:1;cursor:pointer;padding:2px 6px}
 .cmd-box-close:hover{color:#fff}
-.cmd-unified-queue{padding:6px 12px;background:#161f23;border-bottom:1px solid #2d3b40;font:9px var(--mono)}
-.queue-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;color:#8ea0a3}
-.queue-clear-btn{padding:1px 6px;background:#2a363c;border:1px solid #44545b;color:#cad5cf;font-size:9px;border-radius:2px;cursor:pointer}
-.queue-items-container{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
-.queue-chip{padding:2px 6px;background:#26343a;border:1px solid #3f5057;border-radius:2px;color:#cad5cf;white-space:nowrap}
 .cmd-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 12px;border-bottom:1px solid #313f44;background:#1a2327}
 .cmd-tab-btn{padding:5px 0;text-align:center;font-size:10px;color:#9cadab;background:#222d32;border:1px solid #3a4a50;cursor:pointer;border-radius:2px}
 .cmd-tab-btn.active{background:#35454d;border-color:var(--gold);color:#f0e6cf}
 .cmd-box-content{display:flex;flex-direction:column;min-height:0}
-.cmd-subpanel{padding:14px 16px;display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;position:relative}
+.cmd-subpanel{padding:14px 16px;display:flex;flex-direction:column;gap:10px;max-height:66vh;overflow-y:auto;position:relative}
 .cmd-subpanel.hidden{display:none!important}
 .matrix-row{display:flex;align-items:center;gap:8px;font-size:11px}
-.row-label{width:68px;color:#9aa8a6;font-size:10px;flex-shrink:0}
+.row-label{width:76px;color:#9aa8a6;font-size:10px;flex-shrink:0}
 .btn-group,.btn-group-wrap{display:flex;flex-wrap:wrap;gap:4px;flex:1}
 .sub-btn{padding:4px 8px;background:#26343a;border:1px solid #3f5057;border-radius:2px;color:#cad5cf;cursor:pointer;font-size:10px;transition:background .12s}
 .sub-btn:hover{background:#32434b;border-color:#b5aa70}
@@ -120,9 +161,15 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .sub-btn:disabled{opacity:.35;cursor:not-allowed}
 .row-control{display:flex;align-items:center;gap:8px;flex:1}
 .sub-slider{flex:1;accent-color:var(--gold);cursor:pointer}
-.slider-val{font-size:9px;color:#e0d5b7;min-width:85px;text-align:right}
+.slider-val{font-size:9px;color:#e0d5b7;min-width:92px;text-align:right}
 .readout-box{display:flex;flex-wrap:wrap;gap:8px;font:9px var(--mono);color:#c5cfc8;background:#161f23;padding:6px 8px;border:1px solid #2d3b40;border-radius:2px;width:100%}
-.panel-foot{display:flex;justify-content:flex-end;margin-top:6px}
+.panel-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.panel-foot .action-btn{width:auto;min-width:140px;padding:0 14px}
+.action-btn.draft-btn{border-color:#68787c;background:#233035;color:#cbd6d2}
+.action-btn.draft-btn:hover{border-color:#c5aa70;background:#2e3f46;color:#fff}
+.time-select{background:#182226;border:1px solid #45565c;color:#e4dcc5;font:10px var(--mono);padding:3px 6px;border-radius:2px}
+.timeline-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:1}
+.timeline-field{display:flex;align-items:center;gap:5px;font:10px var(--mono);color:#c4d0cc}
 .cmd-divider-dashed{border-bottom:1px dashed #3a474d;margin:2px 0;width:100%}
 .cmd-items-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:100%}
 .cmd-item-btn{padding:5px 2px;font-size:10px;text-align:center;background:#243136;border:1px solid #3f5056;color:#cdd7d2;border-radius:2px;cursor:pointer}
@@ -155,7 +202,8 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 .toast::after{left:8px;top:-13px;font-size:8.5px;color:#ee9286}
 .map-tools-pack[data-ui-id]::after{left:auto;right:10px;top:-13px;font-size:8.5px;color:#ee9286}
 .tool-pack-row[data-ui-id]::after{left:6px;top:7px;font-size:8.5px;color:#ee9286}
-.integrated-cmd-box[data-ui-id]::after{left:12px;top:6px;font-size:8.5px;color:#ee9286}
+.integrated-cmd-box[data-ui-id]::after{left:12px;top:10px;font-size:8.5px;color:#ee9286}
+.uio-clipboard[data-ui-id]::after{left:12px;top:6px;font-size:8.5px;color:#f4b0a5}
 .cmd-subpanel[data-ui-id]::after{left:12px;top:4px;font-size:8px;color:#ee9286}
 .pulse-staging[data-ui-id]::after{left:5px;top:7px;font-size:8.5px;color:#ec8d81}
 .orbat-drawer[data-ui-id]::after,.cmd-drawer[data-ui-id]::after,.reorg-equip-panel[data-ui-id]::after,.orbat-body[data-ui-id]::after{color:#ee9286}
@@ -257,7 +305,7 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
 </g></svg></div>
 <div class="map-title" id="mapTitle" data-ui-id="UI-04"><button class="title-button" id="titleToggle" aria-expanded="true" aria-controls="titleDetails" title="点击收为地区名；再次点击展开"><span class="title-heading" id="titleHeading">白桦河战区</span><span class="title-details" id="titleDetails"><span><span>NORTHERN SECTOR / SHEET 04</span><span>TOPOGRAPHIC SERIES · BINARY 8M</span></span></span></button></div>
 
-<!-- UI-09 参谋地图工具包 (内含指北针、UI-09A 绘图工具组、UI-05 图层项) -->
+<!-- UI-09 右上角参谋地图工具包 (内含 UI-09A 绘图工具组与指北针) -->
 <div class="map-tools-pack" id="mapToolsPack" data-ui-id="UI-09" aria-label="参谋地图工具包">
   <div class="tool-pack-unified">
     <div class="tool-pack-row" id="drawToolsBar" data-ui-id="UI-09A">
@@ -270,20 +318,22 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
     <div class="compass-box" title="指北针">
       <svg class="compass" viewBox="0 0 50 70" style="width:24px;height:32px"><text x="25" y="10" text-anchor="middle" fill="currentColor" font-size="9" font-family="Consolas">N</text><path d="m25 17-9 32 9-7 9 7Z" fill="none" stroke="currentColor"/><path d="m25 17-9 32 9-7Z" fill="currentColor"/></svg>
     </div>
-    <div class="layer-dock" id="layerDock">
-      <button class="layer-toggle" id="layerToggle" aria-expanded="false" aria-controls="layerCard" data-ui-id="UI-05A"><svg class="ico"><use href="#i-layers"/></svg><span id="layerToggleText">图层</span><span class="layer-chevron" aria-hidden="true">⌃</span></button>
-      <section class="layer-card" id="layerCard" aria-label="图层列表" aria-hidden="true" inert data-ui-id="UI-05">
-        <header class="layer-head"><span>地图图层 <small>LAYERS</small></span><button class="layer-close" id="closeLayers" aria-label="关闭图层列表">×</button></header>
-        <div class="layer-options">
-          <button class="layer-option" data-layer="terrain" aria-pressed="true"><span class="check"></span>地形</button>
-          <button class="layer-option" data-layer="labels" aria-pressed="true"><span class="check"></span>地名</button>
-          <button class="layer-option" data-layer="front" aria-pressed="true"><span class="check"></span>接触线</button>
-          <button class="layer-option" data-layer="routes" aria-pressed="true"><span class="check"></span>命令</button>
-          <button class="layer-option" data-layer="fire" aria-pressed="false"><span class="check"></span>火控</button>
-        </div>
-      </section>
-    </div>
   </div>
+</div>
+
+<!-- UI-05 / UI-05A 移至画面右下角 -->
+<div class="layer-dock" id="layerDock">
+  <section class="layer-card" id="layerCard" aria-label="图层列表" aria-hidden="true" inert data-ui-id="UI-05">
+    <header class="layer-head"><span>地图图层 <small>LAYERS</small></span><button class="layer-close" id="closeLayers" aria-label="关闭图层列表">×</button></header>
+    <div class="layer-options">
+      <button class="layer-option" data-layer="terrain" aria-pressed="true"><span class="check"></span>地形</button>
+      <button class="layer-option" data-layer="labels" aria-pressed="true"><span class="check"></span>地名</button>
+      <button class="layer-option" data-layer="front" aria-pressed="true"><span class="check"></span>接触线</button>
+      <button class="layer-option" data-layer="routes" aria-pressed="true"><span class="check"></span>命令</button>
+      <button class="layer-option" data-layer="fire" aria-pressed="false"><span class="check"></span>火控</button>
+    </div>
+  </section>
+  <button class="layer-toggle" id="layerToggle" aria-expanded="false" aria-controls="layerCard" data-ui-id="UI-05A"><svg class="ico"><use href="#i-layers"/></svg><span id="layerToggleText">图层</span><span class="layer-chevron" aria-hidden="true">⌃</span></button>
 </div>
 
 <div class="scale" id="meterGrid" data-ui-id="UI-07" aria-label="地图比例尺"><div class="scale-text"><span>0</span><span id="scaleDistance">64 m</span></div><div class="scale-bar" id="scaleBar"><i></i><i></i><i></i><i></i></div><div class="scale-caption">8m / 格 · 二进制比例尺</div></div>
@@ -323,38 +373,93 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
   </div>
 </aside>
 
-<!-- 综合指令选项框 (UI-03M)，内含四大子窗口 UI-03M1~UI-03M4 -->
-<div class="integrated-cmd-box hidden" id="integratedCmdBox" data-ui-id="UI-03M" aria-label="综合指令选项框">
+<!-- UIO 实体军用参谋手写板 (木纹硬夹板 + 金属弹簧夹 + 活页纸面，彻底独立并注销原 UI-03M) -->
+<aside class="uio-clipboard" id="uioClipboard" data-ui-id="UIO" aria-label="UIO 参谋手写板">
+  <div class="uio-metal-clip" id="uioClipMetal" title="按住金属夹拖动参谋手写板"></div>
+  <div class="uio-paper-sheet">
+    <div class="uio-clip-metal" id="uioClipHandle">
+      <div class="uio-clip-title">
+        <b>参谋手写板 · FIELD CLIPBOARD</b>
+        <small id="uioBoardUnitLabel">RED-1PL-SQ1 · 红1排1班(步兵)</small>
+      </div>
+      <div class="uio-clip-actions">
+        <button class="uio-new-slip-btn" id="btnOpenUioa" type="button" title="按 Shift+A 唤起 UIOA 新建纸条">+ 写纸条 (Shift+A)</button>
+        <button class="uio-collapse-btn" id="btnCollapseUio" type="button" title="收起/展开手写板">▾</button>
+      </div>
+    </div>
+    <div class="uio-board-body" id="uioBoardBody">
+    <!-- 第一块 · 指挥命令纸条区 (不跑任务队列，体现 G 场是否被赋值) -->
+    <section class="uio-zone" id="uioZoneCommand">
+      <div class="uio-zone-head">
+        <span>一 · 指挥命令纸条区</span>
+        <span class="g-field-badge" id="uioGFieldBadge">G场: 未赋值</span>
+      </div>
+      <div class="uio-slip-list" id="uioCommandList">
+        <div class="uio-empty">当前 G 场未被赋值（无生效指挥势场纸条）</div>
+      </div>
+    </section>
+
+    <!-- 第二块 · 任务和事件纸条区 (起始事件触发即常亮、排第一位、锁死不可直接撤销；完工入归档) -->
+    <section class="uio-zone" id="uioZoneQueue">
+      <div class="uio-zone-head">
+        <span>二 · 任务和事件纸条区</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <small id="uioQueueCount">0 张</small>
+          <button class="queue-clear-btn" id="btnClearUnifiedQueue" type="button" title="仅清空尚未触发起始锁定的排队纸条">清未锁</button>
+        </div>
+      </div>
+      <div class="uio-slip-list" id="uioQueueList">
+        <div class="uio-empty">暂无排入计划队列的正式纸条</div>
+      </div>
+      <div id="unifiedQueueList" style="display:none"></div>
+    </section>
+
+    <!-- 第三块 · 草稿纸条放置区 (接收「保存为草稿」的预备纸条) -->
+    <section class="uio-zone" id="uioZoneDrafts">
+      <div class="uio-zone-head">
+        <span>三 · 草稿纸条放置区</span>
+        <small id="uioDraftCount">0 张预备</small>
+      </div>
+      <div class="uio-slip-list" id="uioDraftList">
+        <div class="uio-empty">暂无保存的草稿纸条</div>
+      </div>
+    </section>
+
+    <!-- 归档栏 (纸条结束后自动流入 UIO 的归档栏) -->
+    <section class="uio-zone" id="uioZoneArchive">
+      <div class="uio-zone-head">
+        <span>归档栏 · ARCHIVE</span>
+        <small id="uioArchiveCount">0 已归档</small>
+      </div>
+      <div class="uio-slip-list" id="uioArchiveList">
+        <div class="uio-empty">暂无已完工归档纸条</div>
+      </div>
+    </section>
+    </div>
+  </div>
+</aside>
+
+<!-- UIOA 新建纸条界面 (在 UIO 中按 Shift+A 唤起，继承原 UI03M 体系并改名 UIOA) -->
+<div class="integrated-cmd-box hidden" id="integratedCmdBox" data-ui-id="UIOA" aria-label="UIOA 新建纸条界面">
   <div class="cmd-box-head">
     <div class="cmd-box-title">
-      <b>综合指令选项 <small class="mono muted">INTEGRATED COMMAND</small></b>
-      <span class="mono muted" style="margin-left:8px;font-size:9px" id="cmdBoxTargetUnit">F-0313 (第 3 步兵营)</span>
+      <b>UIOA · 新建作战纸条 <small class="mono muted">NEW ORDER SLIP</small></b>
+      <span class="mono muted" style="margin-left:8px;font-size:9px" id="cmdBoxTargetUnit">RED-1PL-SQ1 (红1排1班)</span>
     </div>
-    <button class="cmd-box-close" id="closeCmdBox" aria-label="关闭指令选项">×</button>
-  </div>
-
-  <!-- 共享统一队列列表 (#1, #2...) -->
-  <div class="cmd-unified-queue" id="unifiedQueueBar">
-    <div class="queue-head">
-      <span>统一规划队列 <small class="mono muted">SHARED QUEUE</small></span>
-      <button class="queue-clear-btn" id="btnClearUnifiedQueue">清空</button>
-    </div>
-    <div class="queue-items-container" id="unifiedQueueList">
-      <span class="queue-empty-text mono muted">暂无计划任务或事件</span>
-    </div>
+    <button class="cmd-box-close" id="closeCmdBox" aria-label="关闭新建纸条">×</button>
   </div>
 
   <!-- 选项卡切换栏 -->
   <div class="cmd-tabs">
-    <button class="cmd-tab-btn active" id="tabTask" data-target="panelTask">1 任务队列 (UI-03M1)</button>
-    <button class="cmd-tab-btn" id="tabEvent" data-target="panelEvent">2 宏事件 (UI-03M2)</button>
-    <button class="cmd-tab-btn" id="tabCmd" data-target="panelCmd">3 指挥安排 (UI-03M3)</button>
-    <button class="cmd-tab-btn" id="tabComms" data-target="panelComms">4 通信调谐 (UI-03M4)</button>
+    <button class="cmd-tab-btn active" id="tabTask" data-target="panelTask">1 任务纸条</button>
+    <button class="cmd-tab-btn" id="tabEvent" data-target="panelEvent">2 事件纸条</button>
+    <button class="cmd-tab-btn" id="tabCmd" data-target="panelCmd">3 指挥命令(G场)</button>
+    <button class="cmd-tab-btn" id="tabComms" data-target="panelComms">4 通信调谐</button>
   </div>
 
   <div class="cmd-box-content">
-    <!-- UI-03M1 任务队列四行级联配置窗口 -->
-    <div class="cmd-subpanel" id="panelTask" data-ui-id="UI-03M1">
+    <!-- 任务纸条配置窗口 (含第五行时间轴、轻重武器严格区分、双出口按钮) -->
+    <div class="cmd-subpanel" id="panelTask">
       <div class="matrix-row" id="taskRow1">
         <label class="row-label">一 · 动作</label>
         <div class="btn-group">
@@ -362,6 +467,14 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
           <button class="sub-btn" data-action="fire" id="btnTaskFire">射击</button>
           <button class="sub-btn" data-action="stop" id="btnTaskStop">停止</button>
           <button class="sub-btn" data-action="retreat" id="btnTaskRetreat">撤退</button>
+        </div>
+      </div>
+      <!-- 射击专属：轻武器 vs 重武器严格区分 -->
+      <div class="matrix-row" id="taskRowWeaponClass" style="display:none">
+        <label class="row-label">武器区分</label>
+        <div class="btn-group" id="fireWeaponClassGroup">
+          <button class="sub-btn active" data-wclass="light" id="btnFireWeaponLight" type="button">轻武器 (固定使用起止时间)</button>
+          <button class="sub-btn" data-wclass="heavy" id="btnFireWeaponHeavy" type="button">重武器 (仅用轮数+起时间)</button>
         </div>
       </div>
       <div class="matrix-row" id="taskRow2">
@@ -377,6 +490,32 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
         <div class="row-control" id="taskRow3Control">
           <input type="range" min="0" max="100" value="80" class="sub-slider" id="taskParamSlider">
           <span class="mono slider-val" id="taskParamVal">0.80 (直线偏好)</span>
+        </div>
+      </div>
+      <!-- 第五行时间轴 (严格置于轮数/约束行 #taskRow3 的下一行：重武器起时间紧接在轮数下一行) -->
+      <div class="matrix-row" id="taskRowTimeline">
+        <label class="row-label" id="taskRow5Label">五 · 时间轴</label>
+        <div class="timeline-controls">
+          <div class="timeline-field" id="taskStartTimeWrap">
+            <span>起始时间:</span>
+            <select class="time-select" id="taskStartTimeSelect">
+              <option value="0">+0s (立即 06:30:00)</option>
+              <option value="16">+16s (06:30:16)</option>
+              <option value="32">+32s (06:30:32)</option>
+              <option value="48">+48s (06:30:48)</option>
+              <option value="64">+64s (06:31:04)</option>
+            </select>
+          </div>
+          <div class="timeline-field" id="taskEndTimeWrap" style="display:none">
+            <span>结束时间:</span>
+            <select class="time-select" id="taskEndTimeSelect">
+              <option value="16">+16s (06:30:16)</option>
+              <option value="32" selected>+32s (06:30:32)</option>
+              <option value="48">+48s (06:30:48)</option>
+              <option value="64">+64s (06:31:04)</option>
+              <option value="96">+96s (06:31:36)</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="matrix-row" id="taskRow4">
@@ -395,12 +534,13 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
         </div>
       </div>
       <div class="panel-foot">
-        <button class="action-btn primary" id="btnConfirmTask">排入计划行动队列</button>
+        <button class="action-btn draft-btn" id="btnDraftTask" type="button">保存为草稿</button>
+        <button class="action-btn primary" id="btnConfirmTask" type="button">排入计划队列</button>
       </div>
     </div>
 
-    <!-- UI-03M2 事件宏配置窗口 (带严格装备门控) -->
-    <div class="cmd-subpanel hidden" id="panelEvent" data-ui-id="UI-03M2">
+    <!-- 事件宏纸条配置窗口 -->
+    <div class="cmd-subpanel hidden" id="panelEvent">
       <div class="matrix-row" id="eventRow1">
         <label class="row-label">一 · 宏事件</label>
         <div class="btn-group-wrap" id="eventMacroGroup">
@@ -445,12 +585,13 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
         </div>
       </div>
       <div class="panel-foot">
-        <button class="action-btn primary" id="btnConfirmEvent">在地图绘制并排入队列</button>
+        <button class="action-btn draft-btn" id="btnDraftEvent" type="button">保存为草稿</button>
+        <button class="action-btn primary" id="btnConfirmEvent" type="button">排入计划队列</button>
       </div>
     </div>
 
-    <!-- UI-03M3 指挥面板 (6/7 互斥场) -->
-    <div class="cmd-subpanel hidden" id="panelCmd" data-ui-id="UI-03M3">
+    <!-- 指挥面板 (G场赋值与保存草稿) -->
+    <div class="cmd-subpanel hidden" id="panelCmd">
       <!-- 行 1：指定受令对象 -->
       <div class="matrix-row" id="cmdRow1">
         <label class="row-label">一 · 对象</label>
@@ -475,7 +616,7 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
         <label class="row-label">四 · 战术项</label>
         <div class="cmd-items-grid" id="cmdItemsGrid">
           <!-- 基础 7 项 -->
-          <button class="cmd-item-btn" id="itemAtk" data-item="attack">进攻</button>
+          <button class="cmd-item-btn active" id="itemAtk" data-item="attack">进攻</button>
           <button class="cmd-item-btn" id="itemAssault" data-item="assault">突击</button>
           <button class="cmd-item-btn" id="itemMove" data-item="move">移动</button>
           <button class="cmd-item-btn" id="itemRetreat" data-item="retreat">撤退</button>
@@ -510,12 +651,13 @@ html{width:100%;height:100%;overflow:hidden}.app{position:relative;overflow:hidd
         </div>
       </div>
       <div class="panel-foot">
-        <button class="action-btn primary" id="btnConfirmCmd">生成指挥场 (下个16s生效)</button>
+        <button class="action-btn draft-btn" id="btnDraftCmd" type="button">保存为草稿</button>
+        <button class="action-btn primary" id="btnConfirmCmd" type="button">赋入指挥G场 (第一块)</button>
       </div>
     </div>
 
-    <!-- UI-03M4 军用通信设备手动调谐窗口 -->
-    <div class="cmd-subpanel hidden" id="panelComms" data-ui-id="UI-03M4">
+    <!-- 军用通信设备手动调谐窗口 -->
+    <div class="cmd-subpanel hidden" id="panelComms">
       <div class="comms-grid">
         <div class="comms-ctrl-block">
           <div class="section-title">频段与频率谐振微调</div>
@@ -595,24 +737,11 @@ const $=id=>document.getElementById(id);
 function svgNode(tag,attrs,parent){const el=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);if(parent)parent.appendChild(el);return el;}
 let seed=31061944;
 function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
-const forestAreas=[{x:169,y:158,rx:158,ry:104},{x:417,y:241,rx:100,ry:126},{x:592,y:176,rx:83,ry:63},{x:879,y:108,rx:121,ry:83},{x:992,y:464,rx:126,ry:169},{x:764,y:569,rx:117,ry:121},{x:183,y:659,rx:137,ry:94},{x:466,y:799,rx:132,ry:70},{x:1121,y:760,rx:125,ry:102},{x:437,y:538,rx:86,ry:68}];
-for(const a of forestAreas){let d='';for(let i=0;i<=64;i++){const t=i/64*Math.PI*2;const v=1+.1*Math.sin(t*5+a.x)+.06*Math.cos(t*9);d+=(i?'L':'M')+(a.x+Math.cos(t)*a.rx*v).toFixed(1)+' '+(a.y+Math.sin(t)*a.ry*v).toFixed(1);}svgNode('path',{d:d+'Z',fill:'#9ba480',opacity:'.34'},$('forests'));const count=Math.round(a.rx*a.ry/76);for(let i=0;i<count;i++){const t=random()*Math.PI*2,r=Math.sqrt(random())*.95,x=a.x+Math.cos(t)*a.rx*r,y=a.y+Math.sin(t)*a.ry*r;const h=6+random()*5;svgNode('use',{href:'#tree',x:x.toFixed(1),y:y.toFixed(1),width:(h*.65).toFixed(1),height:h.toFixed(1),opacity:(.3+random()*.38).toFixed(2)},$('forests'));}}
-for(const hill of [{x:427,y:251,rx:140,ry:95},{x:921,y:553,rx:146,ry:183},{x:151,y:722,rx:221,ry:138},{x:997,y:63,rx:179,ry:157},{x:423,y:878,rx:177,ry:121}]){for(let ring=1;ring<11;ring++){const factor=.23+ring*.18;let d='';for(let i=0;i<=100;i++){const a=i/100*Math.PI*2,n=1+.09*Math.sin(a*3+hill.x)+.05*Math.sin(a*7+ring*.14);d+=(i?'L':'M')+(hill.x+Math.cos(a)*hill.rx*factor*n).toFixed(1)+' '+(hill.y+Math.sin(a)*hill.ry*factor*n).toFixed(1);}svgNode('path',{d:d+'Z','stroke-width':ring%4===0?1.2:.65},$('contours'));}}
-for(const place of [{x:158,y:457,count:18},{x:535,y:346,count:22},{x:909,y:298,count:25},{x:397,y:702,count:15},{x:317,y:326,count:11}]){for(let i=0;i<place.count;i++){const x=place.x+(random()-.5)*74,y=place.y+(random()-.5)*44,w=3+random()*5,h=2+random()*3;svgNode('rect',{x,y,width:w,height:h,fill:'#777a67',opacity:.65,transform:`rotate(${random()*35-17} ${x} ${y})`},$('villages'));}}
-
-// 基础预设单位 (10 APP-6 战术兵牌，含工程装备账本)
+// 1v1 步兵班沙盒预设单位 (全图仅保留己方 1 个步兵班与敌方 1 个步兵班)
 const DEFAULT_INVENTORY = ['mine', 'shovel', 'building_mat', 'explosive', 'clearance_kit', 'rangefinder', 'firstaid', 'supplies_bag', 'wire_cable'];
 let units=[
-{id:'u3',name:'第 3 步兵营',code:'3 / 91 INFANTRY',short:'3 / 91',type:'infantry',echelon:'II',x:455,y:505,strength:642,max:720,org:92,ammo:76,supply:88,terrain:'林地边缘',height:184,status:'待命 · 通信正常',order:'向河桥展开',inventory:[...DEFAULT_INVENTORY]},
-{id:'u1',name:'第 1 步兵营',code:'1 / 91 INFANTRY',short:'1 / 91',type:'infantry',echelon:'II',x:513,y:257,strength:681,max:720,org:96,ammo:85,supply:91,terrain:'北侧林间道路',height:176,status:'警戒 · 通信正常',order:'保持北翼警戒',inventory:[...DEFAULT_INVENTORY]},
-{id:'u2',name:'第 2 步兵营',code:'2 / 91 INFANTRY',short:'2 / 91',type:'infantry',echelon:'II',x:408,y:651,strength:608,max:720,org:85,ammo:82,supply:90,terrain:'道路交汇处',height:162,status:'集结 · 通信正常',order:'保持第二梯队',inventory:[...DEFAULT_INVENTORY]},
-{id:'hq',name:'第 91 团指挥部',code:'HQ / 91 REGIMENT',short:'HQ / 91',type:'hq',echelon:'III',x:246,y:553,strength:86,max:92,org:97,ammo:94,supply:95,terrain:'村落西侧',height:158,status:'指挥 · 通信正常',order:'协调第一梯队',inventory:[...DEFAULT_INVENTORY]},
-{id:'arty',name:'第 2 炮兵营',code:'2 / 31 ARTILLERY',short:'2 / 31 ART',type:'artillery',echelon:'II',x:257,y:726,strength:312,max:360,org:89,ammo:64,supply:78,terrain:'隐蔽炮阵地',height:170,status:'待命 · 火力可用',order:'准备渡口火力支援',support:true,inventory:[...DEFAULT_INVENTORY]},
-{id:'recon',name:'师属侦察连',code:'RECON / 31 DIV.',short:'31 RECON',type:'recon',echelon:'I',x:638,y:277,strength:94,max:120,org:90,ammo:79,supply:80,terrain:'河岸观察所',height:154,status:'观察 · 通信正常',order:'监视河流东岸',support:true,inventory:[...DEFAULT_INVENTORY]},
-{id:'armor',name:'独立坦克连',code:'ARMOR / ATTACHED',short:'7 ARMOR',type:'armor',echelon:'I',x:245,y:380,strength:57,max:65,org:94,ammo:87,supply:85,terrain:'西侧集结区',height:165,status:'待机 · 通信正常',order:'保持机动预备队',support:true,inventory:[...DEFAULT_INVENTORY]},
-{id:'e1',name:'敌步兵接触',code:'CONTACT / E-017',short:'ENY 017',type:'infantry',echelon:'II ?',x:791,y:286,enemy:true,terrain:'白桦镇西侧',height:169,status:'推定位置 · 3 分钟前',order:'持续观察，不确定'},
-{id:'e2',name:'敌装甲接触',code:'CONTACT / E-023',short:'ENY 023',type:'armor',echelon:'I ?',x:887,y:464,enemy:true,terrain:'高地东北坡',height:204,status:'未经确认 · 8 分钟前',order:'核实兵种与规模'},
-{id:'e3',name:'敌步兵接触',code:'CONTACT / E-031',short:'ENY 031',type:'infantry',echelon:'II ?',x:887,y:706,enemy:true,terrain:'河岸林地',height:158,status:'推定位置 · 5 分钟前',order:'监视南侧通道'}
+{id:'red-1pl-sq1',name:'红1排1班(步兵)',code:'SQUAD / RED-1PL-SQ1',short:'红1排1班',type:'infantry',echelon:'•',x:558,y:425,strength:10,max:10,org:100,ammo:100,supply:100,terrain:'开阔平原 · 8m流形',height:142,status:'HOLD · 通信正常',order:'HOLD',inventory:[...DEFAULT_INVENTORY]},
+{id:'blue-outpost-1',name:'蓝桥头1班(步兵)',code:'CONTACT / BLUE-OUTPOST-1',short:'ENY 蓝1班',type:'infantry',echelon:'• ?',x:621,y:425,enemy:true,terrain:'桥头阵地 · 8m流形',height:130,status:'推定接触 · 迷雾等级 1',order:'核实兵种与规模'}
 ];
 
 function getActiveFriendlyUnitId(){
@@ -875,9 +1004,8 @@ function renderTrueTerrain(tb) {
         green = Math.min(255, Math.max(0, Math.round(green * shade)));
         blue = Math.min(255, Math.max(0, Math.round(blue * shade)));
 
-        // 4. 等高线绘制 (每 10m 辅线，每 20m 计曲线加深)
-        const hMod10 = h % 10;
-        const isNearContour10 = hMod10 === 0 || (cNext !== c && Math.floor(elev[r * cols + cNext] / 10) !== Math.floor(h / 10)) || (rNext !== r && Math.floor(elev[rNext * cols + c] / 10) !== Math.floor(h / 10));
+        // 4. 等高线绘制 (仅画 10m/20m 零交叉细边，消除整数阶梯带)
+        const isNearContour10 = (cNext !== c && Math.floor(elev[r * cols + cNext] / 10) !== Math.floor(h / 10)) || (rNext !== r && Math.floor(elev[rNext * cols + c] / 10) !== Math.floor(h / 10));
         if (isNearContour10) {
           const isContour20 = (Math.round(h / 10) % 2 === 0);
           if (isContour20) {
@@ -1320,19 +1448,223 @@ function buildOrbatList(){
   });
 }
 
-// UI-03M 综合指令选项框与子面板控制
+// -----------------------------------------------------------------------------
+// UIO 参谋手写板 (Clipboard) 与 UIOA 新建纸条界面 (Shift+A) 核心状态机
+// -----------------------------------------------------------------------------
 const cmdBox=$('integratedCmdBox');
+const uioClipboard=$('uioClipboard');
+if(uioClipboard && $('uioClipHandle')){
+  setupCardDraggable(uioClipboard, $('uioClipHandle'));
+}
+if(uioClipboard && $('uioClipMetal')){
+  setupCardDraggable(uioClipboard, $('uioClipMetal'));
+}
+if($('btnCollapseUio')){
+  $('btnCollapseUio').addEventListener('click',(e)=>{
+    e.stopPropagation();
+    const collapsed = uioClipboard.classList.toggle('collapsed');
+    $('btnCollapseUio').textContent = collapsed ? '▸' : '▾';
+  });
+}
+
+// -----------------------------------------------------------------------------
+// UIO 纸条唯一实体实例注册表 (Single Source of Truth: Map<slip_id, SlipInstance>)
+// 物理守恒：每张纸条拥有终身不变的唯一 slip_id，同一时刻仅存在于唯一一个区域，绝不克隆分身
+// -----------------------------------------------------------------------------
+const SLIP_STATES = Object.freeze({
+  G_UNASSIGNED: 'G_UNASSIGNED',
+  G_ASSIGNED: 'G_ASSIGNED',
+  DRAFT: 'DRAFT',
+  QUEUED: 'QUEUED',
+  ACTIVE_LOCKED: 'ACTIVE_LOCKED',
+  ARCHIVED: 'ARCHIVED'
+});
+window.SLIP_STATES = SLIP_STATES;
+
+let uioSlipSeq = 0;
+let uioOrderCounter = 0;
+const slipRegistry = new Map();
+window.slipRegistry = slipRegistry;
+
+function nextSlipId(){
+  const seq = ++uioSlipSeq;
+  return { seq, id: `SLIP-${String(seq).padStart(4, '0')}` };
+}
+
+function getZoneOrderedSlips(zone){
+  const list = [];
+  for (const s of slipRegistry.values()) {
+    if (s.zone === zone) list.push(s);
+  }
+  if (zone === 'queue') {
+    list.sort((a, b) => {
+      if (a.activeLocked !== b.activeLocked) return a.activeLocked ? -1 : 1;
+      if (a.activeLocked && b.activeLocked) return (b.activatedAt || 0) - (a.activatedAt || 0);
+      return (a.orderIndex || 0) - (b.orderIndex || 0);
+    });
+  } else {
+    list.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+  }
+  return list;
+}
+
+function registerSlipInstance(spec){
+  const isStanding = !!spec.standing;
+  const idInfo = isStanding ? { seq: 0, id: spec.id || 'SLIP-CMD-0000' } : nextSlipId();
+  const id = spec.id || idInfo.id;
+  if (slipRegistry.has(id)) {
+    throw new Error(`Duplicate slip_id violation: ${id}`);
+  }
+  const nowStr = formatRelOrAbsTime(0);
+  const initState = spec.state || (spec.zone === 'command' ? SLIP_STATES.G_UNASSIGNED : (spec.zone === 'draft' ? SLIP_STATES.DRAFT : SLIP_STATES.QUEUED));
+  const isLocked = initState === SLIP_STATES.ACTIVE_LOCKED;
+  const instance = {
+    ...spec,
+    id,
+    seq: isStanding ? 0 : idInfo.seq,
+    ownerUnitId: spec.ownerUnitId || getActiveFriendlyUnitId(),
+    zone: spec.zone || 'draft',
+    state: initState,
+    activeLocked: isLocked,
+    assigned: initState === SLIP_STATES.G_ASSIGNED,
+    orderIndex: typeof spec.orderIndex === 'number' ? spec.orderIndex : (++uioOrderCounter * 10),
+    runCount: isLocked ? 1 : (spec.runCount || 0),
+    createdAtStr: nowStr,
+    activatedAt: isLocked ? Date.now() : null,
+    archivedAtStr: initState === SLIP_STATES.ARCHIVED ? nowStr : null,
+    archiveReason: spec.archiveReason || null,
+    history: [{
+      at: nowStr,
+      fromState: null,
+      toState: initState,
+      note: isStanding ? '常驻指挥纸条初始化' : '纸条实例创建'
+    }]
+  };
+  slipRegistry.set(id, instance);
+  return instance;
+}
+window.registerSlipInstance = registerSlipInstance;
+
+function ensureStandingCommandSlip(){
+  let standing = slipRegistry.get('SLIP-CMD-0000');
+  if (!standing) {
+    standing = registerSlipInstance({
+      id: 'SLIP-CMD-0000',
+      standing: true,
+      type: 'cmd',
+      zone: 'command',
+      state: SLIP_STATES.G_UNASSIGNED,
+      orderIndex: 0,
+      title: '总指挥命令 · 白桦河桥头作战',
+      scopeLabel: '红1排1班(步兵)',
+      roeLabel: '自由开火'
+    });
+  }
+  return standing;
+}
+
+function transitionSlipInstance(slipId, targetZone, targetState, opts={}){
+  const slip = slipRegistry.get(slipId);
+  if (!slip) return null;
+  const prevState = slip.state;
+  const nowStr = formatRelOrAbsTime(0);
+
+  slip.zone = targetZone;
+  slip.state = targetState;
+  slip.activeLocked = targetState === SLIP_STATES.ACTIVE_LOCKED;
+  if (targetZone === 'command') {
+    slip.assigned = targetState === SLIP_STATES.G_ASSIGNED;
+  }
+
+  if (targetState === SLIP_STATES.ACTIVE_LOCKED) {
+    slip.activatedAt = Date.now();
+    if (prevState !== SLIP_STATES.ACTIVE_LOCKED) {
+      slip.runCount = (slip.runCount || 0) + 1;
+    }
+  } else if (targetState === SLIP_STATES.ARCHIVED) {
+    slip.archivedAtStr = nowStr;
+    slip.archiveReason = opts.reason || slip.archiveReason || '执行完毕';
+  } else if (targetState === SLIP_STATES.QUEUED || targetState === SLIP_STATES.DRAFT) {
+    slip.archivedAtStr = null;
+    slip.archiveReason = null;
+    if (slip.rounds) slip.remainingRounds = slip.rounds;
+  }
+
+  // 计算目标区内的精确排序权重
+  if (opts.beforeSlipId && slipRegistry.has(opts.beforeSlipId)) {
+    const targetList = getZoneOrderedSlips(targetZone).filter(s => s.id !== slipId);
+    const idx = targetList.findIndex(s => s.id === opts.beforeSlipId);
+    if (idx === 0) {
+      slip.orderIndex = (targetList[0].orderIndex || 10) - 5;
+    } else if (idx > 0) {
+      slip.orderIndex = ((targetList[idx - 1].orderIndex || 0) + (targetList[idx].orderIndex || 0)) / 2;
+    } else {
+      slip.orderIndex = ++uioOrderCounter * 10;
+    }
+  } else if (opts.prepend) {
+    const targetList = getZoneOrderedSlips(targetZone).filter(s => s.id !== slipId);
+    slip.orderIndex = targetList.length > 0 ? ((targetList[0].orderIndex || 10) - 5) : (++uioOrderCounter * 10);
+  } else if (opts.preserveOrder !== true) {
+    slip.orderIndex = ++uioOrderCounter * 10;
+  }
+
+  slip.history.push({
+    at: nowStr,
+    fromState: prevState,
+    toState: targetState,
+    note: opts.note || `${prevState} -> ${targetState}`
+  });
+  return slip;
+}
+window.transitionSlipInstance = transitionSlipInstance;
+
+// 权威视图投影（全部由 slipRegistry 实时派生，彻底杜绝多数组漂移）
+const uioState = {
+  get registry() { return slipRegistry; },
+  get allSlips() { return Array.from(slipRegistry.values()); },
+  get commandSlips() { return getZoneOrderedSlips('command'); },
+  get queueSlips() { return getZoneOrderedSlips('queue'); },
+  get draftSlips() { return getZoneOrderedSlips('draft'); },
+  get archiveSlips() { return getZoneOrderedSlips('archive'); },
+  get gFieldAssigned() { return getZoneOrderedSlips('command').some(s => s.state === SLIP_STATES.G_ASSIGNED); }
+};
+window.uioState = uioState;
+let uioDragCtx = null;
+
+// 兼容旧引用
+let unifiedQueue=[];
+window.unifiedQueue = unifiedQueue;
+
+function syncUnifiedQueueMirror(){
+  unifiedQueue.length = 0;
+  uioState.queueSlips.forEach(s => unifiedQueue.push(s));
+}
+
+function formatRelOrAbsTime(offsetSec){
+  const abs = (typeof clockSeconds === 'number' ? clockSeconds : 23400) + Number(offsetSec || 0);
+  const hh = String(Math.floor(abs / 3600) % 24).padStart(2, '0');
+  const mm = String(Math.floor((abs % 3600) / 60)).padStart(2, '0');
+  const ss = String(abs % 60).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+ensureStandingCommandSlip();
+
 function openCmdBox(subpanelId='panelTask'){
   if(!cmdBox)return;
   cmdBox.classList.remove('hidden');
   cmdBox.classList.add('open');
   if(selected){
     if($('cmdBoxTargetUnit'))$('cmdBoxTargetUnit').textContent=`${selected.id.toUpperCase()} (${selected.name})`;
+    if($('uioBoardUnitLabel'))$('uioBoardUnitLabel').textContent=`${selected.id.toUpperCase()} · ${selected.name}`;
     syncEquipmentGating();
   }
   switchCmdTab(subpanelId);
-  notify('已呼出综合指令选项框 (UI-03M)');
+  updateTaskMatrixUI();
+  notify('已唤起 UIOA 新建作战纸条界面 (Shift+A)');
 }
+window.openUioa = openCmdBox;
+
 function closeCmdBox(){
   if(!cmdBox)return;
   cmdBox.classList.add('hidden');
@@ -1340,6 +1672,7 @@ function closeCmdBox(){
 }
 if($('closeCmdBox'))$('closeCmdBox').addEventListener('click',closeCmdBox);
 if($('btnOpenCmdBox'))$('btnOpenCmdBox').addEventListener('click',()=>openCmdBox('panelTask'));
+if($('btnOpenUioa'))$('btnOpenUioa').addEventListener('click',()=>openCmdBox('panelTask'));
 
 window.addEventListener('keydown',e=>{
   if(e.shiftKey&&(e.key==='A'||e.key==='a')){
@@ -1348,7 +1681,7 @@ window.addEventListener('keydown',e=>{
   }
 });
 
-// 顶栏抽屉按钮无缝重定向到 UI-03M 对应 Tab
+// 顶栏按钮无缝唤起 UIOA 对应页签
 if($('actionQueueToggle'))$('actionQueueToggle').addEventListener('click',()=>openCmdBox('panelTask'));
 if($('eventQueueToggle'))$('eventQueueToggle').addEventListener('click',()=>openCmdBox('panelEvent'));
 if($('commandFieldToggle'))$('commandFieldToggle').addEventListener('click',()=>openCmdBox('panelCmd'));
@@ -1361,30 +1694,380 @@ document.querySelectorAll('.cmd-tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>switchCmdTab(btn.dataset.target));
 });
 
-// 统一队列系统
-let unifiedQueue=[];
-window.unifiedQueue = unifiedQueue;
-function renderUnifiedQueue(){
-  const container=$('unifiedQueueList');
-  if(!container)return;
-  if(unifiedQueue.length===0){
-    container.innerHTML='<span class="queue-empty-text mono muted">暂无计划任务或事件</span>';
-    return;
-  }
-  container.innerHTML=unifiedQueue.map(item=>`
-    <span class="queue-chip mono">#${item.seq} ${item.title} <small style="color:#dfc78d">@#${item.seq}</small></span>
-  `).join('');
+// 同步第二块队列兼容镜像（排序已由 getZoneOrderedSlips('queue') 按实例状态自动保证）
+function sortUioQueueSlips(){
+  syncUnifiedQueueMirror();
 }
+
+// 触发某张纸条实例的起始事件：立即常亮、置顶第 1 位、锁死不可直接撤销、执行计数 +1
+function triggerUioSlipStart(slipId){
+  const slip = slipRegistry.get(slipId);
+  if (!slip || slip.zone !== 'queue') return false;
+  transitionSlipInstance(slipId, 'queue', SLIP_STATES.ACTIVE_LOCKED, {
+    preserveOrder: true,
+    note: '触发起始事件，常亮置顶锁死'
+  });
+  sortUioQueueSlips();
+  renderUioBoard();
+  notify(`纸条 ${slip.id} [${slip.title}] 已触发起始事件（第 ${slip.runCount} 次执行）：常亮置顶第 1 位，锁死不可直接撤销！`);
+  return true;
+}
+window.triggerUioSlipStart = triggerUioSlipStart;
+
+// 纸条实例执行结束，状态流转进入 UIO 归档栏（唯一实体原地迁区，不产生副本）
+function finishUioSlipToArchive(slipId, reason='执行完毕'){
+  const slip = slipRegistry.get(slipId);
+  if (!slip || slip.zone !== 'queue') return false;
+  transitionSlipInstance(slipId, 'archive', SLIP_STATES.ARCHIVED, {
+    prepend: true,
+    reason,
+    note: `执行结束流入归档栏 (${reason})`
+  });
+  sortUioQueueSlips();
+  renderUioBoard();
+  notify(`纸条 ${slip.id} [${slip.title}] 已完成，自动流入 UIO 归档栏`);
+  return true;
+}
+window.finishUioSlipToArchive = finishUioSlipToArchive;
+
+// 撤销第二块中尚未触发起始锁定的纸条实例 (已常亮置顶纸条严禁直接撤销)
+function revokeUioQueueSlip(slipId){
+  const slip = slipRegistry.get(slipId);
+  if (!slip || slip.zone !== 'queue') return false;
+  if (slip.state === SLIP_STATES.ACTIVE_LOCKED || slip.activeLocked) {
+    notify(`拒绝撤销：纸条 ${slip.id} 已触发起始事件处于常亮执行态，不能直接撤销！`);
+    return false;
+  }
+  slipRegistry.delete(slipId);
+  stagedOpsCount = Math.max(0, stagedOpsCount - 1);
+  sortUioQueueSlips();
+  renderUioBoard();
+  updatePulseStaging();
+  notify(`已撤销未启动纸条实例 ${slip.id}`);
+  return true;
+}
+window.revokeUioQueueSlip = revokeUioQueueSlip;
+
+// 从第三块（草稿区）转正推入第二块（或第一块）
+function promoteUioDraftSlip(slipId){
+  const slip = slipRegistry.get(slipId);
+  if (!slip || slip.zone !== 'draft') return false;
+  if (slip.type === 'cmd') {
+    const standing = ensureStandingCommandSlip();
+    if (standing.state === SLIP_STATES.G_UNASSIGNED) {
+      standing.title = slip.title;
+      standing.scopeLabel = slip.scopeLabel || standing.scopeLabel;
+      standing.roeLabel = slip.roeLabel || standing.roeLabel;
+      standing.mode = slip.mode || 'order';
+      transitionSlipInstance(standing.id, 'command', SLIP_STATES.G_ASSIGNED, {
+        preserveOrder: true,
+        note: `由草稿 ${slip.id} 赋值 G 场`
+      });
+      slipRegistry.delete(slipId);
+    } else {
+      transitionSlipInstance(slipId, 'command', SLIP_STATES.G_ASSIGNED, {
+        prepend: true,
+        note: '草稿转正赋值 G 场'
+      });
+    }
+    stagedFieldDirectives[slip.title] = true;
+    stagedOpsCount++;
+    renderUioBoard();
+    updatePulseStaging();
+    notify(`草稿纸条 ${slip.id} 已签发至第一块：G 场已赋值！`);
+    return true;
+  }
+  const autoStart = Number(slip.startOffsetSec || 0) <= 0;
+  transitionSlipInstance(slipId, 'queue', autoStart ? SLIP_STATES.ACTIVE_LOCKED : SLIP_STATES.QUEUED, {
+    note: autoStart ? '草稿排入队列并立即触发起始' : '草稿排入第二块队列待命'
+  });
+  stagedOpsCount++;
+  if (slip.stagedActionPayload) stagedActions.push(slip.stagedActionPayload);
+  if (slip.stagedEventPayload) stagedEvents.push(slip.stagedEventPayload);
+  sortUioQueueSlips();
+  renderUioBoard();
+  updatePulseStaging();
+  notify(`草稿纸条 ${slip.id} 已排入第二块正式队列${autoStart ? '（已触发起始常亮置顶）' : ''}`);
+  return true;
+}
+window.promoteUioDraftSlip = promoteUioDraftSlip;
+
+function deleteUioDraftSlip(slipId){
+  const slip = slipRegistry.get(slipId);
+  if (!slip || slip.zone !== 'draft') return false;
+  slipRegistry.delete(slipId);
+  renderUioBoard();
+  notify(`已撕毁草稿纸条实例 ${slipId}`);
+  return true;
+}
+
+function clearUioGFieldSlip(slipId){
+  const target = slipRegistry.get(slipId);
+  if (!target || target.zone !== 'command') return false;
+  if (target.standing) {
+    target.title = '总指挥命令 · 白桦河桥头作战';
+    transitionSlipInstance(target.id, 'command', SLIP_STATES.G_UNASSIGNED, {
+      preserveOrder: true,
+      note: '解除 G 场赋值，常驻纸条恢复待赋值态'
+    });
+  } else {
+    slipRegistry.delete(slipId);
+    ensureStandingCommandSlip();
+  }
+  renderUioBoard();
+  notify(uioState.gFieldAssigned ? `已移除指挥纸条 ${slipId}` : 'G 场赋值已解除，常驻指挥纸条恢复待赋值态');
+  return true;
+}
+
+// 跨区自由拖拽与归档纸条实体复用引擎（物理守恒：原地迁移唯一 slip_id，绝不克隆！）
+// 归档纸条拖回第二块队列时统一落为 QUEUED（未激活待命态），不误触发立即锁死
+function moveUioSlipBetweenZones(slipId, fromZone, toZone, beforeSlipId=null){
+  const validZones = ['queue', 'draft', 'archive'];
+  if (!validZones.includes(fromZone) || !validZones.includes(toZone)) return false;
+
+  const slip = slipRegistry.get(slipId);
+  if (!slip || slip.zone !== fromZone) return false;
+
+  // 第二块中已激活常亮锁定的纸条实例绝对不可拖走！
+  if (fromZone === 'queue' && (slip.state === SLIP_STATES.ACTIVE_LOCKED || slip.activeLocked)) {
+    notify(`纸条 ${slip.id} 已触发起始事件并锁死，禁止拖动！`);
+    return false;
+  }
+
+  const targetState = toZone === 'queue'
+    ? SLIP_STATES.QUEUED
+    : (toZone === 'draft' ? SLIP_STATES.DRAFT : SLIP_STATES.ARCHIVED);
+
+  const note = (fromZone === 'archive' && toZone !== 'archive')
+    ? `从归档栏抽回至${toZone === 'queue' ? '第二块队列' : '第三块草稿区'}复用（保持唯一ID）`
+    : (fromZone === toZone ? '同区拖拽调序' : `跨区拖放: ${fromZone} -> ${toZone}`);
+
+  transitionSlipInstance(slipId, toZone, targetState, {
+    beforeSlipId,
+    reason: toZone === 'archive' ? (slip.archiveReason || '手动归档（可抽回复用）') : undefined,
+    note
+  });
+
+  if (toZone === 'queue' && fromZone !== 'queue') {
+    if (slip.stagedActionPayload) {
+      stagedActions.push(slip.stagedActionPayload);
+      stagedOpsCount++;
+    }
+    if (slip.stagedEventPayload) {
+      stagedEvents.push(slip.stagedEventPayload);
+      stagedOpsCount++;
+    }
+  }
+
+  if (toZone === 'queue' || fromZone === 'queue') {
+    sortUioQueueSlips();
+  }
+  renderUioBoard();
+  updatePulseStaging();
+
+  if (fromZone === 'archive' && toZone !== 'archive') {
+    notify(`已将归档纸条实体 ${slip.id} 抽回${toZone==='queue'?'第二块待命队列':'第三块草稿区'}复用（已执行 ${slip.runCount} 次）`);
+  } else if (fromZone !== toZone) {
+    const zName = { queue: '第二块任务区', draft: '第三块草稿区', archive: '归档栏' };
+    notify(`纸条 ${slip.id} 已拖放至${zName[toZone]}`);
+  }
+  return true;
+}
+window.moveUioSlipBetweenZones = moveUioSlipBetweenZones;
+
+function bindUioDragHandlers(){
+  const zoneDefs = [
+    { el: $('uioZoneQueue'), zone: 'queue' },
+    { el: $('uioZoneDrafts'), zone: 'draft' },
+    { el: $('uioZoneArchive'), zone: 'archive' }
+  ];
+  zoneDefs.forEach(({ el, zone }) => {
+    if (!el || el.dataset.dndBound) return;
+    el.dataset.dndBound = '1';
+    el.addEventListener('dragover', (e) => {
+      if (!uioDragCtx) return;
+      e.preventDefault();
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', (e) => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      if (!uioDragCtx) return;
+      const targetSlipEl = e.target.closest('.uio-slip[data-slip-id]');
+      const beforeId = targetSlipEl ? targetSlipEl.getAttribute('data-slip-id') : null;
+      const ctx = uioDragCtx;
+      uioDragCtx = null;
+      if (beforeId === ctx.slipId && ctx.fromZone === zone) return;
+      moveUioSlipBetweenZones(ctx.slipId, ctx.fromZone, zone, beforeId);
+    });
+  });
+
+  document.querySelectorAll('#uioClipboard .uio-slip[draggable="true"]').forEach(el => {
+    el.addEventListener('dragstart', (e) => {
+      const slipId = el.getAttribute('data-slip-id');
+      const fromZone = el.getAttribute('data-zone');
+      uioDragCtx = { slipId, fromZone };
+      el.classList.add('dragging');
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', `${fromZone}:${slipId}`);
+      }
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      uioDragCtx = null;
+      document.querySelectorAll('#uioClipboard .uio-zone.drag-over').forEach(z => z.classList.remove('drag-over'));
+    });
+  });
+}
+
+function renderUioBoard(){
+  // 1. 第一块：指挥命令纸条区 (常驻唯一实体 SLIP-CMD-0000，核心体现 G 场是否被赋值)
+  ensureStandingCommandSlip();
+  const cmdSlips = uioState.commandSlips;
+  const gBadge = $('uioGFieldBadge');
+  const cmdList = $('uioCommandList');
+  const assignedSlips = cmdSlips.filter(s => s.state === SLIP_STATES.G_ASSIGNED);
+  const gAssigned = assignedSlips.length > 0;
+  if (gBadge) {
+    gBadge.textContent = gAssigned ? `G场: 已赋值 (${assignedSlips.length})` : 'G场: 未赋值';
+    gBadge.classList.toggle('assigned', gAssigned);
+  }
+  if (cmdList) {
+    cmdList.innerHTML = cmdSlips.map(s => {
+      const isAssigned = s.state === SLIP_STATES.G_ASSIGNED;
+      return `
+        <div class="uio-slip cmd-slip ${isAssigned ? '' : 'cmd-unassigned'}" data-slip-id="${s.id}" data-slip-state="${s.state}" data-zone="command" draggable="false">
+          <div class="uio-slip-top">
+            <span class="uio-slip-title">${s.standing ? '★' : s.id} ${s.title}</span>
+            <span class="uio-slip-badge">${isAssigned ? 'G场已赋值' : 'G场未赋值'}</span>
+          </div>
+          <div class="uio-slip-meta">
+            <span>ID: ${s.id}</span>
+            <span>范围: ${s.scopeLabel || '本班'}</span>
+            <span>ROE: ${s.roeLabel || '自由开火'}</span>
+          </div>
+          <div class="uio-slip-actions">
+            ${isAssigned
+              ? `<button class="uio-act-btn" type="button" onclick="window.__clearGSlip('${s.id}')">解除G场赋值</button>`
+              : `<button class="uio-act-btn" type="button" onclick="window.openUioa('panelCmd')">赋值 G 场</button>`}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 2. 第二块：任务和事件纸条区 (未激活时可自由拖拽；一旦触发起始事件即常亮置顶第1位、不可拖动、不可撤销)
+  const queueSlips = uioState.queueSlips;
+  const qList = $('uioQueueList');
+  if ($('uioQueueCount')) $('uioQueueCount').textContent = `${queueSlips.length} 张`;
+  if (qList) {
+    if (queueSlips.length === 0) {
+      qList.innerHTML = '<div class="uio-empty">暂无正式纸条（可从草稿区或归档栏拖入）</div>';
+    } else {
+      qList.innerHTML = queueSlips.map((s, idx) => {
+        const isLocked = s.state === SLIP_STATES.ACTIVE_LOCKED;
+        const reuseTag = (!isLocked && s.runCount > 0) ? ` · 复用(${s.runCount}次)` : (isLocked && s.runCount > 1 ? ` · 第${s.runCount}次` : '');
+        return `
+        <div class="uio-slip ${isLocked ? 'active-locked' : 'draggable-slip'}" data-slip-id="${s.id}" data-slip-state="${s.state}" data-run-count="${s.runCount || 0}" data-zone="queue" data-active-locked="${String(isLocked)}" draggable="${String(!isLocked)}">
+          <div class="uio-slip-top">
+            <span class="uio-slip-title">${isLocked ? (idx === 0 ? '⚡ [第1位]' : '⚡') : '<span class="drag-grip" title="未激活可自由拖动">⠿</span>'} ${s.id} ${s.title}</span>
+            <span class="uio-slip-badge">${isLocked ? '常亮执行 · 锁定' + reuseTag : '待命 · 可拖' + reuseTag}</span>
+          </div>
+          <div class="uio-slip-meta">
+            <span>${s.timeSpecText || '起: 06:30:00'}</span>
+            ${s.weaponSpecText ? `<span>${s.weaponSpecText}</span>` : ''}
+            ${s.goalText ? `<span>${s.goalText}</span>` : ''}
+          </div>
+          <div class="uio-slip-actions">
+            ${!isLocked ? `<button class="uio-act-btn" type="button" onclick="window.triggerUioSlipStart('${s.id}')">触发起始</button>` : ''}
+            <button class="uio-act-btn ${isLocked ? 'locked' : ''}" type="button" ${isLocked ? 'disabled title="已触发起始事件，锁死不可直接撤销"' : ''} onclick="window.revokeUioQueueSlip('${s.id}')">${isLocked ? '🔒 不可撤销' : '撤销'}</button>
+            <button class="uio-act-btn" type="button" onclick="window.finishUioSlipToArchive('${s.id}','完工结项')">完工归档</button>
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+  }
+
+  // 3. 第三块：草稿纸条放置区 (全部可自由拖拽至第二块/归档栏)
+  const draftSlips = uioState.draftSlips;
+  const dList = $('uioDraftList');
+  if ($('uioDraftCount')) $('uioDraftCount').textContent = `${draftSlips.length} 张预备`;
+  if (dList) {
+    if (draftSlips.length === 0) {
+      dList.innerHTML = '<div class="uio-empty">暂无草稿（可保存草稿或从第二块/归档栏拖回）</div>';
+    } else {
+      dList.innerHTML = draftSlips.map(s => `
+        <div class="uio-slip draft-slip draggable-slip" data-slip-id="${s.id}" data-slip-state="${s.state}" data-run-count="${s.runCount || 0}" data-zone="draft" draggable="true">
+          <div class="uio-slip-top">
+            <span class="uio-slip-title"><span class="drag-grip" title="可拖动至第二块或归档栏">⠿</span> ${s.id} ${s.title}</span>
+            <span class="uio-slip-badge">草稿 · 可拖${s.runCount > 0 ? ` · 曾用${s.runCount}次` : ''}</span>
+          </div>
+          <div class="uio-slip-meta">
+            <span>${s.timeSpecText || '起: 06:30:00'}</span>
+            ${s.weaponSpecText ? `<span>${s.weaponSpecText}</span>` : ''}
+          </div>
+          <div class="uio-slip-actions">
+            <button class="uio-act-btn" type="button" onclick="window.promoteUioDraftSlip('${s.id}')">排入队列</button>
+            <button class="uio-act-btn" type="button" onclick="window.__deleteDraftSlip('${s.id}')">撕毁</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 4. 归档栏 (实体纸条落袋保存，拖回第二块/第三块即原实体抽回复用，绝不克隆)
+  const archiveSlips = uioState.archiveSlips;
+  const aList = $('uioArchiveList');
+  if ($('uioArchiveCount')) $('uioArchiveCount').textContent = `${archiveSlips.length} 已归档`;
+  if (aList) {
+    if (archiveSlips.length === 0) {
+      aList.innerHTML = '<div class="uio-empty">暂无归档纸条（完工纸条自动落袋，可抽回原纸重复使用）</div>';
+    } else {
+      aList.innerHTML = archiveSlips.map(s => `
+        <div class="uio-slip archive-slip draggable-slip" data-slip-id="${s.id}" data-slip-state="${s.state}" data-run-count="${s.runCount || 0}" data-zone="archive" draggable="true" title="将原纸条实体抽回第二块或第三块重复使用">
+          <div class="uio-slip-top">
+            <span class="uio-slip-title"><span class="drag-grip" title="抽回原纸至第二块/第三块复用">⠿</span> ✓ ${s.id} ${s.title}</span>
+            <span class="uio-slip-badge">${s.archivedAtStr || '已归档'}${s.runCount > 0 ? ` · ${s.runCount}次` : ''}</span>
+          </div>
+          <div class="uio-slip-meta">
+            <span>${s.archiveReason || '执行结束自动归档'}</span>
+            <span>${s.timeSpecText || ''}</span>
+          </div>
+          <div class="uio-slip-actions">
+            <button class="uio-act-btn" type="button" onclick="window.moveUioSlipBetweenZones('${s.id}','archive','queue')">↺ 抽回复用</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  bindUioDragHandlers();
+}
+window.renderUioBoard = renderUioBoard;
+window.renderUnifiedQueue = renderUioBoard;
+window.__deleteDraftSlip = deleteUioDraftSlip;
+window.__clearGSlip = clearUioGFieldSlip;
+
 if($('btnClearUnifiedQueue')){
   $('btnClearUnifiedQueue').addEventListener('click',()=>{
-    stagedOpsCount=Math.max(0,stagedOpsCount-unifiedQueue.length);
-    unifiedQueue=[];
-    stagedActions=[];
-    stagedEvents=[];
-    renderUnifiedQueue();
+    const lockedCount = uioState.queueSlips.filter(s => s.activeLocked).length;
+    const removable = uioState.queueSlips.length - lockedCount;
+    uioState.queueSlips = uioState.queueSlips.filter(s => s.activeLocked);
+    stagedOpsCount = Math.max(0, stagedOpsCount - removable);
+    sortUioQueueSlips();
+    renderUioBoard();
     updatePulseStaging();
-    $('virtualInstancesLayer').innerHTML='';
-    notify('已清空统一规划队列');
+    if (lockedCount > 0) {
+      notify(`已清除未锁定排队纸条；${lockedCount} 张常亮执行中纸条受锁不可直接撤销！`);
+    } else {
+      $('virtualInstancesLayer').innerHTML='';
+      notify('已清空未锁定任务纸条');
+    }
   });
 }
 
@@ -1489,57 +2172,113 @@ Object.keys(REORG_EQUIP_OP_MAP).forEach(btnId=>{
 });
 
 // -----------------------------------------------------------------------------
-// UI-03M1 任务队列四行级联状态机
+// UIOA 任务纸条五行级联状态机（第五行时间轴 + 轻/重武器严格区分 + 双出口）
 // -----------------------------------------------------------------------------
-let currentTaskAction='move',currentTaskMode='fast';
+let currentTaskAction='move',currentTaskMode='fast',currentFireWeaponClass='light';
+
+function refreshTimelineOptionLabels(){
+  const startSel=$('taskStartTimeSelect');
+  const endSel=$('taskEndTimeSelect');
+  if(startSel){
+    Array.from(startSel.options).forEach(opt=>{
+      const off=Number(opt.value||0);
+      opt.textContent = off===0 ? `+0s (立即 ${formatRelOrAbsTime(0)})` : `+${off}s (${formatRelOrAbsTime(off)})`;
+    });
+  }
+  if(endSel){
+    Array.from(endSel.options).forEach(opt=>{
+      const off=Number(opt.value||16);
+      opt.textContent = `+${off}s (${formatRelOrAbsTime(off)})`;
+    });
+  }
+}
+
 function updateTaskMatrixUI(){
   const modeGroup=$('taskModeGroup');
+  const weaponRow=$('taskRowWeaponClass');
   const row3=$('taskRow3'),row3Label=$('taskRow3Label');
+  const row5Label=$('taskRow5Label');
+  const endWrap=$('taskEndTimeWrap');
+  const goalRow=$('taskRowGoal');
   const slider=$('taskParamSlider'),valText=$('taskParamVal');
   const r1=$('taskReadout1'),r2=$('taskReadout2'),r3=$('taskReadout3');
   if(!modeGroup)return;
+
+  refreshTimelineOptionLabels();
+  const startOff = Number($('taskStartTimeSelect') ? $('taskStartTimeSelect').value : 0);
+  let endOff = Number($('taskEndTimeSelect') ? $('taskEndTimeSelect').value : 32);
+  if (endOff <= startOff && $('taskEndTimeSelect')) {
+    endOff = startOff + 16;
+    const match = Array.from($('taskEndTimeSelect').options).find(o => Number(o.value) >= endOff);
+    if (match) { $('taskEndTimeSelect').value = match.value; endOff = Number(match.value); }
+  }
+  const durSec = Math.max(16, endOff - startOff);
+
+  if(weaponRow) weaponRow.style.display = currentTaskAction==='fire' ? 'flex' : 'none';
+  if(goalRow) goalRow.style.display = currentTaskAction==='stop' ? 'none' : 'flex';
 
   if(currentTaskAction==='move'){
     modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='fast'?'active':''}" data-mode="fast">快速</button><button class="sub-btn ${currentTaskMode==='normal'?'active':''}" data-mode="normal">正常</button><button class="sub-btn ${currentTaskMode==='stealth'?'active':''}" data-mode="stealth">隐蔽</button>`;
     if(row3)row3.style.display='flex';
     if(row3Label)row3Label.textContent='三 · 约束';
-    if(slider){slider.min=0;slider.max=100;slider.value=80;}
-    if(valText)valText.textContent='0.80 (直线偏好)';
+    if(slider){slider.min=0;slider.max=100;slider.step=1;if(Number(slider.value)>100||Number(slider.value)<0)slider.value=80;}
+    const lam=(Number(slider?slider.value:80)/100).toFixed(2);
+    if(valText)valText.textContent=`${lam} (${Number(lam)>0.8?'直线偏好':'避障偏好'})`;
+    if(row5Label)row5Label.textContent='五 · 起时间';
+    if(endWrap)endWrap.style.display='none';
     if(r1)r1.textContent='速度: '+(currentTaskMode==='fast'?'5.6 m/s':(currentTaskMode==='stealth'?'2.2 m/s':'4.0 m/s'));
-    if(r2)r2.textContent='ETA: ~48 s';
+    if(r2)r2.textContent=`起时: ${formatRelOrAbsTime(startOff)}`;
     if(r3)r3.textContent='体能/组织度: -4%';
   }else if(currentTaskAction==='fire'){
-    modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='fast'?'active':''}" data-mode="fast">快速</button><button class="sub-btn ${currentTaskMode==='normal'?'active':''}" data-mode="normal">正常</button><button class="sub-btn ${currentTaskMode==='accurate'?'active':''}" data-mode="accurate">精准</button>`;
-    if(row3)row3.style.display='flex';
-    if(row3Label)row3Label.textContent='三 · 轮数';
-    if(slider){slider.min=1;slider.max=10;slider.value=3;}
-    if(valText)valText.textContent='3 轮 (持续压制)';
-    if(r1)r1.textContent='每轮耗时: 16 s';
-    if(r2)r2.textContent='总射击耗时: 48 s';
-    if(r3)r3.textContent='预估弹药消耗: 36 发';
+    modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='fast'?'active':''}" data-mode="fast">快速压制</button><button class="sub-btn ${currentTaskMode==='normal'?'active':''}" data-mode="normal">标准点射</button><button class="sub-btn ${currentTaskMode==='accurate'?'active':''}" data-mode="accurate">精准瞄射</button>`;
+    document.querySelectorAll('#fireWeaponClassGroup .sub-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.wclass===currentFireWeaponClass);
+    });
+    if(currentFireWeaponClass==='light'){
+      // 铁律：轻武器固定使用起止时间（隐藏轮数行，显示起始+结束时间）
+      if(row3)row3.style.display='none';
+      if(row5Label)row5Label.textContent='五 · 起止时间';
+      if(endWrap)endWrap.style.display='flex';
+      if(r1)r1.textContent='武器制式: 轻武器 (按起止时间持续交火)';
+      if(r2)r2.textContent=`交火窗: ${formatRelOrAbsTime(startOff)} → ${formatRelOrAbsTime(endOff)} (${durSec}s)`;
+      if(r3)r3.textContent=`预估弹药消耗: ${Math.round(durSec * 1.5)} 发`;
+    }else{
+      // 铁律：重武器只能使用起时间和轮数；重武器的起时间严格在轮数下一行，严禁出现结束时间
+      if(row3)row3.style.display='flex';
+      if(row3Label)row3Label.textContent='三 · 轮数';
+      if(slider){slider.min=1;slider.max=10;slider.step=1;if(Number(slider.value)>10||Number(slider.value)<1)slider.value=3;}
+      const rounds=Number(slider?slider.value:3);
+      if(valText)valText.textContent=`${rounds} 轮齐射`;
+      if(row5Label)row5Label.textContent='起时间 (轮数下)';
+      if(endWrap)endWrap.style.display='none';
+      if(r1)r1.textContent='武器制式: 重武器 (仅限轮数 + 起时间)';
+      if(r2)r2.textContent=`齐射轮数: ${rounds} 轮 · 起时 ${formatRelOrAbsTime(startOff)}`;
+      if(r3)r3.textContent=`预估重弹药消耗: ${rounds * 2} 发`;
+    }
   }else if(currentTaskAction==='stop'){
     modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='prone'?'active':''}" data-mode="prone">趴下</button><button class="sub-btn ${currentTaskMode==='cover'?'active':''}" data-mode="cover">掩体</button><button class="sub-btn ${currentTaskMode==='hold'?'active':''}" data-mode="hold">原地不动</button>`;
-    if(row3)row3.style.display='flex';
-    if(row3Label)row3Label.textContent='三 · 时间';
-    if(slider){slider.min=16;slider.max=320;slider.step=16;slider.value=32;}
-    if(valText)valText.textContent='32 秒 (2步长)';
-    if(r1)r1.textContent='掩体减伤: +40%';
-    if(r2)r2.textContent='隐蔽加成: +30%';
+    // 停止使用第五行起始时间 + 结束时间
+    if(row3)row3.style.display='none';
+    if(row5Label)row5Label.textContent='五 · 起止时间';
+    if(endWrap)endWrap.style.display='flex';
+    if(r1)r1.textContent=`驻止窗: ${formatRelOrAbsTime(startOff)} → ${formatRelOrAbsTime(endOff)} (${durSec}s)`;
+    if(r2)r2.textContent='掩体减伤: +40% · 隐蔽 +30%';
     if(r3)r3.textContent='预估组织度恢复: +8%';
   }else if(currentTaskAction==='retreat'){
     modeGroup.innerHTML=`<button class="sub-btn ${currentTaskMode==='orderly'?'active':''}" data-mode="orderly">有序撤退</button><button class="sub-btn ${currentTaskMode==='flee'?'active':''}" data-mode="flee">直接跑路</button>`;
+    if(row5Label)row5Label.textContent='五 · 起时间';
+    if(endWrap)endWrap.style.display='none';
     if(currentTaskMode==='flee'){
-      // 铁律：选 直接跑路 时隐藏第三行，自治逃逸不可控方向！
       if(row3)row3.style.display='none';
       if(r1)r1.textContent='撤退速度: 6.8 m/s';
-      if(r2)r2.textContent='自治态: I/G场无序逃逸';
+      if(r2)r2.textContent=`起时: ${formatRelOrAbsTime(startOff)} · 自治逃逸`;
       if(r3)r3.textContent='代价: 丧失战场控制权';
     }else{
       if(row3)row3.style.display='flex';
       if(row3Label)row3Label.textContent='三 · 抛弃';
       if(valText)valText.textContent='抛弃重武器';
       if(r1)r1.textContent='撤退速度: 4.8 m/s';
-      if(r2)r2.textContent='ETA: ~64 s';
+      if(r2)r2.textContent=`起时: ${formatRelOrAbsTime(startOff)}`;
       if(r3)r3.textContent='交替掩护后撤';
     }
   }
@@ -1551,6 +2290,15 @@ function updateTaskMatrixUI(){
     });
   });
 }
+
+document.querySelectorAll('#fireWeaponClassGroup .sub-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    currentFireWeaponClass = btn.dataset.wclass;
+    updateTaskMatrixUI();
+  });
+});
+if($('taskStartTimeSelect')) $('taskStartTimeSelect').addEventListener('change', updateTaskMatrixUI);
+if($('taskEndTimeSelect')) $('taskEndTimeSelect').addEventListener('change', updateTaskMatrixUI);
 
 ['btnTaskMove','btnTaskFire','btnTaskStop','btnTaskRetreat'].forEach(id=>{
   const btn=$(id);
@@ -1650,13 +2398,7 @@ function triggerPreviewPlan() {
 
 if($('taskParamSlider')){
   $('taskParamSlider').addEventListener('input',e=>{
-    if(currentTaskAction==='move'){
-      $('taskParamVal').textContent=(e.target.value/100).toFixed(2)+(e.target.value>80?' (直线偏好)':' (避障偏好)');
-    }else if(currentTaskAction==='fire'){
-      $('taskParamVal').textContent=e.target.value>=10?'MAX (持续压制直至打光)':`${e.target.value} 轮射击`;
-    }else if(currentTaskAction==='stop'){
-      $('taskParamVal').textContent=`${e.target.value} 秒 (${Math.round(e.target.value/16)}步长)`;
-    }
+    updateTaskMatrixUI();
     triggerPreviewPlan();
   });
 }
@@ -1676,54 +2418,100 @@ if($('btnPickEventGoal')){
   });
 }
 
-async function commitTaskToQueue(){
-  if (!pendingMapGoal) {
-    if (currentTaskAction === 'retreat') {
-      const startX = selected ? selected.x : 455;
-      const startY = selected ? selected.y : 505;
-      pendingMapGoal = [Math.max(40, startX - 80), Math.min(840, startY + 60)];
+function buildTaskSlipFromUioa(){
+  const startOff = Number($('taskStartTimeSelect') ? $('taskStartTimeSelect').value : 0);
+  const endOff = Number($('taskEndTimeSelect') ? $('taskEndTimeSelect').value : 32);
+  const startAbs = clockSeconds + startOff;
+  const usesEndTime = currentTaskAction==='stop' || (currentTaskAction==='fire' && currentFireWeaponClass==='light');
+  const usesRounds = currentTaskAction==='fire' && currentFireWeaponClass==='heavy';
+  const rounds = usesRounds ? Math.max(1, Math.min(10, Number($('taskParamSlider') ? $('taskParamSlider').value : 3))) : null;
+  const endAbs = usesEndTime ? clockSeconds + Math.max(startOff + 16, endOff) : null;
+
+  const actionLabel = currentTaskAction==='move'?'移动':(currentTaskAction==='fire'?'射击':(currentTaskAction==='stop'?'停止':'撤退'));
+  let timeSpecText = `起: ${formatRelOrAbsTime(startOff)}`;
+  if (usesEndTime) timeSpecText = `起: ${formatRelOrAbsTime(startOff)} → 止: ${formatRelOrAbsTime(Math.max(startOff + 16, endOff))}`;
+  let weaponSpecText = '';
+  if (currentTaskAction==='fire') {
+    weaponSpecText = currentFireWeaponClass==='light' ? '轻武器(起止时间)' : `重武器(${rounds}轮齐射)`;
+  }
+  return { startOff, endOff, startAbs, endAbs, usesEndTime, usesRounds, rounds, actionLabel, timeSpecText, weaponSpecText };
+}
+
+async function submitTaskSlip(asDraft=false){
+  const spec = buildTaskSlipFromUioa();
+  if (!pendingMapGoal && !asDraft) {
+    if (currentTaskAction === 'retreat' || currentTaskAction === 'stop') {
+      const startX = selected ? selected.x : 558;
+      const startY = selected ? selected.y : 425;
+      pendingMapGoal = currentTaskAction === 'stop' ? [startX, startY] : [Math.max(40, startX - 80), Math.min(840, startY + 60)];
     } else {
       startMapPick('task_goal', '请先在地图上点击标定任务目标点后再排入队列！');
       return;
     }
   }
 
-  stagedOpsCount++;
-  const seq = unifiedQueue.length + 1;
-  const startX = selected ? selected.x : 455;
-  const startY = selected ? selected.y : 505;
-  const targetX = pendingMapGoal[0];
-  const targetY = pendingMapGoal[1];
-
-  const taskItem = {
-    seq,
-    type: 'task',
-    action: currentTaskAction,
-    mode: currentTaskMode,
-    title: `${currentTaskAction==='move'?'移动':(currentTaskAction==='fire'?'射击':(currentTaskAction==='stop'?'停止':'撤退'))} (${currentTaskMode})`,
-    goal: [targetX, targetY]
-  };
-  unifiedQueue.push(taskItem);
+  const startX = selected ? selected.x : 558;
+  const startY = selected ? selected.y : 425;
+  const targetX = pendingMapGoal ? pendingMapGoal[0] : startX;
+  const targetY = pendingMapGoal ? pendingMapGoal[1] : startY;
   const startGrid = svgToGrid(startX, startY);
   const targetGrid = svgToGrid(targetX, targetY);
-  stagedActions.push({
+
+  const actionPayload = {
     unit_id: getActiveFriendlyUnitId(),
-    action: taskItem.title,
+    piece_id: getActiveFriendlyUnitId(),
+    action: currentTaskAction,
     goal: [targetGrid.r, targetGrid.c],
-    move_mode: currentTaskMode
+    move_mode: currentTaskMode,
+    start_offset_sec: spec.startOff,
+    end_offset_sec: spec.usesEndTime ? Math.max(spec.startOff + 16, spec.endOff) : null,
+    weapon_class: currentTaskAction==='fire' ? currentFireWeaponClass : null,
+    rounds: spec.rounds
+  };
+
+  const autoStart = !asDraft && spec.startOff <= 0;
+  const slip = registerSlipInstance({
+    type: 'task',
+    zone: asDraft ? 'draft' : 'queue',
+    state: asDraft ? SLIP_STATES.DRAFT : (autoStart ? SLIP_STATES.ACTIVE_LOCKED : SLIP_STATES.QUEUED),
+    action: currentTaskAction,
+    mode: currentTaskMode,
+    weaponClass: currentTaskAction==='fire' ? currentFireWeaponClass : null,
+    title: `${spec.actionLabel} (${currentTaskMode})`,
+    goal: [targetX, targetY],
+    goalText: currentTaskAction==='stop' ? '现地驻止' : `r:${targetGrid.r} c:${targetGrid.c}`,
+    startOffsetSec: spec.startOff,
+    startTimeSec: spec.startAbs,
+    endTimeSec: spec.endAbs,
+    rounds: spec.rounds,
+    remainingRounds: spec.rounds,
+    timeSpecText: spec.timeSpecText,
+    weaponSpecText: spec.weaponSpecText,
+    stagedActionPayload: actionPayload
   });
-  renderUnifiedQueue();
+  actionPayload.slip_id = slip.id;
+  const seq = slip.seq;
+
+  if (asDraft) {
+    renderUioBoard();
+    notify(`已保存草稿纸条实体：${slip.id} ${slip.title}（置于 UIO 第三块草稿区）`);
+    return;
+  }
+
+  stagedOpsCount++;
+  stagedActions.push(actionPayload);
+  sortUioQueueSlips();
+  renderUioBoard();
   updatePulseStaging();
 
-  // 调用后端 /api/preview_plan 获取真实 RK2 增广流线
-  if (window.location.protocol.startsWith('http')) {
+  if (window.location.protocol.startsWith('http') && currentTaskAction !== 'stop') {
     try {
       const pRes = await fetch('/api/preview_plan', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           plan_type: 'move',
-          piece_id: selected ? selected.id : 'red_1',
+          piece_id: selected ? selected.id : getActiveFriendlyUnitId(),
           start_pos: [startGrid.r, startGrid.c],
           goal_pos: [targetGrid.r, targetGrid.c],
           lambda: parseFloat($('taskParamSlider') ? $('taskParamSlider').value : 80) / 100
@@ -1752,11 +2540,13 @@ async function commitTaskToQueue(){
   }
 
   addVirtualInstance(targetX, targetY, `@#${seq}`);
-  notify(`任务已排入队列：#${seq} ${taskItem.title}，目标 (${targetX}, ${targetY}) 真实流线已生成`);
+  notify(`纸条 #${seq} [${slip.title}] 已排入 UIO 第二块${slip.activeLocked ? '（已触发起始事件：常亮置顶锁死）' : ''}`);
   if ($('taskGoalCoordText')) $('taskGoalCoordText').textContent = `已排入队列: (${targetX}, ${targetY})`;
   pendingMapGoal = null;
 }
-if($('btnConfirmTask'))$('btnConfirmTask').addEventListener('click',commitTaskToQueue);
+
+if($('btnConfirmTask'))$('btnConfirmTask').addEventListener('click',()=>submitTaskSlip(false));
+if($('btnDraftTask'))$('btnDraftTask').addEventListener('click',()=>submitTaskSlip(true));
 
 // -----------------------------------------------------------------------------
 // UI-03M2 九大事件宏与装备门控状态机
@@ -1821,39 +2611,51 @@ document.querySelectorAll('#eventMacroGroup .sub-btn').forEach(btn=>{
   });
 });
 
-async function commitEventToQueue(){
-  const originX = (selected ? selected.x : 455);
-  const originY = (selected ? selected.y : 505);
+async function commitEventToQueue(asDraft=false){
+  const originX = (selected ? selected.x : 558);
+  const originY = (selected ? selected.y : 425);
 
   if (currentEvent === 'demolish') {
-    if (!pendingDemolishTarget || !pendingDemolishSwitch) {
+    if (!asDraft && (!pendingDemolishTarget || !pendingDemolishSwitch)) {
       startMapPick('demolish_step1', '【第一步】请在地图上点击标定待爆破工事目标点');
       return;
     }
-    stagedOpsCount++;
-    const seq = unifiedQueue.length + 1;
-    const evItem = {
-      seq,
-      type: 'event',
-      event: currentEvent,
-      title: `宏:爆破破障`
-    };
-    unifiedQueue.push(evItem);
-    const demTargetGrid = svgToGrid(pendingDemolishTarget[0], pendingDemolishTarget[1]);
-    const demSwitchGrid = svgToGrid(pendingDemolishSwitch[0], pendingDemolishSwitch[1]);
-    stagedEvents.push({
+    const targetPx = pendingDemolishTarget || [originX, originY];
+    const switchPx = pendingDemolishSwitch || [originX + 20, originY + 20];
+    const demTargetGrid = svgToGrid(targetPx[0], targetPx[1]);
+    const demSwitchGrid = svgToGrid(switchPx[0], switchPx[1]);
+    const evPayload = {
       unit_id: getActiveFriendlyUnitId(),
       kind: 'demolish',
       event_type: 'demolish',
       target_px: [demTargetGrid.r, demTargetGrid.c],
       switch_px: [demSwitchGrid.r, demSwitchGrid.c],
       duration_h: 0.25
+    };
+    const evSlip = registerSlipInstance({
+      type: 'event',
+      zone: asDraft ? 'draft' : 'queue',
+      state: asDraft ? SLIP_STATES.DRAFT : SLIP_STATES.ACTIVE_LOCKED,
+      event: currentEvent,
+      title: '宏:爆破破障',
+      timeSpecText: `起: ${formatRelOrAbsTime(0)}`,
+      goalText: `r:${demTargetGrid.r} c:${demTargetGrid.c}`,
+      startOffsetSec: 0,
+      startTimeSec: clockSeconds,
+      stagedEventPayload: evPayload
     });
-    renderUnifiedQueue();
+    evPayload.slip_id = evSlip.id;
+    const seq = evSlip.seq;
+    if (asDraft) {
+      renderUioBoard();
+      notify(`爆破纸条实体 ${evSlip.id} 已保存至 UIO 第三块草稿区`);
+      return;
+    }
+    stagedOpsCount++;
+    stagedEvents.push(evPayload);
+    sortUioQueueSlips();
+    renderUioBoard();
     updatePulseStaging();
-
-    const targetPx = pendingDemolishTarget;
-    const switchPx = pendingDemolishSwitch;
 
     // 绘制真实导线
     svgNode('path', {
@@ -1863,9 +2665,7 @@ async function commitEventToQueue(){
       'stroke-width': '1.8',
       'stroke-dasharray': '4 2'
     }, $('drawDraftLayer'));
-    // 在工事点加虚拟实例
     addVirtualInstance(targetPx[0], targetPx[1], `TNT-25kg`);
-    // 在安全撤离点生成 DetonatorSwitch 实体
     const swG = svgNode('g', {
       class: 'detonator-switch-entity',
       transform: `translate(${switchPx[0]} ${switchPx[1]})`,
@@ -1884,13 +2684,13 @@ async function commitEventToQueue(){
             body: JSON.stringify({
               op: 'detonate_switch',
               switch_id: 'sw_01',
-              piece_id: selected ? selected.id : 'red_1'
+              piece_id: selected ? selected.id : getActiveFriendlyUnitId()
             })
           });
         } catch(e) {}
       }
     });
-    notify(`爆破任务已排入队列：已架设真实安全引爆电缆，起爆开关置于 (${switchPx[0]}, ${switchPx[1]})`);
+    notify(`爆破纸条 #${seq} 已排入 UIO 第二块（常亮置顶锁死）`);
     pendingDemolishTarget = null;
     pendingDemolishSwitch = null;
     if ($('eventGoalCoordText')) $('eventGoalCoordText').textContent = '未标定 (多边形/单点/爆破电缆)';
@@ -1898,25 +2698,38 @@ async function commitEventToQueue(){
   }
 
   // 其余工程事件
-  stagedOpsCount++;
-  const seq = unifiedQueue.length + 1;
-  const evItem = {
-    seq,
-    type: 'event',
-    event: currentEvent,
-    title: `宏:${currentEvent}`
-  };
-  unifiedQueue.push(evItem);
   const targetPt = pendingMapGoal || [originX, originY];
   const targetGrid = svgToGrid(targetPt[0], targetPt[1]);
-  stagedEvents.push({
+  const evPayload = {
     unit_id: getActiveFriendlyUnitId(),
     kind: currentEvent,
     event_type: currentEvent,
     target_px: [targetGrid.r, targetGrid.c],
     duration_h: 0.25
+  };
+  const evSlip = registerSlipInstance({
+    type: 'event',
+    zone: asDraft ? 'draft' : 'queue',
+    state: asDraft ? SLIP_STATES.DRAFT : SLIP_STATES.ACTIVE_LOCKED,
+    event: currentEvent,
+    title: `宏:${currentEvent}`,
+    timeSpecText: `起: ${formatRelOrAbsTime(0)}`,
+    goalText: `r:${targetGrid.r} c:${targetGrid.c}`,
+    startOffsetSec: 0,
+    startTimeSec: clockSeconds,
+    stagedEventPayload: evPayload
   });
-  renderUnifiedQueue();
+  evPayload.slip_id = evSlip.id;
+  const seq = evSlip.seq;
+  if (asDraft) {
+    renderUioBoard();
+    notify(`事件纸条实体 ${evSlip.id} [${evSlip.title}] 已保存至 UIO 第三块草稿区`);
+    return;
+  }
+  stagedOpsCount++;
+  stagedEvents.push(evPayload);
+  sortUioQueueSlips();
+  renderUioBoard();
   updatePulseStaging();
 
   if (window.location.protocol.startsWith('http') && (currentEvent === 'mine' || currentEvent === 'trench')) {
@@ -1956,10 +2769,11 @@ async function commitEventToQueue(){
     for(let k=1; k<=3; k++){
       addVirtualInstance(originX + k*20, originY + k*10, `${currentEvent}-${k}`);
     }
-    notify(`事件已排入队列：#${seq} ${evItem.title}，已生成施工虚拟实例`);
+    notify(`事件纸条 #${seq} 已排入 UIO 第二块（常亮置顶锁死）`);
   }
 }
-if($('btnConfirmEvent'))$('btnConfirmEvent').addEventListener('click',commitEventToQueue);
+if($('btnConfirmEvent'))$('btnConfirmEvent').addEventListener('click',()=>commitEventToQueue(false));
+if($('btnDraftEvent'))$('btnDraftEvent').addEventListener('click',()=>commitEventToQueue(true));
 
 // -----------------------------------------------------------------------------
 // UI-03M3 六行指挥面板与 6/7 严格互斥逻辑
@@ -2004,16 +2818,63 @@ document.querySelectorAll('#cmdItemsGrid .cmd-item-btn').forEach(btn=>{
   });
 });
 
-if($('btnConfirmCmd')){
-  $('btnConfirmCmd').addEventListener('click',()=>{
-    stagedOpsCount++;
-    const activeItem=document.querySelector('#cmdItemsGrid .cmd-item-btn.active');
-    const name=activeItem?activeItem.textContent:'态势场';
-    stagedFieldDirectives[name]=true;
+function submitCmdSlip(asDraft=false){
+  const activeItem=document.querySelector('#cmdItemsGrid .cmd-item-btn.active');
+  const name=activeItem?activeItem.textContent:'态势场';
+  const scopeBtn=document.querySelector('#cmdTargetGroup .sub-btn.active');
+  const roeBtn=document.querySelector('#roeFireGroup .sub-btn.active');
+  const cmdTitle = `[${cmdMode==='order'?'指令(线)':'AO(面)'}] ${name}`;
+  const scopeLabel = scopeBtn ? scopeBtn.textContent : '指定单一单位';
+  const roeLabel = roeBtn ? roeBtn.textContent : '自由开火';
+
+  if (asDraft) {
+    const draftCmd = registerSlipInstance({
+      type: 'cmd',
+      zone: 'draft',
+      state: SLIP_STATES.DRAFT,
+      mode: cmdMode,
+      title: cmdTitle,
+      scopeLabel,
+      roeLabel,
+      timeSpecText: 'G场赋值(非任务队列)'
+    });
+    renderUioBoard();
+    notify(`指挥命令草稿实体 ${draftCmd.id} 已保存至 UIO 第三块草稿区`);
+    return;
+  }
+  stagedOpsCount++;
+  stagedFieldDirectives[name]=true;
+  const standing = ensureStandingCommandSlip();
+  if (standing.state === SLIP_STATES.G_UNASSIGNED) {
+    standing.title = cmdTitle;
+    standing.scopeLabel = scopeLabel;
+    standing.roeLabel = roeLabel;
+    standing.mode = cmdMode;
+    transitionSlipInstance(standing.id, 'command', SLIP_STATES.G_ASSIGNED, {
+      preserveOrder: true,
+      note: `UIOA 签发 G 场赋值 (${name})`
+    });
+    renderUioBoard();
     updatePulseStaging();
-    notify(`已生成欧拉势场 [${cmdMode.toUpperCase()}: ${name}]，将于下个 16s 步长生效`);
+    notify(`常驻指挥纸条 ${standing.id} 已就地赋入 G 场 (${name})`);
+    return;
+  }
+  const extraCmd = registerSlipInstance({
+    type: 'cmd',
+    zone: 'command',
+    state: SLIP_STATES.G_ASSIGNED,
+    mode: cmdMode,
+    title: cmdTitle,
+    scopeLabel,
+    roeLabel,
+    timeSpecText: 'G场赋值(非任务队列)'
   });
+  renderUioBoard();
+  updatePulseStaging();
+  notify(`指挥命令实体 ${extraCmd.id} 已赋入 UIO 第一块：G 场已赋值 (${name})`);
 }
+if($('btnConfirmCmd'))$('btnConfirmCmd').addEventListener('click',()=>submitCmdSlip(false));
+if($('btnDraftCmd'))$('btnDraftCmd').addEventListener('click',()=>submitCmdSlip(true));
 
 // -----------------------------------------------------------------------------
 // UI-03M4 军用通信设备手动调谐
@@ -2774,6 +3635,33 @@ const TimeMachineRenderer = {
 };
 window.TimeMachineRenderer = TimeMachineRenderer;
 
+// 推进 16s 后自动同步 UIO 纸条生命周期：到点触发起始常亮置顶锁死；到期/打完轮数自动流入归档栏
+function advanceUioSlipsOnTurn(deltaSec=16){
+  clockSeconds += deltaSec;
+  if($('clock')) $('clock').textContent = formatRelOrAbsTime(0);
+  const finishedIds = [];
+  for (const s of uioState.queueSlips) {
+    if (!s.activeLocked && typeof s.startTimeSec === 'number' && clockSeconds >= s.startTimeSec) {
+      s.activeLocked = true;
+      s.status = 'active';
+      s.activatedAt = Date.now();
+    }
+    if (s.activeLocked) {
+      if (typeof s.remainingRounds === 'number') {
+        s.remainingRounds = Math.max(0, s.remainingRounds - 1);
+        if (s.remainingRounds <= 0) finishedIds.push([s.id, `重武器 ${s.rounds} 轮齐射完毕`]);
+      } else if (typeof s.endTimeSec === 'number' && clockSeconds >= s.endTimeSec) {
+        finishedIds.push([s.id, '到达结束时间自动归档']);
+      }
+    }
+  }
+  sortUioQueueSlips();
+  for (const [fid, reason] of finishedIds) {
+    finishUioSlipToArchive(fid, reason);
+  }
+  renderUioBoard();
+}
+
 // 提交推进 16s 脉冲步长 (Phase 03 & Phase 05 API)
 window.commitSimulationTurn=async function(){
   try{
@@ -2798,6 +3686,7 @@ window.commitSimulationTurn=async function(){
         body:JSON.stringify(payload)
       });
       if(res.ok){
+        advanceUioSlipsOnTurn(16);
         notify('已推进 16s 权威脉冲事务！时间机插值放片中...');
         const retData = await res.json();
         if (retData && retData.state && retData.state.time_machine_frame) {
@@ -2819,6 +3708,8 @@ selectUnit(getActiveFriendlyUnitId());
 syncInspector();
 applyView();
 updatePulseStaging();
+updateTaskMatrixUI();
+renderUioBoard();
 
 // 若在生产后端环境中，仅在初始化时拉取一次权威状态与真二进制地形流
 if(window.location.protocol.startsWith('http')){

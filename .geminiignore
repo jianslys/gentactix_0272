@@ -1,0 +1,40 @@
+# ---- Rust Build Artifacts & Binaries ----
+target/
+debug/
+release/
+*.pdb
+*.exe
+*.dll
+
+# ---- Browser Profiles, Scratch & Art-Direction Heavy Assets ----
+scratch/
+art-direction/
+archive/
+_chrome_profile*/
+_chrome_profile/
+_concept_chrome/
+_prod_chrome/
+
+# ---- Python Virtual Environments & Bytecode ----
+.venv/
+venv/
+Lib/
+Scripts/
+pyvenv.cfg
+__pycache__/
+*.py[cod]
+
+# ---- Node / Misc Tool Caches ----
+node_modules/
+.cache/
+.pytest_cache/
+.workbuddy/
+probe_result.json
+
+# ---- Media & Screenshot Blobs ----
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.mp4
+*.webm
