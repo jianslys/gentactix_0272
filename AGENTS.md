@@ -21,7 +21,7 @@
 4. **严禁默认读取美术图**：日常引擎、架构、数据契约与逻辑开发阶段禁止读取任何图片；*仅当大王明确下令执行 UI / 视觉美术还原任务时*，才按需读取唯一允许的美术参考图 `art-direction/2f89d1e3-b843-410a-b72a-4001b2c64ffc.png`。
 
 > [!NOTE]
-> `docs/SPEC/` 为 V1 时期数学/物理推演底稿留档；若其中早期结构描述与当前 V2 源码或 `FUNCTION_AND_INTERFACE_MANUAL.md` 冲突，**一律以当前 V2 代码及手册为准**（旧 V1 代码与旧前端已归档于 `refactor/pure-engine` 与 `main` 分支，严禁搬回现役代码）。
+> `docs/SPEC/SPEC_UIO_CLIPBOARD_AND_WAVE_DIRECTIVE_CODEX.md` 为 **V2 现役前后端权威演进规格**（前端 9 层栈 / 60 天步长缓存 / UIO 手写板 / 后端零 P2P 欧拉连续路径场、坦克绝不过穿内部破片与步兵按个人记账）；`docs/SPEC/` 下其余历史文档为 V1 时期底稿留档，冲突时以现役 V2 代码、手册及上述 V2 规格为准（旧 V1 代码与旧前端已归档于 `refactor/pure-engine` 与 `main` 分支，严禁搬回现役代码）。
 
 ---
 
