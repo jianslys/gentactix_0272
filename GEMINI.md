@@ -18,7 +18,8 @@
 1. `AGENTS.md`（本文件 — 协作与架构红线）
 2. `README.md`（仓库当前结构、编译与启停命令）
 3. `FUNCTION_AND_INTERFACE_MANUAL.md`（`gentactix-core` 12 模块、`TacticalCommand` 15 类指令、`gentactix-server` 18 条路由契约）
-4. **严禁默认读取美术图**：日常引擎、架构、数据契约与逻辑开发阶段禁止读取任何图片；*仅当大王明确下令执行 UI / 视觉美术还原任务时*，才按需读取唯一允许的美术参考图 `art-direction/2f89d1e3-b843-410a-b72a-4001b2c64ffc.png`。
+4. **前端 / 美术专项任务直达必读**：若任务涉及 `frontend/` 的 UI、美术贴图、Canvas 绘制或交互扩展，**必须先读 [docs/AI_FOOLPROOF_PLAYBOOK.md](docs/AI_FOOLPROOF_PLAYBOOK.md) 与 [docs/FRONTEND_FOOLPROOF_HANDBOOK.md](docs/FRONTEND_FOOLPROOF_HANDBOOK.md)**，严格遵守零 404、零 8m 网格、UI ID 唯一性与 `useGame()` 规范。
+5. **严禁默认读取美术图**：日常引擎、架构、数据契约与逻辑开发阶段禁止读取任何图片；*仅当大王明确下令执行 UI / 视觉美术还原任务时*，才按需读取唯一允许的美术参考图 `art-direction/2f89d1e3-b843-410a-b72a-4001b2c64ffc.png`。
 
 > [!NOTE]
 > `docs/SPEC/SPEC_UIO_CLIPBOARD_AND_WAVE_DIRECTIVE_CODEX.md` 为 **V2 现役前后端权威演进规格**（前端 9 层栈 / 60 天步长缓存 / UIO 手写板 / 后端零 P2P 欧拉连续路径场、坦克绝不过穿内部破片与步兵按个人记账）；`docs/FRONTEND_PHASE_PLAN.md` 为**前端四阶段连续施工总手册**（供多端协同直接按 Phase 1~4 一气呵成落地 `frontend/`）；`docs/SPEC/` 下其余历史文档为 V1 时期底稿留档，冲突时以现役 V2 代码、手册及上述 V2 规格为准（旧 V1 代码与旧前端已归档于 `refactor/pure-engine` 与 `main` 分支，严禁搬回现役代码）。
@@ -29,6 +30,7 @@
 
 1. **核心集成与归档分支**：
    - **唯一日常开发集成分支**：`v2/pure-engine`；
+   - **前端与美术干净开发分支**：`v2/frontend-dev`（基于最新 `v2/pure-engine` 基线切出，供前端/美术及轻量 AI 专心作业后合回 `v2/pure-engine`）；
    - **禁止直接推送**：`main` 与 `refactor/pure-engine`（保留作历史回溯基线）。
 2. **开机拉齐流程**：
    - 开始新任务前务必先同步远端：`git fetch origin`；

@@ -16,10 +16,15 @@ gentactix/
 ├── crates/
 │   ├── gentactix-core/                # 纯无头仿真内核（三态、13步时钟、四维算子、时间机、迷雾、预览）
 │   └── gentactix-server/              # 极简 Axum HTTP 服务壳（src 合计 < 400 行，零物理业务逻辑）
+├── frontend/                          # React 19 + Canvas 2D 九层前端（含 Mock/HTTP 切换、浮动窗口与美术槽位）
 ├── data/
 │   └── items_catalog.json             # 二战单兵/班组武器、弹药、引信、枪架唯一权威目录
 ├── art-direction/                     # 唯一授权美术参考图（2f89d1e3-b843-410a-b72a-4001b2c64ffc.png，仅美术/UI 阶段按需查阅）
-├── docs/                              # 历史理论与早期物理 SPEC 留档（参考用，以 V2 代码为准）
+├── docs/
+│   ├── FRONTEND_FOOLPROOF_HANDBOOK.md # 傻瓜手把手开发与美术手册（人/新手/美术直接照抄改图加面板）
+│   ├── AI_FOOLPROOF_PLAYBOOK.md       # 傻子 AI 操作手册（任意 AI 接手前端/美术的必读 SOP 与红线）
+│   ├── FRONTEND_DEV_AND_ART_MANUAL.md # 完整前端 HTTP/二进制流契约、16s 时间机与 9 层生产规格
+│   └── ...                            # SPEC 与历史理论归档
 └── LICENSE
 ```
 
@@ -48,6 +53,9 @@ cargo run -p gentactix-server -- --listen 127.0.0.1:8767 --rows 64 --cols 64
 
 ## 协同开发入口
 
+- **前端 & 美术傻瓜手把手手册（人读，直接照抄）**：[docs/FRONTEND_FOOLPROOF_HANDBOOK.md](docs/FRONTEND_FOOLPROOF_HANDBOOK.md)
+- **傻子 AI 操作手册（外接 AI 接手前必读）**：[docs/AI_FOOLPROOF_PLAYBOOK.md](docs/AI_FOOLPROOF_PLAYBOOK.md)
+- 完整前端接口与 9 层美术生产规格：[docs/FRONTEND_DEV_AND_ART_MANUAL.md](docs/FRONTEND_DEV_AND_ART_MANUAL.md)
 - 多设备 AI 协同规范与分支流程：请先通读 [AGENTS.md](AGENTS.md)
-- 全量 API 入参/出参与数据结构：请查阅 [FUNCTION_AND_INTERFACE_MANUAL.md](FUNCTION_AND_INTERFACE_MANUAL.md)
-- 新建前端请独立建在 `frontend/` 目录，仅通过 HTTP 接口驱动引擎。
+- 后端全量 API 入参/出参与数据结构：请查阅 [FUNCTION_AND_INTERFACE_MANUAL.md](FUNCTION_AND_INTERFACE_MANUAL.md)
+- **分支说明**：主开发集成分支为 `v2/pure-engine`；干净的独立前端与美术专用分支为 **`v2/frontend-dev`**（基于最新基线检出，`crates/` 与 `frontend/` 全数通过验证）。
