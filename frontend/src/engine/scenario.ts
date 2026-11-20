@@ -6,7 +6,7 @@ export const WORLD_WIDTH_M = 640;
 export const WORLD_HEIGHT_M = 480;
 export const DIRECT_COMMAND_RADIUS_M = 140;
 export const RADIO_RADIUS_M = 600;
-export const VISION_RADIUS_M = 200;
+export const VISION_RADIUS_M = 300;
 
 export const HQ_UNIT_ID = 1;
 export const SQUAD1_ID = 2;
@@ -77,12 +77,96 @@ export function presetUnits(): UnitState[] {
 
 export function presetGroundObjects(): GroundObject[] {
   return [
-    { id: 'item-1', kind: 'item', pos: { x: 252, y: 298 }, label: '弹药箱' },
-    { id: 'item-2', kind: 'item', pos: { x: 300, y: 196 }, label: '医疗包' },
-    { id: 'weapon-1', kind: 'weapon', pos: { x: 272, y: 168 }, label: 'MG42' },
-    { id: 'weapon-2', kind: 'weapon', pos: { x: 344, y: 306 }, label: 'Kar98k' },
-    { id: 'corpse-1', kind: 'corpse', pos: { x: 362, y: 282 }, label: '阵亡士兵' },
-    { id: 'corpse-2', kind: 'corpse', pos: { x: 292, y: 352 }, label: '阵亡士兵' },
+    {
+      id: 'item-1',
+      kind: 'item',
+      pos: { x: 252, y: 298 },
+      label: '弹药箱',
+      category: '补给物品',
+      spec: '7.92×57mm Mauser 木制弹药箱',
+      detail: '内含 300 发步机通用弹（15 匣），可用于前线班组紧急补给。',
+      status: '密封完好 · 可拾取',
+    },
+    {
+      id: 'item-2',
+      kind: 'item',
+      pos: { x: 300, y: 196 },
+      label: '医疗包',
+      category: '医疗物资',
+      spec: '野战急救箱（绷带×6 / 止血带×2 / 吗啡×2）',
+      detail: '供步兵班卫生员或单兵止血包扎使用，降低失血速率。',
+      status: '完好 · 剩余使用 4 次',
+    },
+    {
+      id: 'weapon-1',
+      kind: 'weapon',
+      pos: { x: 272, y: 168 },
+      label: 'MG42',
+      category: '散落武器',
+      spec: 'MG42 通用机枪（7.92mm · 附 50 发弹鼓）',
+      detail: '枪管微热，脚架展开态，可供重火力组或步兵回收架设。',
+      status: '余弹 38/50 发 · 可拾取',
+    },
+    {
+      id: 'weapon-2',
+      kind: 'weapon',
+      pos: { x: 344, y: 306 },
+      label: 'Kar98k',
+      category: '散落武器',
+      spec: 'Karabiner 98k 栓动步枪（7.92mm）',
+      detail: '枪托有轻微擦伤，膛线正常，附弹仓 4 发及背带。',
+      status: '余弹 4/5 发 · 机械正常',
+    },
+    {
+      id: 'corpse-1',
+      kind: 'corpse',
+      pos: { x: 362, y: 282 },
+      label: '阵亡士兵',
+      category: '阵亡遗体',
+      spec: '步兵阵亡遗体 #A-04（前哨侦察兵）',
+      detail: '躯干受弹片致命伤阵亡；随身携带 7.92mm 弹袋×2、工兵铲、水壶。',
+      status: '已确认阵亡 · 携具可搜检',
+    },
+    {
+      id: 'corpse-2',
+      kind: 'corpse',
+      pos: { x: 292, y: 352 },
+      label: '阵亡士兵',
+      category: '阵亡遗体',
+      spec: '敌方机枪副射手遗体 #B-11',
+      detail: '头部创伤阵亡；随身携带 50 发弹链盒×1、望远镜、急救包。',
+      status: '已确认阵亡 · 携具可搜检',
+    },
+    {
+      id: 'charge-1',
+      kind: 'charge',
+      pos: { x: 330, y: 330 },
+      label: '定时炸药',
+      category: '定时爆破物',
+      spec: '3kg 制式爆破药包（延时引信）',
+      detail: '预设于 #4 回合 7.3s 自动起爆，杀伤半径 24m，注意规避。',
+      status: '引信已激活 · #4 回合起爆',
+    },
+    {
+      id: 'mine-1',
+      kind: 'mine',
+      pos: { x: 396, y: 214 },
+      label: '跳雷',
+      category: '防步兵地雷',
+      spec: 'S-Mine 35 反步兵破片跳雷',
+      detail: '触发压发/绊发双引信，抛射高度 1.2m，破片致死半径 18m。',
+      status: '待发警戒状态 · 勿踏入',
+    },
+    {
+      id: 'mine-2',
+      kind: 'mine',
+      pos: { x: 458, y: 256 },
+      label: '反坦雷',
+      category: '反装甲地雷',
+      spec: 'Tellermine 42 反坦克压发雷',
+      detail: '装药 5.5kg TNT，起爆压力 >180kg，封锁东侧道路咽喉。',
+      status: '待发警戒状态 · 道路埋设',
+    },
   ];
 }
 

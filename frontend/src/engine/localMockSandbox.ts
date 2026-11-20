@@ -449,6 +449,10 @@ export class LocalMockSandboxAdapter implements BackendAdapter {
                 kind: 'corpse',
                 pos: { x: u.pos.x + 6, y: u.pos.y + 4 },
                 label: `${u.name} 阵亡`,
+                category: '阵亡遗体',
+                spec: `${u.name} 阵亡士兵遗体`,
+                detail: `于第 #${nextTick} 回合爆破冲击中阵亡，随身携具留于原地。`,
+                status: '已确认阵亡 · 携具可搜检',
               };
               this.groundObjects.push(corpse);
               changes.push({ ms: ev.exactMs, type: 'ground_object', item: corpse });
@@ -648,11 +652,70 @@ export class LocalMockSandboxAdapter implements BackendAdapter {
         },
       };
     }
+    const SOLDIER_NAMES_RED = [
+      '林致远', '陈默', '周启明', '张铁柱', '李卫国', '王振华', '赵子龙', '孙立人', '刘伯承', '吴佩孚',
+    ];
+    const SOLDIER_NAMES_BLUE = [
+      '汉斯·穆勒', '卡尔·施密特', '弗里茨·韦伯', '奥托·克鲁格', '海因茨·迈尔', '鲁道夫·贝克', '保罗·霍夫曼', '库尔特·瓦格纳', '马克斯·费舍尔',
+    ];
+    const rolePool =
+      u.role === 'platoon_hq'
+        ? ['排长', '副排长/通信', '卫生员', '传令兵']
+        : ['班长', '轻机枪手', '副机枪手', '突击手', '精准射手', '掷弹兵', '步枪兵', '步枪兵', '弹药手'];
+    const namePool = u.team === 'blue' ? SOLDIER_NAMES_BLUE : SOLDIER_NAMES_RED;
+
     const soldiers = Array.from({ length: u.maxSoldiers }, (_, idx) => {
       const alive = idx < u.soldiers;
       const wounded = alive && idx === 0 && u.suppression > 15;
+      const roleLabel = rolePool[idx] ?? '步枪兵';
+      const sName = namePool[(u.id * 7 + idx) % namePool.length] ?? `士兵 #${idx + 1}`;
+      const isLeader = idx === 0;
+      const isMg = roleLabel.includes('轻机枪手');
+      const isMedic = roleLabel.includes('卫生员');
+      const isRadio = roleLabel.includes('通信');
+
+      const inventory = [
+        {
+          id: `inv-${u.id}-${idx}-w`,
+          name: isLeader ? 'MP40 冲锋枪' : isMg ? 'MG42 通用机枪' : 'Kar98k 步枪',
+          count: '1 支',
+          category: 'weapon' as const,
+          status: alive ? '完好待发' : '遗落地面',
+        },
+        {
+          id: `inv-${u.id}-${idx}-a`,
+          name: isLeader ? '9mm 弹匣 (32发)' : isMg ? '7.92mm 弹链盒 (50发)' : '7.92mm 桥夹弹袋 (5发/夹)',
+          count: isLeader ? '4 匣' : isMg ? '3 盒' : '8 夹',
+          category: 'ammo' as const,
+          status: u.ammo > 40 ? '充足' : '偏紧',
+        },
+        {
+          id: `inv-${u.id}-${idx}-g`,
+          name: 'M24 长柄手榴弹',
+          count: isLeader ? '2 枚' : '1 枚',
+          category: 'weapon' as const,
+          status: '可投掷',
+        },
+        {
+          id: `inv-${u.id}-${idx}-m`,
+          name: isMedic ? '野战急救包（大）' : '单兵止血急救包',
+          count: isMedic ? '4 组' : '1 组',
+          category: 'medical' as const,
+          status: '未开封',
+        },
+        {
+          id: `inv-${u.id}-${idx}-t`,
+          name: isLeader ? '6×30 炮队望远镜' : isRadio ? 'Torn.Fu.d2 野战电台' : '工兵折叠铁锹',
+          count: '1 具',
+          category: 'gear' as const,
+          status: '在位',
+        },
+      ];
+
       return {
         soldier_id: idx + 1,
+        name: sName,
+        roleLabel,
         alive,
         hp: alive ? (wounded ? 6.5 : 11.1) : 0,
         max_hp: 11.1,
@@ -665,6 +728,7 @@ export class LocalMockSandboxAdapter implements BackendAdapter {
         bleeding_loss: wounded ? 12 : 0,
         bleed_rate_per_tick: wounded ? 1.4 : 0,
         suppression: u.suppression / 10,
+        inventory,
       };
     });
     return {

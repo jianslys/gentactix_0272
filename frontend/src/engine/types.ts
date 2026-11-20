@@ -69,13 +69,17 @@ export interface UnitState {
   posture?: 'active' | 'pinned' | 'prone';
 }
 
-export type GroundObjectKind = 'item' | 'weapon' | 'corpse';
+export type GroundObjectKind = 'item' | 'weapon' | 'corpse' | 'charge' | 'mine';
 
 export interface GroundObject {
   id: string;
   kind: GroundObjectKind;
   pos: Vec2;
   label: string;
+  category?: string;
+  spec?: string;
+  detail?: string;
+  status?: string;
 }
 
 export type DestructionKind = 'crater' | 'foxhole' | 'trench' | 'scorch';
@@ -411,8 +415,18 @@ export interface BodyRegionState {
   cumulative_damage: number;
 }
 
+export interface SoldierInventoryItem {
+  id: string;
+  name: string;
+  count: string;
+  category: 'weapon' | 'ammo' | 'gear' | 'medical';
+  status: string;
+}
+
 export interface SoldierDetailRecord {
   soldier_id: number;
+  name?: string;
+  roleLabel?: string;
   alive: boolean;
   hp: number;
   max_hp: number;
@@ -420,6 +434,7 @@ export interface SoldierDetailRecord {
   bleeding_loss: number;
   bleed_rate_per_tick: number;
   suppression: number;
+  inventory?: SoldierInventoryItem[];
 }
 
 export interface ArmorProfileRha {

@@ -19,6 +19,8 @@ export type ArtSlotKey =
   | 'obj.item'
   | 'obj.weapon'
   | 'obj.corpse'
+  | 'obj.charge'
+  | 'obj.mine'
   | 'fx.smoke';
 
 export interface ArtSlotSpec {
@@ -158,6 +160,22 @@ export const ART_ASSET_MANIFEST: Record<ArtSlotKey, ArtSlotSpec> = {
     label: '阵亡标记图标',
     recommendedPx: '48x48',
     description: 'L4 层阵亡印记图标',
+  },
+  'obj.charge': {
+    key: 'obj.charge',
+    url: '/assets/objects/charge.png',
+    layer: 'L4',
+    label: '定时炸药图标',
+    recommendedPx: '48x48',
+    description: '定时爆破药包图标',
+  },
+  'obj.mine': {
+    key: 'obj.mine',
+    url: '/assets/objects/mine.png',
+    layer: 'L4',
+    label: '地雷图标',
+    recommendedPx: '48x48',
+    description: '防步兵/反坦克地雷图标',
   },
   'fx.smoke': {
     key: 'fx.smoke',

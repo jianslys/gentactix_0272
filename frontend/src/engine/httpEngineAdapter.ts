@@ -222,7 +222,15 @@ export class HttpEngineAdapter implements BackendAdapter {
         });
       } else {
         const mappedKind: GroundObject['kind'] =
-          inst.kind === 'corpse' ? 'corpse' : inst.kind === 'dropped_weapon' ? 'weapon' : 'item';
+          inst.kind === 'corpse'
+            ? 'corpse'
+            : inst.kind === 'dropped_weapon'
+              ? 'weapon'
+              : inst.kind === 'timed_charge'
+                ? 'charge'
+                : inst.kind === 'mine'
+                  ? 'mine'
+                  : 'item';
         groundObjects.push({
           id: `inst-${inst.instance_id}`,
           kind: mappedKind,
