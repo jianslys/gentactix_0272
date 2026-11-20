@@ -258,7 +258,7 @@ impl TimeMachinePendingQueue {
     }
 }
 
-/// 时间机外发拉格朗日粒子轨线节点 (用于前端 0..16000ms 纯只读线性插值)
+/// 时间机外发拉格朗日粒子轨线节点 (用于前端 0..16000ms 纯只读分段关键帧与断行截断插值)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParticleTrackNode {
     pub piece_id: String,
@@ -267,6 +267,25 @@ pub struct ParticleTrackNode {
     pub pos_end: [f32; 2],
     pub initial_visibility: u8,
     pub is_prerender_skirt: bool,
+    #[serde(default)]
+    pub keyframes: Vec<(u32, [f32; 2])>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_exact_ms: Option<u32>,
+}
+
+/// 回合初 t=0s 单位置信基线 (防止前端 t=0s 提前剧透 t=16s 终局数值)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UnitTickBaseline {
+    pub piece_id: String,
+    pub team: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hp_start: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub men_start: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ammo_start: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suppression_start: Option<f32>,
 }
 
 /// 时间机定点放片事件 (携带原生物理伤害数值，绝不削减)
@@ -283,6 +302,14 @@ pub struct PlaybackEvent {
     pub exact_hp_loss: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exact_supp_add: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hp_delta: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub casualties: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ammo_spent: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terrain_cell: Option<[i32; 2]>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entity_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -294,6 +321,8 @@ pub struct PlaybackEvent {
 pub struct TimeMachineFramePayload {
     pub tick: u64,
     pub window_ms: [u32; 2],
+    #[serde(default)]
+    pub unit_baselines: Vec<UnitTickBaseline>,
     pub particle_tracks: Vec<ParticleTrackNode>,
     pub playback_events: Vec<PlaybackEvent>,
 }
@@ -303,6 +332,7 @@ impl TimeMachineFramePayload {
         Self {
             tick,
             window_ms: [0, 16000],
+            unit_baselines: Vec::new(),
             particle_tracks: Vec::new(),
             playback_events: Vec::new(),
         }
@@ -373,6 +403,10 @@ mod tests {
             target_piece_id: Some("tank_blue_07".into()),
             exact_hp_loss: Some(34),
             exact_supp_add: Some(1.25),
+            hp_delta: Some(34.0),
+            casualties: Some(1),
+            ammo_spent: Some(1),
+            terrain_cell: None,
             entity_id: None,
             directive_id: None,
         };
@@ -393,6 +427,8 @@ mod tests {
             pos_end: [30.5, 40.2],
             initial_visibility: 0,
             is_prerender_skirt: true,
+            keyframes: vec![(0, [30.0, 40.0]), (16000, [30.5, 40.2])],
+            stop_exact_ms: None,
         };
 
         assert_eq!(track.initial_visibility, 0, "预渲染缓冲环初始必须隐身");

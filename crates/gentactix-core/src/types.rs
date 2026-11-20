@@ -7,6 +7,27 @@ pub const TICK_SECONDS_F32: f32 = 16.0;
 /// Default scenario start wall clock: 06:30:00 (23400s).
 pub const DEFAULT_EPOCH_SECONDS: u64 = 23400;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VisTier {
+    #[default]
+    Hidden = 0,
+    Suspected = 1,
+    Spotted = 2,
+    Full = 3,
+}
+
+impl Team {
+    #[inline]
+    pub const fn index(self) -> Option<usize> {
+        match self {
+            Self::Red => Some(0),
+            Self::Blue => Some(1),
+            Self::Neutral => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct UnitId(pub u32);
 

@@ -1,10 +1,15 @@
 use crate::catalog::ItemCatalog;
+use crate::clock::ballistics_field::{resolve_and_commit_radial_blast, RadialBlastField};
 use crate::clock::generate_work_points;
 use crate::math_ops::{CellCoord, DetonatorSwitchEntity, WorldPos};
 use crate::ruleset::{SimRuleset, UnitSpawnSpec};
 use crate::state::WorldState;
+use crate::step_cache::{
+    ScheduledEventKind, ScheduledStepEvent, WaveZoneSpec, WorldInstanceKind,
+    MAX_STEP_CACHE_HORIZON_TICKS,
+};
 use crate::terrain::TerrainKind;
-use crate::time_machine::TimeCategory;
+use crate::time_machine::{mix_time_unit_hash, query_time_lut, TimeCategory};
 use crate::types::{
     EngineerWorkKind, FireDiscipline, MoveStance, Team, UnitId, UnitOrder,
 };
@@ -86,6 +91,37 @@ pub enum TacticalCommand {
     SetNight {
         night: bool,
     },
+    ScheduleTimedCharge {
+        unit_id: UnitId,
+        pos: WorldPos,
+        delay_ticks: u64,
+        #[serde(default = "default_charge_radius")]
+        blast_radius_m: f32,
+        #[serde(default = "default_charge_kpa")]
+        blast_kpa: f32,
+        #[serde(default = "default_charge_crater")]
+        crater_depth_m: f32,
+    },
+    CancelStepEvent {
+        event_id: u64,
+    },
+    IssueCommanderWave {
+        team: Team,
+        #[serde(default)]
+        hq_unit_id: Option<UnitId>,
+        delay_ticks: u64,
+        zones: Vec<WaveZoneSpec>,
+    },
+}
+
+const fn default_charge_radius() -> f32 {
+    24.0
+}
+const fn default_charge_kpa() -> f32 {
+    140.0
+}
+const fn default_charge_crater() -> f32 {
+    2.0
 }
 
 impl TacticalCommand {
@@ -105,7 +141,10 @@ impl TacticalCommand {
             | Self::DespawnUnit { .. }
             | Self::EditTerrain { .. }
             | Self::SetRuleset { .. }
-            | Self::SetNight { .. } => None,
+            | Self::SetNight { .. }
+            | Self::ScheduleTimedCharge { .. }
+            | Self::CancelStepEvent { .. }
+            | Self::IssueCommanderWave { .. } => None,
         }
     }
 
@@ -120,13 +159,16 @@ impl TacticalCommand {
             | Self::PopSmoke { unit_id, .. }
             | Self::BuildWork { unit_id, .. }
             | Self::ArmDetonator { unit_id, .. }
-            | Self::TriggerDetonator { unit_id, .. } => Some(*unit_id),
+            | Self::TriggerDetonator { unit_id, .. }
+            | Self::ScheduleTimedCharge { unit_id, .. } => Some(*unit_id),
+            Self::IssueCommanderWave { hq_unit_id, .. } => *hq_unit_id,
             Self::SpawnPlatoon { .. }
             | Self::SpawnUnit { .. }
             | Self::DespawnUnit { .. }
             | Self::EditTerrain { .. }
             | Self::SetRuleset { .. }
-            | Self::SetNight { .. } => None,
+            | Self::SetNight { .. }
+            | Self::CancelStepEvent { .. } => None,
         }
     }
 }
@@ -138,6 +180,10 @@ pub struct CommandOutcome {
     pub deferred_until_tick: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ticket_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remote_delay_ticks: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub via_runner: Option<bool>,
     pub code: String,
     pub detail: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -145,11 +191,13 @@ pub struct CommandOutcome {
 }
 
 impl CommandOutcome {
-    fn ok(code: &str, detail: impl Into<String>, created_id: Option<u32>) -> Self {
+    pub(crate) fn ok(code: &str, detail: impl Into<String>, created_id: Option<u32>) -> Self {
         Self {
             accepted: true,
             deferred_until_tick: None,
             ticket_id: None,
+            remote_delay_ticks: None,
+            via_runner: None,
             code: code.to_string(),
             detail: detail.into(),
             created_id,
@@ -161,6 +209,8 @@ impl CommandOutcome {
             accepted: false,
             deferred_until_tick: None,
             ticket_id: None,
+            remote_delay_ticks: None,
+            via_runner: None,
             code: code.to_string(),
             detail: detail.into(),
             created_id: None,
@@ -168,12 +218,23 @@ impl CommandOutcome {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandAccessOffset {
+    pub delay_ticks: u64,
+    pub via_runner: bool,
+    pub detail: String,
+}
+
 pub fn validate_tactical_command_access(
     world: &WorldState,
     cmd: &TacticalCommand,
-) -> Result<(), (String, String)> {
+) -> Result<CommandAccessOffset, (String, String)> {
     let Some(uid) = cmd.subject_unit_id() else {
-        return Ok(());
+        return Ok(CommandAccessOffset {
+            delay_ticks: 0,
+            via_runner: false,
+            detail: String::new(),
+        });
     };
     let Some(unit) = world.units.get(&uid.0) else {
         return Err(("UNIT_NOT_FOUND".into(), format!("unknown unit {}", uid.0)));
@@ -187,22 +248,57 @@ pub fn validate_tactical_command_access(
                 if hq_uid != uid {
                     if let Some(hq) = world.units.get(&hq_uid.0).filter(|h| h.alive) {
                         let dist = hq.pos.distance_to(unit.pos);
-                        let limit = hq.effective_radio_range_m.max(1.0);
-                        if dist > limit {
-                            return Err((
-                                "OUT_OF_COMMAND_RADIUS".into(),
-                                format!(
-                                    "unit {} is {:.1}m from HQ '{}' (effective radio {:.1}m)",
-                                    uid.0, dist, hq.callsign, limit
+                        let direct_limit = hq.effective_radio_range_m.max(8.0);
+                        if dist > direct_limit {
+                            let eta = if unit.base_radio_range_m > 1.0 {
+                                (unit.effective_radio_range_m / unit.base_radio_range_m).clamp(0.0, 1.0)
+                            } else {
+                                0.0
+                            };
+                            let runner_ticks = ((dist / 64.0).ceil() as u64)
+                                .clamp(1, MAX_STEP_CACHE_HORIZON_TICKS);
+                            if eta <= 0.05 {
+                                return Ok(CommandAccessOffset {
+                                    delay_ticks: runner_ticks,
+                                    via_runner: true,
+                                    detail: format!(
+                                        "remote runner courier +{runner_ticks} ticks (+{}s), radio blackout (dist={dist:.1}m)",
+                                        runner_ticks * 16
+                                    ),
+                                });
+                            }
+                            let excess = dist - direct_limit;
+                            let radio_ticks = ((excess / (80.0 * eta)).ceil() as u64)
+                                .clamp(1, MAX_STEP_CACHE_HORIZON_TICKS);
+                            if runner_ticks < radio_ticks {
+                                return Ok(CommandAccessOffset {
+                                    delay_ticks: runner_ticks,
+                                    via_runner: true,
+                                    detail: format!(
+                                        "remote runner courier +{runner_ticks} ticks (+{}s, dist={dist:.1}m > {direct_limit:.1}m)",
+                                        runner_ticks * 16
+                                    ),
+                                });
+                            }
+                            return Ok(CommandAccessOffset {
+                                delay_ticks: radio_ticks,
+                                via_runner: false,
+                                detail: format!(
+                                    "remote radio relay +{radio_ticks} ticks (+{}s, eta={eta:.2}, dist={dist:.1}m > {direct_limit:.1}m)",
+                                    radio_ticks * 16
                                 ),
-                            ));
+                            });
                         }
                     }
                 }
             }
         }
     }
-    Ok(())
+    Ok(CommandAccessOffset {
+        delay_ticks: 0,
+        via_runner: false,
+        detail: String::new(),
+    })
 }
 
 pub fn execute_command_immediate(
@@ -382,6 +478,135 @@ pub fn execute_command_immediate(
             world.night = *night;
             CommandOutcome::ok("NIGHT_UPDATED", format!("night={night}"), None)
         }
+        TacticalCommand::ScheduleTimedCharge {
+            unit_id,
+            pos,
+            delay_ticks,
+            blast_radius_m,
+            blast_kpa,
+            crater_depth_m,
+        } => {
+            if *delay_ticks == 0 || *delay_ticks > MAX_STEP_CACHE_HORIZON_TICKS {
+                return CommandOutcome::reject(
+                    "INVALID_DELAY_TICKS",
+                    format!("delay_ticks must be in 1..={MAX_STEP_CACHE_HORIZON_TICKS}"),
+                );
+            }
+            let team = world.units[&unit_id.0].team;
+            let unit_name = world.units[&unit_id.0].callsign.clone();
+            let target_tick = world.tick.saturating_add(*delay_ticks);
+            let inst_id = match world.create_world_instance(
+                WorldInstanceKind::TimedCharge,
+                team,
+                Some(*unit_id),
+                *pos,
+                format!("timed_charge_{unit_name}"),
+                *blast_radius_m,
+                *blast_kpa,
+                *crater_depth_m,
+            ) {
+                Ok(id) => id,
+                Err(e) => return CommandOutcome::reject("OUT_OF_BOUNDS", e),
+            };
+            let h = mix_time_unit_hash(world.clock_seconds, &unit_name);
+            let exact_ms = query_time_lut(TimeCategory::Event, h).exact_ms;
+            match world.schedule_step_event(ScheduledStepEvent {
+                event_id: 0,
+                source_tick: world.tick,
+                target_tick,
+                exact_ms,
+                team,
+                kind: ScheduledEventKind::TimedDetonation {
+                    instance_id: inst_id,
+                    team,
+                    pos: *pos,
+                    blast_radius_m: *blast_radius_m,
+                    blast_kpa: *blast_kpa,
+                    crater_depth_m: *crater_depth_m,
+                },
+            }) {
+                Ok(eid) => CommandOutcome {
+                    accepted: true,
+                    deferred_until_tick: Some(target_tick),
+                    ticket_id: Some(eid),
+                    remote_delay_ticks: None,
+                    via_runner: None,
+                    code: "TIMED_CHARGE_SCHEDULED".into(),
+                    detail: format!("instance #{inst_id} created, detonates at tick {target_tick}"),
+                    created_id: Some(inst_id as u32),
+                },
+                Err(e) => CommandOutcome::reject("SCHEDULE_FAILED", e),
+            }
+        }
+        TacticalCommand::CancelStepEvent { event_id } => {
+            match world.cancel_step_event(*event_id, None) {
+                Some(removed) => {
+                    if let ScheduledEventKind::TimedDetonation { instance_id, .. } = removed.kind {
+                        if let Some(inst) = world.world_instances.get_mut(&instance_id) {
+                            inst.active = false;
+                        }
+                    }
+                    CommandOutcome::ok(
+                        "STEP_EVENT_CANCELLED",
+                        format!("cancelled event #{event_id}"),
+                        None,
+                    )
+                }
+                None => CommandOutcome::reject(
+                    "EVENT_NOT_FOUND",
+                    format!("step_cache event #{event_id} not found"),
+                ),
+            }
+        }
+        TacticalCommand::IssueCommanderWave {
+            team,
+            hq_unit_id: _,
+            delay_ticks,
+            zones,
+        } => {
+            if zones.is_empty() {
+                return CommandOutcome::reject("EMPTY_WAVE", "commander wave requires >= 1 zone");
+            }
+            if *delay_ticks > MAX_STEP_CACHE_HORIZON_TICKS {
+                return CommandOutcome::reject(
+                    "INVALID_DELAY_TICKS",
+                    format!("delay_ticks must be <= {MAX_STEP_CACHE_HORIZON_TICKS}"),
+                );
+            }
+            for z in zones {
+                if let Err(e) = world.terrain.geom.world_to_cell(z.center) {
+                    return CommandOutcome::reject("OUT_OF_BOUNDS", e.to_string());
+                }
+            }
+            let target_tick = world.tick.saturating_add((*delay_ticks).max(1));
+            let h = mix_time_unit_hash(world.clock_seconds, team.as_str());
+            let exact_ms = query_time_lut(TimeCategory::Command, h).exact_ms;
+            let wave_id = world.alloc_event_id();
+            match world.schedule_step_event(ScheduledStepEvent {
+                event_id: wave_id,
+                source_tick: world.tick,
+                target_tick,
+                exact_ms,
+                team: *team,
+                kind: ScheduledEventKind::CommanderWave {
+                    wave_id,
+                    team: *team,
+                    zones: zones.clone(),
+                },
+            }) {
+                Ok(eid) => CommandOutcome {
+                    accepted: true,
+                    deferred_until_tick: Some(target_tick),
+                    ticket_id: Some(eid),
+                    remote_delay_ticks: None,
+                    via_runner: None,
+                    code: "COMMANDER_WAVE_SCHEDULED".into(),
+                    detail: format!("wave #{wave_id} activates at tick {target_tick}"),
+                    created_id: Some(wave_id as u32),
+                },
+                Err(e) => CommandOutcome::reject("SCHEDULE_FAILED", e),
+            }
+        }
     }
 }
 
@@ -430,6 +655,19 @@ fn execute_arm_detonator(
     sw.charges_placed = true;
     sw.wire_laid = true;
     world.detonators.push(sw);
+    let team = world.units[&unit_id.0].team;
+    for (idx, &p) in charge_positions.iter().enumerate() {
+        let _ = world.create_world_instance(
+            WorldInstanceKind::TimedCharge,
+            team,
+            Some(unit_id),
+            p,
+            format!("detonator_{switch_id}_charge_{idx}"),
+            24.0,
+            120.0,
+            2.0,
+        );
+    }
     CommandOutcome::ok(
         "DETONATOR_ARMED",
         format!("switch #{switch_id} armed"),
@@ -453,18 +691,31 @@ fn execute_trigger_detonator(
     }
     match sw.trigger_detonation(op_pos) {
         Ok(blast_pts) => {
-            for pt in blast_pts {
-                if let Ok(cell) = world.terrain.geom.world_to_cell(WorldPos::new(pt[0], pt[1])) {
-                    let _ = world
-                        .terrain
-                        .mutate_cell(cell, Some(-2.0), None, None, Some(0.5));
-                    if let Ok(cidx) = world.terrain.idx(cell) {
-                        if cidx < world.cell_h_blast.len() {
-                            world.cell_h_blast[cidx] += 120.0;
-                            world.cell_s_supp[cidx] += 1.2;
-                        }
-                    }
+            let prefix = format!("detonator_{switch_id}_charge_");
+            for inst in world.world_instances.values_mut() {
+                if inst.label.starts_with(&prefix) {
+                    inst.active = false;
                 }
+            }
+            for (idx, pt) in blast_pts.into_iter().enumerate() {
+                let center = WorldPos::new(pt[0], pt[1]);
+                let burst_z = world.terrain.elevation_at(center).unwrap_or(0.0) + 0.4;
+                let _ = resolve_and_commit_radial_blast(
+                    world,
+                    world.tick,
+                    &RadialBlastField {
+                        source_id: unit_id,
+                        center,
+                        burst_z,
+                        radius_m: 24.0,
+                        peak_kpa: 120.0,
+                        fragments_total: 100,
+                        frag_armor_pen_mm: 20.0,
+                        frag_damage: 12.0,
+                        crater_depth_m: 2.0,
+                        det_seed: switch_id ^ (idx as u64 + 1),
+                    },
+                );
             }
             world.unit_revision = world.unit_revision.wrapping_add(1);
             CommandOutcome::ok("DETONATED", format!("switch #{switch_id} triggered"), None)

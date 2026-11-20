@@ -88,6 +88,81 @@ impl TransientBlastWorkspace {
 pub const ALPHA_BLAST: f32 = 0.1690;
 pub const ALPHA_SUPP: f32 = 0.6412;
 
+/// 认知层情报清晰度 I_intel 演化参数（半衰期 T_1/2 = 64.0s -> alpha_intel = 0.8409）与 0.05 迟滞显影门限
+pub const ALPHA_INTEL: f32 = 0.8409;
+pub const INTEL_SUSPECTED_ENTER: f32 = 0.20;
+pub const INTEL_SUSPECTED_EXIT: f32 = 0.15;
+pub const INTEL_SPOTTED_ENTER: f32 = 0.45;
+pub const INTEL_SPOTTED_EXIT: f32 = 0.40;
+pub const INTEL_FULL_ENTER: f32 = 0.75;
+pub const INTEL_FULL_EXIT: f32 = 0.70;
+
+/// 对数生存概率融合：I(t+dt) = 1 - (1 - prev) * exp(-J)
+#[inline]
+pub fn fuse_intel_log_survival(prev_intel: f32, j_evidence: f32) -> f32 {
+    if j_evidence <= 0.0 {
+        return prev_intel.clamp(0.0, 1.0);
+    }
+    let p = prev_intel.clamp(0.0, 1.0);
+    (1.0 - (1.0 - p) * (-j_evidence).exp()).clamp(0.0, 1.0)
+}
+
+/// 0.05 迟滞回差死区显影门限转移函数
+#[inline]
+pub fn transition_vis_tier_hysteresis(
+    prev: crate::types::VisTier,
+    intel: f32,
+) -> crate::types::VisTier {
+    use crate::types::VisTier;
+    let v = intel.clamp(0.0, 1.0);
+    match prev {
+        VisTier::Full => {
+            if v >= INTEL_FULL_EXIT {
+                VisTier::Full
+            } else if v >= INTEL_SPOTTED_EXIT {
+                VisTier::Spotted
+            } else if v >= INTEL_SUSPECTED_EXIT {
+                VisTier::Suspected
+            } else {
+                VisTier::Hidden
+            }
+        }
+        VisTier::Spotted => {
+            if v >= INTEL_FULL_ENTER {
+                VisTier::Full
+            } else if v >= INTEL_SPOTTED_EXIT {
+                VisTier::Spotted
+            } else if v >= INTEL_SUSPECTED_EXIT {
+                VisTier::Suspected
+            } else {
+                VisTier::Hidden
+            }
+        }
+        VisTier::Suspected => {
+            if v >= INTEL_FULL_ENTER {
+                VisTier::Full
+            } else if v >= INTEL_SPOTTED_ENTER {
+                VisTier::Spotted
+            } else if v >= INTEL_SUSPECTED_EXIT {
+                VisTier::Suspected
+            } else {
+                VisTier::Hidden
+            }
+        }
+        VisTier::Hidden => {
+            if v >= INTEL_FULL_ENTER {
+                VisTier::Full
+            } else if v >= INTEL_SPOTTED_ENTER {
+                VisTier::Spotted
+            } else if v >= INTEL_SUSPECTED_ENTER {
+                VisTier::Suspected
+            } else {
+                VisTier::Hidden
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SchmidtPostureState {
     Active, // zeta = 1.00

@@ -68,7 +68,11 @@ fn run_g_field_auction(
                 continue;
             }
             let dist_m = unit.pos.distance_to(center);
-            let threat = derived.i_field_threat.get(cidx).copied().unwrap_or(0.0);
+            let threat = unit
+                .team
+                .index()
+                .and_then(|ti| derived.team_i_field_threat[ti].get(cidx).copied())
+                .unwrap_or_else(|| derived.i_field_threat.get(cidx).copied().unwrap_or(0.0));
             let work_bonus = if kind == GFieldKind::Work && unit.role == UnitRole::EngineerSquad {
                 -500
             } else {
@@ -156,7 +160,11 @@ fn run_i_field_cover_seek(
         let Ok(cur_idx) = world.terrain.idx(cur_cell) else {
             continue;
         };
-        let cur_threat = derived.i_field_threat.get(cur_idx).copied().unwrap_or(0.0);
+        let cur_threat = unit
+            .team
+            .index()
+            .and_then(|ti| derived.team_i_field_threat[ti].get(cur_idx).copied())
+            .unwrap_or_else(|| derived.i_field_threat.get(cur_idx).copied().unwrap_or(0.0));
         if cur_threat <= 1.0 {
             continue;
         }
@@ -170,7 +178,11 @@ fn run_i_field_cover_seek(
                 }
                 let n = CellCoord::new(cur_cell.r + dr, cur_cell.c + dc);
                 if let Ok(nidx) = world.terrain.idx(n) {
-                    let t = derived.i_field_threat.get(nidx).copied().unwrap_or(0.0);
+                    let t = unit
+                        .team
+                        .index()
+                        .and_then(|ti| derived.team_i_field_threat[ti].get(nidx).copied())
+                        .unwrap_or_else(|| derived.i_field_threat.get(nidx).copied().unwrap_or(0.0));
                     let delta = cur_threat - t;
                     grad_safe[0] += (dc as f32) * delta;
                     grad_safe[1] += (dr as f32) * delta;
@@ -195,7 +207,11 @@ fn run_i_field_cover_seek(
                 let Ok(nidx) = world.terrain.idx(n) else {
                     continue;
                 };
-                let n_threat = derived.i_field_threat.get(nidx).copied().unwrap_or(0.0);
+                let n_threat = unit
+                    .team
+                    .index()
+                    .and_then(|ti| derived.team_i_field_threat[ti].get(nidx).copied())
+                    .unwrap_or_else(|| derived.i_field_threat.get(nidx).copied().unwrap_or(0.0));
                 let n_cover = world.terrain.kind[nidx].cover_factor() + world.terrain.cover_bonus[nidx];
                 let align = (dc as f32) * ortho[0] + (dr as f32) * ortho[1];
                 let score = n_cover * 10.0 - n_threat * 5.0 + align * 0.25;

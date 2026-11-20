@@ -142,7 +142,8 @@ async fn get_schema() -> Json<Value> {
         "command_kinds": [
             "move_unit", "attack_pos", "attack_unit", "hold_unit", "set_fire_discipline",
             "pop_smoke", "build_work", "arm_detonator", "trigger_detonator",
-            "spawn_platoon", "spawn_unit", "despawn_unit", "edit_terrain", "set_ruleset", "set_night"
+            "spawn_platoon", "spawn_unit", "despawn_unit", "edit_terrain", "set_ruleset", "set_night",
+            "schedule_timed_charge", "cancel_step_event", "issue_commander_wave"
         ],
         "ruleset_presets": {
             "hardcore_platoon": SimRuleset::hardcore_platoon(),
@@ -174,19 +175,28 @@ async fn get_state(State(st): State<AppState>, Query(q): Query<TeamQuery>) -> Js
     Json(json!(obs))
 }
 async fn get_unit_by_id(State(st): State<AppState>, AxumPath(id): AxumPath<u32>, Query(q): Query<TeamQuery>) -> ApiRes {
-    let obs = st.engine.read().await.observe(q.team.unwrap_or(Team::Red));
-    obs.units.into_iter().find(|u| u.id == UnitId(id)).map(|u| Json(json!(u)))
+    st.engine.read().await.observe_unit_detail(q.team.unwrap_or(Team::Red), UnitId(id))
+        .map(|u| Json(json!(u)))
         .ok_or_else(|| err_resp(StatusCode::NOT_FOUND, format!("unit {id} not visible or missing")))
 }
 async fn get_terrain_bin(State(st): State<AppState>) -> impl IntoResponse {
     let bytes = st.engine.read().await.world.terrain.to_binary_stream();
     ([(header::CONTENT_TYPE, "application/octet-stream")], bytes)
 }
-async fn get_field(State(st): State<AppState>, AxumPath(kind): AxumPath<String>) -> ApiRes {
+async fn get_field(State(st): State<AppState>, AxumPath(kind): AxumPath<String>, Query(q): Query<TeamQuery>) -> ApiRes {
     let g = st.engine.read().await;
     let (rows, cols) = (g.world.terrain.rows, g.world.terrain.cols);
+    let obs = q.team.unwrap_or(Team::Red);
+    let ti = obs.index().unwrap_or(0);
     match kind.as_str() {
-        "i" => Ok(Json(json!({ "kind": "i", "rows": rows, "cols": cols, "cell_m": TACTICAL_CELL_SIZE_M, "values": g.derived.i_field_threat }))),
+        "i" => Ok(Json(json!({
+            "kind": "i", "observer_team": obs, "rows": rows, "cols": cols, "cell_m": TACTICAL_CELL_SIZE_M,
+            "values": g.derived.team_i_field_threat[ti],
+            "i_intel": g.world.team_i_intel[ti],
+            "i_vis_tier": g.world.team_i_vis_tier[ti],
+            "h_blast": g.world.cell_h_blast,
+            "i_threat": g.derived.team_i_field_threat[ti],
+        }))),
         "g" => Ok(Json(json!({ "kind": "g", "rows": rows, "cols": cols, "cell_m": TACTICAL_CELL_SIZE_M, "cells": g.derived.g_field_cells }))),
         _ => Err(err_resp(StatusCode::BAD_REQUEST, "field kind must be 'i' or 'g'")),
     }

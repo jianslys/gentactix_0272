@@ -1,11 +1,13 @@
 pub mod catalog;
 pub mod clock;
 pub mod commands;
+pub mod damage_model;
 pub mod engine;
 pub mod math_ops;
 pub mod preview;
 pub mod ruleset;
 pub mod state;
+pub mod step_cache;
 pub mod terrain;
 pub mod time_machine;
 pub mod types;

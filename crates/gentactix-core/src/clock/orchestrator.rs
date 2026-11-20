@@ -1,21 +1,27 @@
 use crate::catalog::ItemCatalog;
 use crate::clock::autonomy::propose_autonomous_intents;
-use crate::clock::los_combat::{check_los, resolve_fire_exchange, LosResult};
+use crate::clock::ballistics_field::{
+    apply_hit_delta_to_unit, build_direct_cone_field, resolve_and_commit_radial_blast,
+    resolve_direct_cone_batch_parallel, ConeFireResolution, DirectConeField, RadialBlastField,
+};
+use crate::clock::los_combat::check_los;
 use crate::clock::pathfinding::{
     constrain_segment_motion, find_path_world, is_cell_passable, segment_has_obstacle,
 };
 use crate::clock::phases::TickStage;
 use crate::math_ops::{
     apply_g_work_consumption, generate_miter_offset_foxholes, generate_quincunx_minefield,
-    generate_zigzag_trench, quantize_pos_78125, AugmentedArcIntegrator, CellCoord,
-    SchmidtPostureState, WorldPos, ALPHA_BLAST, ALPHA_SUPP,
+    generate_zigzag_trench, quantize_pos_78125, transition_vis_tier_hysteresis,
+    AugmentedArcIntegrator, CellCoord, SchmidtPostureState, WorldPos, ALPHA_BLAST, ALPHA_INTEL,
+    ALPHA_SUPP,
 };
 use crate::state::{
     CombatLogEntry, DerivedState, EventRecord, EventTerminalStatus, IntentCandidate, IntentSource,
-    MotionProposal, TickScratch, UnitRecord, WorldState,
+    MotionProposal, TickScratch, UnitRecord, UnitStartBaseline, WorldState,
 };
+use crate::step_cache::WorldInstanceKind;
 use crate::types::{
-    EngineerWorkKind, FireDiscipline, UnitId, UnitOrder, TICK_SECONDS_F32,
+    EngineerWorkKind, FireDiscipline, Team, UnitId, UnitOrder, TICK_SECONDS_F32,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -32,15 +38,17 @@ pub struct TickReport {
     pub mine_events: usize,
     pub casualties_total: u16,
     pub prior_positions: BTreeMap<u32, WorldPos>,
+    #[serde(default)]
+    pub unit_start_baselines: BTreeMap<u32, UnitStartBaseline>,
+    #[serde(default)]
+    pub motion_waypoints: BTreeMap<u32, Vec<WorldPos>>,
     pub tick_logs: Vec<CombatLogEntry>,
     pub authoritative_sha256: String,
 }
 
 enum EventDetail {
     Fire {
-        target_id: Option<UnitId>,
-        target_cell: CellCoord,
-        los: LosResult,
+        aim_pos: WorldPos,
     },
     Smoke {
         target_cell: CellCoord,
@@ -55,19 +63,7 @@ enum EventDetail {
 }
 
 enum PendingMutation {
-    FireDamage {
-        attacker_id: UnitId,
-        target_id: Option<UnitId>,
-        target_cell: CellCoord,
-        rounds_fired: u32,
-        casualties: u16,
-        hp_loss: f32,
-        suppression_add: f32,
-        blast_kpa: f32,
-        crater_depth_m: f32,
-        dist_m: f32,
-        message: String,
-    },
+    FireCone(ConeFireResolution),
     SmokeScreen {
         unit_id: UnitId,
         target_cell: CellCoord,
@@ -119,6 +115,16 @@ impl TickOrchestrator {
         for (&uid, unit) in &world.units {
             if unit.alive {
                 scratch.prior_positions.insert(uid, unit.pos);
+                scratch.unit_start_baselines.insert(
+                    uid,
+                    UnitStartBaseline {
+                        hp: unit.hp,
+                        men: unit.men,
+                        ammo_rounds: unit.ammo_rounds,
+                        suppression: unit.suppression,
+                        eff_speed_scale: unit.effective_speed_scale(),
+                    },
+                );
             }
         }
         stages_executed.push(TickStage::BeginTick);
@@ -149,10 +155,55 @@ impl TickOrchestrator {
                 }
             }
         }
+        for t_idx in 0..2 {
+            for s in &mut world.team_s_threat[t_idx] {
+                if *s > 0.0 {
+                    *s *= ALPHA_SUPP;
+                    if *s < 1e-4 {
+                        *s = 0.0;
+                    }
+                }
+            }
+        }
         world.terrain.decay_smoke(0.85);
+        for t_idx in 0..2 {
+            let len = world.team_i_intel[t_idx].len().min(world.team_i_vis_tier[t_idx].len());
+            for i in 0..len {
+                let next_val = world.team_i_intel[t_idx][i] * ALPHA_INTEL;
+                world.team_i_intel[t_idx][i] = if next_val < 1e-5 { 0.0 } else { next_val };
+                world.team_i_vis_tier[t_idx][i] = transition_vis_tier_hysteresis(
+                    world.team_i_vis_tier[t_idx][i],
+                    world.team_i_intel[t_idx][i],
+                );
+            }
+        }
+        let mut bleed_corpses: Vec<(UnitId, Team, WorldPos, u16, String)> = Vec::new();
+        let mut stage2_unit_mutated = false;
         for unit in world.units.values_mut() {
             if !unit.alive {
                 continue;
+            }
+            if !unit.is_vehicle && !unit.soldiers.is_empty() {
+                let mut bled_deaths: u16 = 0;
+                for soldier in &mut unit.soldiers {
+                    if soldier.tick_bleeding_16s() {
+                        bled_deaths = bled_deaths.saturating_add(1);
+                    }
+                }
+                if bled_deaths > 0 {
+                    unit.recompute_damage_aggregates();
+                    stage2_unit_mutated = true;
+                    bleed_corpses.push((
+                        unit.id,
+                        unit.team,
+                        unit.pos,
+                        bled_deaths,
+                        format!("{} lost {} soldier(s) to exsanguination", unit.callsign, bled_deaths),
+                    ));
+                    if !unit.alive {
+                        continue;
+                    }
+                }
             }
             if unit.suppression > 0.0 {
                 unit.suppression *= ALPHA_SUPP;
@@ -160,20 +211,60 @@ impl TickOrchestrator {
                     unit.suppression = 0.0;
                 }
             }
+            let prev_posture = unit.posture;
             unit.posture = if world.ruleset.enforce_suppression_posture {
                 unit.posture.transition(unit.suppression)
             } else {
                 SchmidtPostureState::Active
             };
+            if unit.posture != prev_posture {
+                stage2_unit_mutated = true;
+            }
+        }
+        if stage2_unit_mutated {
+            world.unit_revision = world.unit_revision.wrapping_add(1);
+        }
+        let mut tick_logs = Vec::new();
+        for (uid, team, pos, deaths, msg) in bleed_corpses {
+            for idx in 0..deaths {
+                let _ = world.create_world_instance(
+                    WorldInstanceKind::Corpse,
+                    team,
+                    Some(uid),
+                    pos,
+                    format!("corpse_{}_{}_{}", world.tick, uid.0, idx),
+                    0.0,
+                    0.0,
+                    0.0,
+                );
+            }
+            let entry = CombatLogEntry {
+                tick: world.tick,
+                actor_id: uid,
+                target_id: Some(uid),
+                kind: "bleed_out".into(),
+                dist_m: 0.0,
+                casualties: deaths,
+                hp_loss: 0.0,
+                suppression_add: 0.0,
+                ammo_spent: 0,
+                message: msg,
+            };
+            world.combat_logs.push(entry.clone());
+            tick_logs.push(entry);
+            world.unit_revision = world.unit_revision.wrapping_add(1);
         }
         stages_executed.push(TickStage::PersistentFieldEvolve);
 
         // Stage 3: DerivedRefresh (stateless Deygout radio recalculation)
-        derived.rebuild_if_needed(world);
+        if !derived.rebuild_if_needed(world) {
+            derived.sync_transient_fields(world);
+        }
         for (&uid, unit) in &mut world.units {
             if unit.alive {
                 let t_diff = derived.unit_radio_t_diff.get(&uid).copied().unwrap_or(1.0);
-                unit.effective_radio_range_m = unit.base_radio_range_m * t_diff;
+                unit.effective_radio_range_m =
+                    unit.base_radio_range_m * t_diff * unit.effective_radio_scale();
             }
         }
         stages_executed.push(TickStage::DerivedRefresh);
@@ -200,7 +291,10 @@ impl TickOrchestrator {
             if !unit.alive {
                 continue;
             }
-            if let Some(prop) = build_motion_proposal(world, unit, &cand.order) {
+            if let Some((prop, mid_pts)) = build_motion_proposal(world, unit, &cand.order) {
+                if !mid_pts.is_empty() {
+                    scratch.motion_waypoints.insert(uid, mid_pts);
+                }
                 scratch.motion_proposals.push(prop);
             }
         }
@@ -219,7 +313,30 @@ impl TickOrchestrator {
             let Some(unit) = world.units.get(&prop.unit_id.0) else {
                 continue;
             };
-            let mut safe_to = constrain_segment_motion(&world.terrain, unit.mobility, prop.from, prop.to);
+            let mut safe_to = if let Some(wpts) = scratch.motion_waypoints.get_mut(&prop.unit_id.0) {
+                let mut cur = prop.from;
+                let mut kept = Vec::with_capacity(wpts.len());
+                let mut truncated = false;
+                for &wp in wpts.iter() {
+                    let s = constrain_segment_motion(&world.terrain, unit.mobility, cur, wp);
+                    let short = s.distance_to(wp) > 0.5;
+                    cur = s;
+                    if short {
+                        truncated = true;
+                        break;
+                    }
+                    kept.push(wp);
+                }
+                let final_to = if truncated {
+                    cur
+                } else {
+                    constrain_segment_motion(&world.terrain, unit.mobility, cur, prop.to)
+                };
+                *wpts = kept;
+                final_to
+            } else {
+                constrain_segment_motion(&world.terrain, unit.mobility, prop.from, prop.to)
+            };
             if let (Ok(c_from), Ok(c_to)) = (
                 world.terrain.geom.world_to_cell(prop.from),
                 world.terrain.geom.world_to_cell(safe_to),
@@ -228,6 +345,7 @@ impl TickOrchestrator {
                     let count_to = cell_occupancy.get(&(c_to.r, c_to.c)).copied().unwrap_or(0);
                     if count_to >= 2 {
                         safe_to = prop.from;
+                        scratch.motion_waypoints.remove(&prop.unit_id.0);
                     } else {
                         if let Some(cnt) = cell_occupancy.get_mut(&(c_from.r, c_from.c)) {
                             *cnt = cnt.saturating_sub(1);
@@ -347,25 +465,21 @@ impl TickOrchestrator {
                 _ => {}
             }
 
-            if unit.fire_discipline == FireDiscipline::HoldFire {
+            if !unit.can_fire_main_weapon() || unit.fire_discipline == FireDiscipline::HoldFire {
                 continue;
             }
-            if let Some((tgt_id, tcell, los)) = select_fire_target(world, derived, &unit, &active_order) {
+            if let Some((aim_pos, aim_cell)) = select_fire_aim(world, derived, &unit, &active_order) {
                 let eid = world.alloc_event_id();
                 scratch.events.push(EventRecord {
                     event_id: eid,
                     tick: world.tick,
                     source: unit.id,
                     kind: "fire".into(),
-                    target_cell: Some(tcell),
+                    target_cell: Some(aim_cell),
                 });
                 details.insert(
                     eid,
-                    EventDetail::Fire {
-                        target_id: tgt_id,
-                        target_cell: tcell,
-                        los,
-                    },
+                    EventDetail::Fire { aim_pos },
                 );
             }
         }
@@ -374,15 +488,16 @@ impl TickOrchestrator {
         // Stage 9: ResolveEvents
         let events_snapshot = scratch.events.clone();
         let mut mutations: Vec<PendingMutation> = Vec::new();
+        let mut fire_jobs: Vec<(DirectConeField, bool, f32, f32)> = Vec::new();
         for ev in &events_snapshot {
             match details.get(&ev.event_id) {
                 Some(EventDetail::MineTrigger { cell }) => {
                     let _ = scratch.blast_workspace.splat_explosion(
                         &world.terrain.geom,
                         *cell,
-                        12.0,
+                        16.0,
                         110.0,
-                        40,
+                        60,
                         ev.event_id,
                     );
                     mutations.push(PendingMutation::MineDetonation {
@@ -468,11 +583,7 @@ impl TickOrchestrator {
                         );
                     }
                 }
-                Some(EventDetail::Fire {
-                    target_id,
-                    target_cell,
-                    los,
-                }) => {
+                Some(EventDetail::Fire { aim_pos }) => {
                     let Some(attacker) = world.units.get(&ev.source.0) else {
                         scratch.terminal_statuses.insert(
                             ev.event_id,
@@ -483,32 +594,18 @@ impl TickOrchestrator {
                         );
                         continue;
                     };
-                    let target_rec = target_id.and_then(|tid| world.units.get(&tid.0));
-                    let Some(tgt) = target_rec else {
-                        scratch.terminal_statuses.insert(
-                            ev.event_id,
-                            EventTerminalStatus::Rejected {
-                                code: "MISSING_TARGET".into(),
-                                detail: "target missing".into(),
-                            },
-                        );
-                        continue;
-                    };
-                    let t_cover = world
-                        .terrain
-                        .idx(*target_cell)
-                        .map(|i| world.terrain.kind[i].cover_factor() + world.terrain.cover_bonus[i])
-                        .unwrap_or(0.0);
-                    let outcome = resolve_fire_exchange(
-                        world.clock_seconds,
-                        &world.ruleset,
+                    if let Some(job) = build_direct_cone_field(
+                        &world.terrain,
                         catalog,
                         attacker,
-                        tgt,
-                        los,
-                        t_cover,
-                    );
-                    if outcome.rounds_fired == 0 {
+                        *aim_pos,
+                        world.clock_seconds,
+                        ev.event_id,
+                        world.ruleset.enforce_ammo_consumption,
+                        world.ruleset.enforce_suppression_posture,
+                    ) {
+                        fire_jobs.push(job);
+                    } else {
                         scratch.terminal_statuses.insert(
                             ev.event_id,
                             EventTerminalStatus::Rejected {
@@ -516,48 +613,44 @@ impl TickOrchestrator {
                                 detail: "no rounds fired".into(),
                             },
                         );
-                        continue;
                     }
-                    if outcome.frag_radius_m > 0.0 {
-                        let _ = scratch.blast_workspace.splat_explosion(
-                            &world.terrain.geom,
-                            *target_cell,
-                            outcome.frag_radius_m.min(32.0),
-                            outcome.blast_kpa,
-                            outcome.rounds_fired * 20,
-                            ev.event_id,
-                        );
-                    }
-                    mutations.push(PendingMutation::FireDamage {
-                        attacker_id: attacker.id,
-                        target_id: *target_id,
-                        target_cell: *target_cell,
-                        rounds_fired: outcome.rounds_fired,
-                        casualties: outcome.casualties,
-                        hp_loss: outcome.hp_loss,
-                        suppression_add: outcome.suppression_add,
-                        blast_kpa: outcome.blast_kpa,
-                        crater_depth_m: outcome.crater_depth_m,
-                        dist_m: los.dist_m,
-                        message: format!(
-                            "{} -> {} rounds={} cas={} hp_loss={:.1} supp+={:.2}",
-                            attacker.callsign,
-                            tgt.callsign,
-                            outcome.rounds_fired,
-                            outcome.casualties,
-                            outcome.hp_loss,
-                            outcome.suppression_add
-                        ),
-                    });
-                    scratch.terminal_statuses.insert(
-                        ev.event_id,
-                        EventTerminalStatus::Resolved {
-                            code: "FIRE_RESOLVED".into(),
-                            detail: format!("hit_prob={:.2}", outcome.hit_prob),
-                        },
-                    );
                 }
                 None => {}
+            }
+        }
+
+        if !fire_jobs.is_empty() {
+            let resolutions =
+                resolve_direct_cone_batch_parallel(&world.terrain, derived, &fire_jobs, true);
+            for res in resolutions {
+                if res.is_dud || res.rounds_fired == 0 {
+                    scratch.terminal_statuses.insert(
+                        res.event_id,
+                        EventTerminalStatus::Rejected {
+                            code: "OUT_OF_AMMO_OR_DUD".into(),
+                            detail: "no rounds fired".into(),
+                        },
+                    );
+                    continue;
+                }
+                if res.frag_radius_m > 0.0 {
+                    let _ = scratch.blast_workspace.splat_explosion(
+                        &world.terrain.geom,
+                        res.aim_cell,
+                        res.frag_radius_m.min(32.0),
+                        res.blast_kpa,
+                        res.rounds_fired * 20,
+                        res.event_id,
+                    );
+                }
+                scratch.terminal_statuses.insert(
+                    res.event_id,
+                    EventTerminalStatus::Resolved {
+                        code: "FIRE_FIELD_RESOLVED".into(),
+                        detail: format!("hits={}", res.hits.len()),
+                    },
+                );
+                mutations.push(PendingMutation::FireCone(res));
             }
         }
         stages_executed.push(TickStage::ResolveEvents);
@@ -568,71 +661,163 @@ impl TickOrchestrator {
         let mut smoke_events = 0usize;
         let mut mine_events = 0usize;
         let mut casualties_total = 0u16;
-        let mut tick_logs = Vec::new();
         let mut state_mutated = false;
 
         for m in mutations {
             match m {
-                PendingMutation::FireDamage {
-                    attacker_id,
-                    target_id,
-                    target_cell,
-                    rounds_fired,
-                    casualties,
-                    hp_loss,
-                    suppression_add,
-                    blast_kpa,
-                    crater_depth_m,
-                    dist_m,
-                    message,
-                } => {
+                PendingMutation::FireCone(cone) => {
                     fire_events += 1;
                     state_mutated = true;
                     if world.ruleset.enforce_ammo_consumption {
-                        if let Some(att) = world.units.get_mut(&attacker_id.0) {
-                            att.ammo_rounds = att.ammo_rounds.saturating_sub(rounds_fired);
+                        if let Some(att) = world.units.get_mut(&cone.attacker_id.0) {
+                            att.ammo_rounds = att.ammo_rounds.saturating_sub(cone.rounds_fired);
                         }
                     }
-                    if let Ok(cidx) = world.terrain.idx(target_cell) {
-                        if cidx < world.cell_s_supp.len() {
-                            world.cell_s_supp[cidx] += suppression_add;
-                        }
-                        if blast_kpa > 0.0 && cidx < world.cell_h_blast.len() {
-                            world.cell_h_blast[cidx] += blast_kpa;
-                        }
-                        if crater_depth_m > 0.0 {
-                            let _ = world.terrain.mutate_cell(
-                                target_cell,
-                                Some(-crater_depth_m),
-                                None,
-                                None,
-                                None,
-                            );
+
+                    // Feedback unblocked fire corridor into opposing team's I_threat (zero in shielded shadows!).
+                    let enemy_teams: &[usize] = match cone.source_team {
+                        Team::Red => &[1],
+                        Team::Blue => &[0],
+                        Team::Neutral => &[0, 1],
+                    };
+                    for &(cidx, dens) in &cone.corridor_threat_cells {
+                        for &ti in enemy_teams {
+                            if cidx < world.team_s_threat[ti].len() {
+                                world.team_s_threat[ti][cidx] += dens;
+                            }
                         }
                     }
-                    if let Some(tid) = target_id {
-                        if let Some(tgt) = world.units.get_mut(&tid.0) {
-                            apply_unit_damage(
+
+                    if let Ok(aim_idx) = world.terrain.idx(cone.aim_cell) {
+                        let aim_reached = cone
+                            .corridor_threat_cells
+                            .iter()
+                            .any(|&(cidx, _)| cidx == aim_idx);
+                        if aim_reached && aim_idx < world.cell_s_supp.len() {
+                            world.cell_s_supp[aim_idx] += 0.25;
+                        }
+                    }
+
+                    let mut total_cas: u16 = 0;
+                    let mut total_hp_loss: f32 = 0.0;
+                    let mut total_supp: f32 = 0.0;
+                    let mut primary_tgt: Option<UnitId> = None;
+                    let mut primary_dist: f32 = 0.0;
+                    let mut corpses_to_spawn: Vec<(UnitId, Team, WorldPos, u16)> = Vec::new();
+                    let enforce_posture = world.ruleset.enforce_suppression_posture;
+
+                    for hit in &cone.hits {
+                        let (t_cell, t_cover) = world
+                            .units
+                            .get(&hit.target_id.0)
+                            .and_then(|u| world.terrain.geom.world_to_cell(u.pos).ok())
+                            .map(|c| {
+                                let cov = world
+                                    .terrain
+                                    .idx(c)
+                                    .ok()
+                                    .map(|i| world.terrain.kind[i].cover_factor() + world.terrain.cover_bonus[i])
+                                    .unwrap_or(0.0);
+                                (Some(c), cov)
+                            })
+                            .unwrap_or((None, 0.0));
+                        if let Some(c) = t_cell {
+                            if let Ok(cidx) = world.terrain.idx(c) {
+                                if cidx < world.cell_s_supp.len() {
+                                    world.cell_s_supp[cidx] += hit.suppression_add;
+                                }
+                            }
+                        }
+                        if let Some(tgt) = world.units.get_mut(&hit.target_id.0) {
+                            let team = tgt.team;
+                            let tpos = tgt.pos;
+                            let (cas, hp_loss, supp, corpses) = apply_hit_delta_to_unit(
                                 tgt,
-                                hp_loss,
-                                casualties,
-                                suppression_add,
-                                world.ruleset.enforce_suppression_posture,
+                                t_cover,
+                                enforce_posture,
+                                cone.incoming_dir,
+                                cone.base_damage,
+                                cone.armor_pen_mm,
+                                cone.ignore_trench_cover,
+                                hit,
+                            );
+                            total_cas = total_cas.saturating_add(cas);
+                            total_hp_loss += hp_loss;
+                            total_supp += supp;
+                            if primary_tgt.is_none() {
+                                primary_tgt = Some(hit.target_id);
+                                primary_dist = hit.dist_m;
+                            }
+                            if corpses > 0 {
+                                corpses_to_spawn.push((hit.target_id, team, tpos, corpses));
+                            }
+                        }
+                    }
+                    for (uid, team, tpos, cnt) in corpses_to_spawn {
+                        for idx in 0..cnt {
+                            let _ = world.create_world_instance(
+                                WorldInstanceKind::Corpse,
+                                team,
+                                Some(uid),
+                                tpos,
+                                format!("corpse_fire_{}_{}_{}", world.tick, uid.0, idx),
+                                0.0,
+                                0.0,
+                                0.0,
                             );
                         }
                     }
-                    casualties_total = casualties_total.saturating_add(casualties);
+
+                    if cone.frag_radius_m > 0.0 {
+                        if let Ok(center) = world.terrain.geom.cell_center_m(cone.aim_cell) {
+                            let burst_z = world.terrain.elevation_at(center).unwrap_or(0.0) + 0.4;
+                            let blast_tot = resolve_and_commit_radial_blast(
+                                world,
+                                world.tick,
+                                &RadialBlastField {
+                                    source_id: cone.attacker_id,
+                                    center,
+                                    burst_z,
+                                    radius_m: cone.frag_radius_m.min(32.0),
+                                    peak_kpa: cone.blast_kpa,
+                                    fragments_total: cone.rounds_fired.saturating_mul(20),
+                                    frag_armor_pen_mm: 18.0,
+                                    frag_damage: 10.0,
+                                    crater_depth_m: cone.crater_depth_m,
+                                    det_seed: (cone.attacker_id.0 as u64) ^ world.clock_seconds,
+                                },
+                            );
+                            total_cas = total_cas.saturating_add(blast_tot.casualties);
+                            total_hp_loss += blast_tot.hp_loss;
+                            total_supp += blast_tot.suppression_add;
+                            if primary_tgt.is_none() {
+                                primary_tgt = blast_tot.primary_target_id;
+                                primary_dist = blast_tot.primary_dist_m;
+                            }
+                        }
+                    }
+
+                    casualties_total = casualties_total.saturating_add(total_cas);
+                    let att_name = world
+                        .units
+                        .get(&cone.attacker_id.0)
+                        .map(|u| u.callsign.as_str())
+                        .unwrap_or("unit");
                     let entry = CombatLogEntry {
                         tick: world.tick,
-                        actor_id: attacker_id,
-                        target_id,
+                        actor_id: cone.attacker_id,
+                        target_id: primary_tgt,
                         kind: "fire".into(),
-                        dist_m,
-                        casualties,
-                        hp_loss,
-                        suppression_add,
-                        ammo_spent: rounds_fired,
-                        message,
+                        dist_m: primary_dist,
+                        casualties: total_cas,
+                        hp_loss: total_hp_loss,
+                        suppression_add: total_supp,
+                        ammo_spent: cone.rounds_fired,
+                        message: format!(
+                            "{att_name} cone_fire rounds={} hits={} cas={total_cas} hp_loss={total_hp_loss:.1} supp+={total_supp:.2}",
+                            cone.rounds_fired,
+                            cone.hits.len()
+                        ),
                     };
                     world.combat_logs.push(entry.clone());
                     tick_logs.push(entry);
@@ -667,6 +852,11 @@ impl TickOrchestrator {
                 } => {
                     engineer_events += 1;
                     state_mutated = true;
+                    let eng_team = world
+                        .units
+                        .get(&unit_id.0)
+                        .map(|u| u.team)
+                        .unwrap_or(Team::Neutral);
                     for pt in &new_points {
                         if let Ok(cell) = world.terrain.geom.world_to_cell(*pt) {
                             match work {
@@ -678,9 +868,29 @@ impl TickOrchestrator {
                                         Some(0.35),
                                         None,
                                     );
+                                    let _ = world.create_world_instance(
+                                        WorldInstanceKind::Fortification,
+                                        eng_team,
+                                        Some(unit_id),
+                                        *pt,
+                                        "fortification",
+                                        0.0,
+                                        0.0,
+                                        0.0,
+                                    );
                                 }
                                 EngineerWorkKind::Minefield => {
                                     let _ = world.terrain.add_mine_density(cell, 0.80);
+                                    let _ = world.create_world_instance(
+                                        WorldInstanceKind::Mine,
+                                        eng_team,
+                                        Some(unit_id),
+                                        *pt,
+                                        "mine",
+                                        8.0,
+                                        90.0,
+                                        0.5,
+                                    );
                                 }
                                 EngineerWorkKind::Demolition => {
                                     let _ = world.terrain.mutate_cell(
@@ -689,6 +899,16 @@ impl TickOrchestrator {
                                         None,
                                         None,
                                         None,
+                                    );
+                                    let _ = world.create_world_instance(
+                                        WorldInstanceKind::TimedCharge,
+                                        eng_team,
+                                        Some(unit_id),
+                                        *pt,
+                                        "demolition_charge",
+                                        16.0,
+                                        120.0,
+                                        2.0,
                                     );
                                 }
                             }
@@ -725,28 +945,36 @@ impl TickOrchestrator {
                     mine_events += 1;
                     state_mutated = true;
                     let _ = world.terrain.add_mine_density(cell, -0.50);
-                    if let Ok(cidx) = world.terrain.idx(cell) {
-                        if cidx < world.cell_h_blast.len() {
-                            world.cell_h_blast[cidx] += 90.0;
-                            world.cell_s_supp[cidx] += 0.9;
-                        }
-                    }
-                    if let Some(u) = world.units.get_mut(&unit_id.0) {
-                        apply_unit_damage(
-                            u,
-                            18.0,
-                            1,
-                            0.85,
-                            world.ruleset.enforce_suppression_posture,
-                        );
-                    }
-                    casualties_total = casualties_total.saturating_add(1);
+                    let center = world
+                        .terrain
+                        .geom
+                        .cell_center_m(cell)
+                        .unwrap_or_else(|_| WorldPos::new(0.0, 0.0));
+                    let burst_z = world.terrain.elevation_at(center).unwrap_or(0.0) + 0.2;
+                    let tot = resolve_and_commit_radial_blast(
+                        world,
+                        world.tick,
+                        &RadialBlastField {
+                            source_id: unit_id,
+                            center,
+                            burst_z,
+                            radius_m: 16.0,
+                            peak_kpa: 110.0,
+                            fragments_total: 60,
+                            frag_armor_pen_mm: 20.0,
+                            frag_damage: 16.0,
+                            crater_depth_m: 0.6,
+                            det_seed: world.clock_seconds ^ (unit_id.0 as u64),
+                        },
+                    );
+                    casualties_total = casualties_total.saturating_add(tot.casualties);
                 }
             }
         }
         if state_mutated {
             world.unit_revision = world.unit_revision.wrapping_add(1);
         }
+        update_team_i_intel_after_commit(world, &tick_logs);
         stages_executed.push(TickStage::CommitPersistent);
 
         // Stage 11: Validate
@@ -776,8 +1004,12 @@ impl TickOrchestrator {
         // Stage 12: PublishAndDrop
         stages_executed.push(TickStage::PublishAndDrop);
         let prior_positions = std::mem::take(&mut scratch.prior_positions);
+        let unit_start_baselines = std::mem::take(&mut scratch.unit_start_baselines);
+        let motion_waypoints = std::mem::take(&mut scratch.motion_waypoints);
         world.terrain.clear_dirty_halo();
-        derived.rebuild_if_needed(world);
+        if !derived.rebuild_if_needed(world) {
+            derived.sync_transient_fields(world);
+        }
         scratch.clear_and_assert_empty();
 
         TickReport {
@@ -791,6 +1023,8 @@ impl TickOrchestrator {
             mine_events,
             casualties_total,
             prior_positions,
+            unit_start_baselines,
+            motion_waypoints,
             tick_logs,
             authoritative_sha256: world.authoritative_sha256(),
         }
@@ -801,7 +1035,7 @@ fn build_motion_proposal(
     world: &WorldState,
     unit: &UnitRecord,
     order: &UnitOrder,
-) -> Option<MotionProposal> {
+) -> Option<(MotionProposal, Vec<WorldPos>)> {
     let (goal, stance_mult) = match order {
         UnitOrder::Move { waypoints, stance } => (*waypoints.first()?, stance.speed_mult()),
         UnitOrder::AttackUnit {
@@ -840,24 +1074,18 @@ fn build_motion_proposal(
                 if unit.pos.distance_to(to) <= 1e-3 {
                     return None;
                 }
-                return Some(MotionProposal {
-                    unit_id: unit.id,
-                    from: unit.pos,
-                    to,
-                    speed_mps: unit.base_speed_mps,
-                });
+                return Some((
+                    MotionProposal {
+                        unit_id: unit.id,
+                        from: unit.pos,
+                        to,
+                        speed_mps: unit.base_speed_mps,
+                    },
+                    Vec::new(),
+                ));
             }
         }
         _ => return None,
-    };
-
-    let next_wp = if segment_has_obstacle(&world.terrain, unit.mobility, unit.pos, goal) {
-        let path = find_path_world(&world.terrain, unit.mobility, unit.pos, goal, 12_000)?;
-        path.into_iter()
-            .find(|wp| unit.pos.distance_to(*wp) > 0.5)
-            .unwrap_or(goal)
-    } else {
-        goal
     };
 
     let cell = world.terrain.geom.world_to_cell(unit.pos).ok()?;
@@ -876,39 +1104,85 @@ fn build_motion_proposal(
     } else {
         1.0
     };
-    let speed_mps = (unit.base_speed_mps * stance_mult * supp_mult) / terrain_cost.max(0.5);
+    let eff_scale = unit.effective_speed_scale();
+    if eff_scale <= 0.0 {
+        return None;
+    }
+    let speed_mps =
+        (unit.base_speed_mps * eff_scale * stance_mult * supp_mult) / terrain_cost.max(0.5);
     let step_dist = speed_mps * TICK_SECONDS_F32;
-    let dist = unit.pos.distance_to(next_wp);
-    let to = if dist <= step_dist || dist <= 1e-4 {
-        next_wp
+
+    let mut mid_waypoints: Vec<WorldPos> = Vec::new();
+    let to = if segment_has_obstacle(&world.terrain, unit.mobility, unit.pos, goal) {
+        let path = find_path_world(&world.terrain, unit.mobility, unit.pos, goal, 12_000)?;
+        let mut cursor = unit.pos;
+        let mut rem = step_dist;
+        let mut end_pos = unit.pos;
+        for wp in path {
+            if cursor.distance_to(wp) <= 0.5 {
+                continue;
+            }
+            let seg = cursor.distance_to(wp);
+            if rem <= seg {
+                let f = (rem / seg).clamp(0.0, 1.0);
+                end_pos = WorldPos::new(
+                    cursor.x + (wp.x - cursor.x) * f,
+                    cursor.y + (wp.y - cursor.y) * f,
+                );
+                rem = 0.0;
+                break;
+            } else {
+                mid_waypoints.push(wp);
+                cursor = wp;
+                end_pos = wp;
+                rem -= seg;
+            }
+        }
+        let _ = rem;
+        end_pos
     } else {
-        let f = step_dist / dist;
-        WorldPos::new(
-            unit.pos.x + (next_wp.x - unit.pos.x) * f,
-            unit.pos.y + (next_wp.y - unit.pos.y) * f,
-        )
+        let dist = unit.pos.distance_to(goal);
+        if dist <= step_dist || dist <= 1e-4 {
+            goal
+        } else {
+            let f = step_dist / dist;
+            WorldPos::new(
+                unit.pos.x + (goal.x - unit.pos.x) * f,
+                unit.pos.y + (goal.y - unit.pos.y) * f,
+            )
+        }
     };
 
-    Some(MotionProposal {
-        unit_id: unit.id,
-        from: unit.pos,
-        to,
-        speed_mps,
-    })
+    Some((
+        MotionProposal {
+            unit_id: unit.id,
+            from: unit.pos,
+            to,
+            speed_mps,
+        },
+        mid_waypoints,
+    ))
 }
 
-fn select_fire_target(
+fn select_fire_aim(
     world: &WorldState,
     derived: &DerivedState,
     unit: &UnitRecord,
     active_order: &UnitOrder,
-) -> Option<(Option<UnitId>, CellCoord, LosResult)> {
+) -> Option<(WorldPos, CellCoord)> {
+    if let UnitOrder::AttackPos { target, .. } = active_order {
+        if let Ok(cell) = world.terrain.geom.world_to_cell(*target) {
+            return Some((*target, cell));
+        }
+        return None;
+    }
+
     if let UnitOrder::AttackUnit { target, .. } = active_order {
         if let Some(enemy) = world.units.get(&target.0).filter(|e| e.alive && e.team.is_hostile_to(unit.team)) {
             let los = check_los(&world.terrain, unit.pos, enemy.pos, unit.vision_m, world.night);
             if los.visible {
                 if let Ok(cell) = world.terrain.geom.world_to_cell(enemy.pos) {
-                    return Some((Some(enemy.id), cell, los));
+                    return Some((enemy.pos, cell));
                 }
             }
         }
@@ -916,7 +1190,7 @@ fn select_fire_target(
     }
 
     let nearby = derived.query_units_in_radius(world, unit.pos, unit.vision_m);
-    let mut best: Option<(f32, u32, UnitId, CellCoord, LosResult)> = None;
+    let mut best: Option<(f32, u32, WorldPos, CellCoord)> = None;
     for uid in nearby {
         let Some(enemy) = world.units.get(&uid.0) else {
             continue;
@@ -936,10 +1210,10 @@ fn select_fire_target(
             Some((bd, bid, ..)) => los.dist_m < bd - 1e-3 || ((los.dist_m - bd).abs() <= 1e-3 && uid.0 < bid),
         };
         if replace {
-            best = Some((los.dist_m, uid.0, enemy.id, cell, los));
+            best = Some((los.dist_m, uid.0, enemy.pos, cell));
         }
     }
-    best.map(|(_, _, id, cell, los)| (Some(id), cell, los))
+    best.map(|(_, _, pos, cell)| (pos, cell))
 }
 
 pub fn generate_work_points(work: EngineerWorkKind, waypoints: &[WorldPos]) -> Vec<WorldPos> {
@@ -956,22 +1230,79 @@ pub fn generate_work_points(work: EngineerWorkKind, waypoints: &[WorldPos]) -> V
     pts.into_iter().map(|p| WorldPos::new(p[0], p[1])).collect()
 }
 
-fn apply_unit_damage(
-    unit: &mut UnitRecord,
-    hp_loss: f32,
-    casualties: u16,
-    suppression_add: f32,
-    enforce_posture: bool,
-) {
-    unit.hp = (unit.hp - hp_loss).max(0.0);
-    unit.men = unit.men.saturating_sub(casualties);
-    unit.suppression += suppression_add;
-    if enforce_posture {
-        unit.posture = unit.posture.transition(unit.suppression);
+fn update_team_i_intel_after_commit(world: &mut WorldState, tick_logs: &[CombatLogEntry]) {
+    let mut cell_targets: BTreeMap<usize, WorldPos> = BTreeMap::new();
+    for u in world.units.values() {
+        if u.alive {
+            if let Ok(cell) = world.terrain.geom.world_to_cell(u.pos) {
+                if let Ok(cidx) = world.terrain.idx(cell) {
+                    cell_targets.entry(cidx).or_insert(u.pos);
+                }
+            }
+        }
     }
-    if unit.hp <= 0.0 || unit.men == 0 {
-        unit.alive = false;
-        unit.hp = 0.0;
-        unit.men = 0;
+    for inst in world.world_instances.values() {
+        if inst.active {
+            if let Ok(cell) = world.terrain.geom.world_to_cell(inst.pos) {
+                if let Ok(cidx) = world.terrain.idx(cell) {
+                    cell_targets.entry(cidx).or_insert(inst.pos);
+                }
+            }
+        }
+    }
+
+    let observers: Vec<(Team, WorldPos, f32)> = world
+        .units
+        .values()
+        .filter(|u| u.alive && u.team.index().is_some())
+        .map(|u| (u.team, u.pos, u.vision_m))
+        .collect();
+
+    let mut injections: Vec<(Team, usize, f32)> = Vec::new();
+    for &(obs_team, obs_pos, obs_vision_m) in &observers {
+        if let Ok(obs_cell) = world.terrain.geom.world_to_cell(obs_pos) {
+            if let Ok(obs_cidx) = world.terrain.idx(obs_cell) {
+                injections.push((obs_team, obs_cidx, 2.5));
+            }
+        }
+        let effective_max = obs_vision_m * if world.night { 0.45 } else { 1.0 };
+        for (&cidx, &target_pos) in &cell_targets {
+            if obs_pos.distance_to(target_pos) > effective_max {
+                continue;
+            }
+            let los = check_los(&world.terrain, obs_pos, target_pos, obs_vision_m, world.night);
+            if los.visible {
+                let j_dda = if los.dist_m <= obs_vision_m * 0.55 && los.concealment < 0.35 {
+                    1.65
+                } else {
+                    0.75
+                };
+                injections.push((obs_team, cidx, j_dda));
+            }
+        }
+    }
+
+    for log in tick_logs {
+        if log.kind != "fire" {
+            continue;
+        }
+        let Some(actor) = world.units.get(&log.actor_id.0).filter(|u| u.alive) else {
+            continue;
+        };
+        let Ok(actor_cell) = world.terrain.geom.world_to_cell(actor.pos) else {
+            continue;
+        };
+        let Ok(actor_cidx) = world.terrain.idx(actor_cell) else {
+            continue;
+        };
+        for &(obs_team, obs_pos, obs_vision_m) in &observers {
+            if obs_team != actor.team && obs_pos.distance_to(actor.pos) <= obs_vision_m * 1.2 {
+                injections.push((obs_team, actor_cidx, 0.28));
+            }
+        }
+    }
+
+    for (team, cidx, j) in injections {
+        world.inject_team_intel(team, cidx, j);
     }
 }

@@ -132,30 +132,29 @@ fn test_v2_p3_unified_commands_ruleset_gates_and_detonator() {
         .unwrap();
     assert_ne!(hq, far_sq);
 
-    // Outside HQ effective_radio_range_m (260m > 100m): command rejected!
-    let rad_rej = engine.submit_command(
-        TacticalCommand::MoveUnit {
-            unit_id: UnitId(far_sq),
-            waypoints: vec![WorldPos::new(320.0, 40.0)],
-            stance: MoveStance::Normal,
-        },
-        1,
-    );
-    assert!(!rad_rej.accepted && rad_rej.code == "OUT_OF_COMMAND_RADIUS");
+    // Outside HQ effective_radio_range_m (260m > 100m): command accepted with computed remote delay into StepCache!
+    let far_move = TacticalCommand::MoveUnit {
+        unit_id: UnitId(far_sq),
+        waypoints: vec![WorldPos::new(320.0, 40.0)],
+        stance: MoveStance::Normal,
+    };
+    let rad_delayed = engine.submit_command(far_move.clone(), 1);
+    assert!(rad_delayed.accepted && rad_delayed.code == "DEFERRED_REMOTE_COMMAND");
+    let delay_ticks = rad_delayed.remote_delay_ticks.expect("remote delay must be positive");
+    assert!(delay_ticks >= 1 && rad_delayed.deferred_until_tick == Some(delay_ticks));
+    assert_eq!(engine.world.units[&far_sq].order, UnitOrder::Hold);
+    assert!(engine
+        .world
+        .step_cache
+        .get(&delay_ticks)
+        .is_some_and(|b| !b.is_empty()));
 
     // Disable enforce_command_radius -> distant order succeeds immediately!
     ruleset.enforce_command_radius = false;
     engine.submit_command(TacticalCommand::SetRuleset { ruleset }, 1);
-    assert!(engine
-        .submit_command(
-            TacticalCommand::MoveUnit {
-                unit_id: UnitId(far_sq),
-                waypoints: vec![WorldPos::new(320.0, 40.0)],
-                stance: MoveStance::Normal,
-            },
-            1,
-        )
-        .accepted);
+    let immediate_far = engine.submit_command(far_move, 1);
+    assert!(immediate_far.accepted && immediate_far.code == "ORDER_ACCEPTED");
+    assert!(immediate_far.remote_delay_ticks.is_none());
 
     // Engineer arm & trigger detonator: blocked inside 40m blast corridor, succeeds >= 40m away.
     let eng_id = engine
@@ -303,9 +302,10 @@ fn test_v2_p3_time_machine_ingress_egress_zero_physics_pollution() {
     }
     assert!(found_playback_event, "must emit unaltered playback combat events");
 
-    // Equalize only ruleset toggle metadata after simulation so full WorldState & SHA-256 prove zero physics drift.
+    // Equalize only ruleset toggle & ticket sequence metadata after simulation so full WorldState & SHA-256 prove zero physics drift.
     let mut norm_b = eng_b.world.clone();
     norm_b.ruleset = rules_tm;
+    norm_b.next_event_id = eng_a.world.next_event_id;
     assert_eq!(eng_a.world.units[&1].pos, norm_b.units[&1].pos);
     assert_eq!(eng_a.world.units[&2].hp, norm_b.units[&2].hp);
     assert_eq!(eng_a.world.units[&1].ammo_rounds, norm_b.units[&1].ammo_rounds);

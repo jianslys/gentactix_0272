@@ -1,12 +1,27 @@
 use crate::math_ops::{
-    compute_g_alloc, DeygoutRadioOperator, GFieldKind, WorldPos, TACTICAL_CELL_SIZE_M,
+    compute_g_alloc, DeygoutRadioOperator, GFieldKind, SchmidtPostureState, WorldPos,
+    TACTICAL_CELL_SIZE_M,
 };
 use crate::state::WorldState;
-use crate::types::UnitId;
+use crate::types::{Team, UnitId};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const BUCKET_CELL_SPAN: usize = 8; // 8 cells * 8.0m = 64.0m spatial bucket
+
+/// Cache-friendly hot-loop proxy stored inside spatial buckets for zero-pointer-chase ballistic corridor filtering.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpatialUnitProxy {
+    pub id: UnitId,
+    pub team: Team,
+    pub pos: WorldPos,
+    pub z_base: f32,
+    pub h_posture: f32,
+    pub half_width_m: f32,
+    pub is_vehicle: bool,
+    pub facing_deg: f32,
+    pub occlusion_fraction: f32,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GFieldCell {
@@ -32,9 +47,14 @@ pub struct DerivedState {
     pub bucket_rows: usize,
     pub bucket_cols: usize,
     pub spatial_buckets: Vec<Vec<UnitId>>,
+    pub spatial_bucket_proxies: Vec<Vec<SpatialUnitProxy>>,
+    pub bucket_max_crest_z: Vec<f32>,
+    pub terrain_max_crest_z: f32,
     pub g_field_cells: BTreeMap<usize, GFieldCell>,
     pub i_field_threat: Vec<f32>,
+    pub team_i_field_threat: [Vec<f32>; 2],
     pub unit_radio_t_diff: BTreeMap<u32, f32>,
+    pub step_event_index: BTreeMap<u64, u64>,
 }
 
 impl DerivedState {
@@ -42,6 +62,7 @@ impl DerivedState {
         let bucket_cells = BUCKET_CELL_SPAN;
         let bucket_rows = rows.div_ceil(bucket_cells).max(1);
         let bucket_cols = cols.div_ceil(bucket_cells).max(1);
+        let n_cells = rows * cols;
         Self {
             synced_terrain_rev: u64::MAX,
             synced_unit_rev: u64::MAX,
@@ -49,9 +70,14 @@ impl DerivedState {
             bucket_rows,
             bucket_cols,
             spatial_buckets: vec![Vec::new(); bucket_rows * bucket_cols],
+            spatial_bucket_proxies: vec![Vec::new(); bucket_rows * bucket_cols],
+            bucket_max_crest_z: vec![0.0; bucket_rows * bucket_cols],
+            terrain_max_crest_z: 0.0,
             g_field_cells: BTreeMap::new(),
-            i_field_threat: vec![0.0; rows * cols],
+            i_field_threat: vec![0.0; n_cells],
+            team_i_field_threat: [vec![0.0; n_cells], vec![0.0; n_cells]],
             unit_radio_t_diff: BTreeMap::new(),
+            step_event_index: BTreeMap::new(),
         }
     }
 
@@ -61,9 +87,46 @@ impl DerivedState {
         for bucket in &mut self.spatial_buckets {
             bucket.clear();
         }
+        for bucket in &mut self.spatial_bucket_proxies {
+            bucket.clear();
+        }
+        self.bucket_max_crest_z.clear();
+        self.terrain_max_crest_z = 0.0;
         self.g_field_cells.clear();
         self.i_field_threat.clear();
+        self.team_i_field_threat[0].clear();
+        self.team_i_field_threat[1].clear();
         self.unit_radio_t_diff.clear();
+        self.step_event_index.clear();
+    }
+
+    pub fn sync_step_event_index(&mut self, world: &WorldState) {
+        self.step_event_index.clear();
+        for (&target_tick, bucket) in &world.step_cache {
+            for ev in bucket {
+                self.step_event_index.insert(ev.event_id, target_tick);
+            }
+        }
+    }
+
+    /// Synchronizes Stage-2 decayed threat fields and resets per-tick `committed_en_route`
+    /// even when unit positions and terrain revisions did not change.
+    pub fn sync_transient_fields(&mut self, world: &WorldState) {
+        let n_cells = world.terrain.rows * world.terrain.cols;
+        if self.i_field_threat.len() == n_cells {
+            for i in 0..n_cells {
+                let h = world.cell_h_blast.get(i).copied().unwrap_or(0.0);
+                let s = world.cell_s_supp.get(i).copied().unwrap_or(0.0);
+                let t0 = world.team_s_threat[0].get(i).copied().unwrap_or(0.0);
+                let t1 = world.team_s_threat[1].get(i).copied().unwrap_or(0.0);
+                self.team_i_field_threat[0][i] = h + s + t0;
+                self.team_i_field_threat[1][i] = h + s + t1;
+                self.i_field_threat[i] = h + s + t0.max(t1);
+            }
+        }
+        for g_cell in self.g_field_cells.values_mut() {
+            g_cell.committed_en_route = 0.0;
+        }
     }
 
     #[inline]
@@ -90,16 +153,65 @@ impl DerivedState {
         let b_total = self.bucket_rows * self.bucket_cols;
         self.spatial_buckets.clear();
         self.spatial_buckets.resize_with(b_total, Vec::new);
+        self.spatial_bucket_proxies.clear();
+        self.spatial_bucket_proxies.resize_with(b_total, Vec::new);
+
+        if self.synced_terrain_rev != world.terrain.revision
+            || self.bucket_max_crest_z.len() != b_total
+        {
+            self.bucket_max_crest_z.clear();
+            self.bucket_max_crest_z.resize(b_total, f32::NEG_INFINITY);
+            let mut global_max = f32::NEG_INFINITY;
+            for r in 0..rows {
+                let br = (r / self.bucket_cells).min(self.bucket_rows - 1);
+                let row_off = r * cols;
+                for c in 0..cols {
+                    let cidx = row_off + c;
+                    let crest = if world.terrain.kind[cidx] == crate::terrain::TerrainKind::Urban {
+                        6.0
+                    } else {
+                        0.0
+                    };
+                    let z = world.terrain.elevation_m[cidx] + crest;
+                    if z > global_max {
+                        global_max = z;
+                    }
+                    let bc = (c / self.bucket_cells).min(self.bucket_cols - 1);
+                    let bidx = br * self.bucket_cols + bc;
+                    if z > self.bucket_max_crest_z[bidx] {
+                        self.bucket_max_crest_z[bidx] = z;
+                    }
+                }
+            }
+            self.terrain_max_crest_z = if global_max.is_finite() {
+                global_max
+            } else {
+                0.0
+            };
+        }
 
         self.g_field_cells.clear();
         self.unit_radio_t_diff.clear();
+        self.step_event_index.clear();
+
+        for (&target_tick, bucket) in &world.step_cache {
+            for ev in bucket {
+                self.step_event_index.insert(ev.event_id, target_tick);
+            }
+        }
 
         let n_cells = rows * cols;
         self.i_field_threat.resize(n_cells, 0.0);
+        self.team_i_field_threat[0].resize(n_cells, 0.0);
+        self.team_i_field_threat[1].resize(n_cells, 0.0);
         for i in 0..n_cells {
             let h = world.cell_h_blast.get(i).copied().unwrap_or(0.0);
             let s = world.cell_s_supp.get(i).copied().unwrap_or(0.0);
-            self.i_field_threat[i] = h + s;
+            let t0 = world.team_s_threat[0].get(i).copied().unwrap_or(0.0);
+            let t1 = world.team_s_threat[1].get(i).copied().unwrap_or(0.0);
+            self.team_i_field_threat[0][i] = h + s + t0;
+            self.team_i_field_threat[1][i] = h + s + t1;
+            self.i_field_threat[i] = h + s + t0.max(t1);
         }
 
         for obj in &world.objectives {
@@ -125,7 +237,36 @@ impl DerivedState {
             if let Ok(cell) = world.terrain.geom.world_to_cell(unit.pos) {
                 let br = (cell.r as usize / self.bucket_cells).min(self.bucket_rows - 1);
                 let bc = (cell.c as usize / self.bucket_cells).min(self.bucket_cols - 1);
-                self.spatial_buckets[br * self.bucket_cols + bc].push(unit.id);
+                let bidx = br * self.bucket_cols + bc;
+                self.spatial_buckets[bidx].push(unit.id);
+
+                let z_base = world.terrain.elevation_at(unit.pos).unwrap_or(0.0);
+                let h_posture = if unit.is_vehicle {
+                    2.5
+                } else {
+                    match unit.posture {
+                        SchmidtPostureState::Active => 1.7,
+                        SchmidtPostureState::Pinned => 1.0,
+                        SchmidtPostureState::Prone => 0.35,
+                    }
+                };
+                let (half_width_m, occlusion_fraction) = if unit.is_vehicle {
+                    (2.2, 1.0)
+                } else {
+                    let ratio = (unit.men as f32 / unit.max_men.max(1) as f32).clamp(0.0, 1.0);
+                    (3.2, (0.55 * ratio).clamp(0.06, 0.65))
+                };
+                self.spatial_bucket_proxies[bidx].push(SpatialUnitProxy {
+                    id: unit.id,
+                    team: unit.team,
+                    pos: unit.pos,
+                    z_base,
+                    h_posture,
+                    half_width_m,
+                    is_vehicle: unit.is_vehicle,
+                    facing_deg: unit.facing_deg,
+                    occlusion_fraction,
+                });
 
                 if let Ok(cidx) = world.terrain.idx(cell) {
                     let g_cell = self.g_field_cells.entry(cidx).or_insert(GFieldCell {
@@ -140,6 +281,32 @@ impl DerivedState {
 
             let t_diff = compute_unit_deygout_factor(world, unit.id);
             self.unit_radio_t_diff.insert(uid, t_diff);
+        }
+
+        for wave in &world.active_wave_directives {
+            for zone in &wave.zones {
+                if zone.kind == crate::step_cache::WaveZoneKind::Bombardment {
+                    continue;
+                }
+                let target_pts = if zone.waypoints.is_empty() {
+                    std::slice::from_ref(&zone.center)
+                } else {
+                    zone.waypoints.as_slice()
+                };
+                for &pt in target_pts {
+                    if let Ok(cell) = world.terrain.geom.world_to_cell(pt) {
+                        if let Ok(idx) = world.terrain.idx(cell) {
+                            let entry = self.g_field_cells.entry(idx).or_insert(GFieldCell {
+                                g0: 0.0,
+                                committed_en_route: 0.0,
+                                actual_on_site: 0.0,
+                                kind: GFieldKind::State,
+                            });
+                            entry.g0 += zone.g0_weight.max(0.1);
+                        }
+                    }
+                }
+            }
         }
 
         for (&cidx, &rem) in &world.g_work_remaining {

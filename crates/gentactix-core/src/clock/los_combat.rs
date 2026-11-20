@@ -206,20 +206,6 @@ pub fn resolve_fire_exchange(
         return zero_fire_outcome();
     }
 
-    let mount_refs: Vec<&str> = attacker.mount_ids.iter().map(String::as_str).collect();
-    let profile_opt = if !attacker.weapon_id.is_empty() && !attacker.ammo_id.is_empty() {
-        catalog
-            .resolve_attack_profile(
-                &attacker.weapon_id,
-                &attacker.ammo_id,
-                attacker.fuze_id.as_deref(),
-                &mount_refs,
-            )
-            .ok()
-    } else {
-        None
-    };
-
     let (
         combat_rpm,
         base_acc,
@@ -230,29 +216,56 @@ pub fn resolve_fire_exchange(
         frag_radius_m,
         ignore_trench_cover,
         is_dud,
-    ) = match profile_opt {
-        Some(p) => (
-            p.combat_rpm,
-            p.base_accuracy,
-            p.acc_decay_coeff,
-            p.dmg_decay_coeff,
-            p.damage,
-            p.armor_pen_mm,
-            p.frag_radius_m,
-            p.ignore_trench_cover,
-            p.is_dud,
-        ),
-        None => (
-            30.0,
-            0.55,
-            0.002,
-            0.001,
-            [1.0, 0.4, 0.2, 0.0, 0.0, 0.0],
-            2.0,
-            0.0,
-            0.0,
-            false,
-        ),
+    ) = if let Some(cp) = attacker.profile_idx.and_then(|idx| catalog.compact_profile(idx)) {
+        (
+            cp.combat_rpm,
+            cp.base_accuracy,
+            cp.acc_decay_coeff,
+            cp.dmg_decay_coeff,
+            cp.damage,
+            cp.armor_pen_mm,
+            cp.frag_radius_m,
+            cp.ignore_trench_cover,
+            cp.is_dud,
+        )
+    } else {
+        let mount_refs: Vec<&str> = attacker.mount_ids.iter().map(String::as_str).collect();
+        let profile_opt = if !attacker.weapon_id.is_empty() && !attacker.ammo_id.is_empty() {
+            catalog
+                .resolve_attack_profile(
+                    &attacker.weapon_id,
+                    &attacker.ammo_id,
+                    attacker.fuze_id.as_deref(),
+                    &mount_refs,
+                )
+                .ok()
+        } else {
+            None
+        };
+        match profile_opt {
+            Some(p) => (
+                p.combat_rpm,
+                p.base_accuracy,
+                p.acc_decay_coeff,
+                p.dmg_decay_coeff,
+                p.damage,
+                p.armor_pen_mm,
+                p.frag_radius_m,
+                p.ignore_trench_cover,
+                p.is_dud,
+            ),
+            None => (
+                30.0,
+                0.55,
+                0.002,
+                0.001,
+                [1.0, 0.4, 0.2, 0.0, 0.0, 0.0],
+                2.0,
+                0.0,
+                0.0,
+                false,
+            ),
+        }
     };
 
     let posture_factor = if ruleset.enforce_suppression_posture {

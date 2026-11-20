@@ -1,12 +1,19 @@
-use crate::catalog::ItemCatalog;
+use crate::catalog::{AttackProfileIdx, ItemCatalog};
+use crate::damage_model::{
+    ArmorProfileRha, SoldierRecord, VehicleDamageState, VehicleSubsystemKind,
+};
 use crate::math_ops::{
-    AugmentedArcIntegrator, DetonatorSwitchEntity, SchmidtPostureState, UnitZohDirectiveFilter,
-    WorldPos,
+    fuse_intel_log_survival, transition_vis_tier_hysteresis, AugmentedArcIntegrator,
+    DetonatorSwitchEntity, SchmidtPostureState, UnitZohDirectiveFilter, WorldPos,
 };
 use crate::ruleset::{ObjectiveSpec, SimRuleset, UnitSpawnSpec};
+use crate::step_cache::{
+    ActiveWaveDirective, ScheduledStepEvent, WorldInstanceKind, WorldInstanceRecord,
+    MAX_STEP_CACHE_HORIZON_TICKS,
+};
 use crate::terrain::TerrainGrid;
 use crate::types::{
-    FireDiscipline, MobilityKind, PlatoonId, Team, UnitId, UnitOrder, UnitRole,
+    FireDiscipline, MobilityKind, PlatoonId, Team, UnitId, UnitOrder, UnitRole, VisTier,
     DEFAULT_EPOCH_SECONDS, TICK_SECONDS,
 };
 use serde::{Deserialize, Serialize};
@@ -54,6 +61,90 @@ pub struct UnitRecord {
     pub order: UnitOrder,
     pub fire_discipline: FireDiscipline,
     pub cooldown_s: f32,
+    #[serde(default)]
+    pub is_vehicle: bool,
+    #[serde(default)]
+    pub profile_idx: Option<AttackProfileIdx>,
+    #[serde(default)]
+    pub soldiers: Vec<SoldierRecord>,
+    #[serde(default)]
+    pub vehicle_damage: Option<VehicleDamageState>,
+}
+
+impl UnitRecord {
+    pub fn recompute_damage_aggregates(&mut self) {
+        if self.is_vehicle {
+            if let Some(vd) = &self.vehicle_damage {
+                self.men = vd.crew_alive;
+                if vd.ammo_cooked_off || vd.crew_alive == 0 || self.hp <= 0.0 {
+                    self.alive = false;
+                    self.hp = 0.0;
+                }
+            }
+            return;
+        }
+        if !self.soldiers.is_empty() {
+            let alive_cnt = self.soldiers.iter().filter(|s| s.alive).count() as u16;
+            let total_hp: f32 = self.soldiers.iter().filter(|s| s.alive).map(|s| s.hp).sum();
+            self.men = alive_cnt;
+            self.hp = total_hp.clamp(0.0, self.max_hp);
+            if alive_cnt == 0 || self.hp <= 0.0 {
+                self.alive = false;
+                self.hp = 0.0;
+                self.men = 0;
+            }
+        }
+    }
+
+    pub fn effective_speed_scale(&self) -> f32 {
+        if let Some(vd) = &self.vehicle_damage {
+            let eng = vd.subsystems[VehicleSubsystemKind::Engine as usize];
+            let trk = vd.subsystems[VehicleSubsystemKind::Tracks as usize];
+            if eng <= 0.15 || trk <= 0.15 || vd.crew_alive == 0 || vd.ammo_cooked_off {
+                return 0.0;
+            }
+            return (0.5 * eng + 0.5 * trk).clamp(0.25, 1.0);
+        }
+        if !self.soldiers.is_empty() {
+            let mut count = 0usize;
+            let mut sum_legs = 0.0f32;
+            for s in &self.soldiers {
+                if s.alive {
+                    count += 1;
+                    sum_legs += s.regions[3].integrity;
+                }
+            }
+            if count > 0 {
+                return (sum_legs / count as f32).clamp(0.30, 1.0);
+            }
+        }
+        1.0
+    }
+
+    pub fn effective_radio_scale(&self) -> f32 {
+        if let Some(vd) = &self.vehicle_damage {
+            let r = vd.subsystems[VehicleSubsystemKind::Radio as usize];
+            if r <= 0.15 || vd.ammo_cooked_off || vd.crew_alive == 0 {
+                0.0
+            } else {
+                r.clamp(0.0, 1.0)
+            }
+        } else {
+            1.0
+        }
+    }
+
+    pub fn can_fire_main_weapon(&self) -> bool {
+        if !self.alive || self.men == 0 {
+            return false;
+        }
+        if let Some(vd) = &self.vehicle_damage {
+            return !vd.ammo_cooked_off
+                && vd.crew_alive > 0
+                && vd.subsystems[VehicleSubsystemKind::MainGun as usize] > 0.15;
+        }
+        true
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -95,9 +186,27 @@ pub struct WorldState {
     pub g_work_remaining: BTreeMap<usize, f32>,
     #[serde(default = "default_next_event_id")]
     pub next_event_id: u64,
+    #[serde(default)]
+    pub world_instances: BTreeMap<u64, WorldInstanceRecord>,
+    #[serde(default = "default_next_instance_id")]
+    pub next_instance_id: u64,
+    #[serde(default)]
+    pub step_cache: BTreeMap<u64, Vec<ScheduledStepEvent>>,
+    #[serde(default)]
+    pub active_wave_directives: Vec<ActiveWaveDirective>,
+    #[serde(default)]
+    pub team_i_intel: [Vec<f32>; 2],
+    #[serde(default)]
+    pub team_i_vis_tier: [Vec<VisTier>; 2],
+    #[serde(default)]
+    pub team_s_threat: [Vec<f32>; 2],
 }
 
 const fn default_next_event_id() -> u64 {
+    1
+}
+
+const fn default_next_instance_id() -> u64 {
     1
 }
 
@@ -135,6 +244,13 @@ impl WorldState {
             unit_revision: 1,
             g_work_remaining: BTreeMap::new(),
             next_event_id: 1,
+            world_instances: BTreeMap::new(),
+            next_instance_id: 1,
+            step_cache: BTreeMap::new(),
+            active_wave_directives: Vec::new(),
+            team_i_intel: [vec![0.0; n_cells], vec![0.0; n_cells]],
+            team_i_vis_tier: [vec![VisTier::Hidden; n_cells], vec![VisTier::Hidden; n_cells]],
+            team_s_threat: [vec![0.0; n_cells], vec![0.0; n_cells]],
         }
     }
 
@@ -143,6 +259,145 @@ impl WorldState {
         let id = self.next_event_id.max(1);
         self.next_event_id = id.saturating_add(1);
         id
+    }
+
+    #[inline]
+    pub fn alloc_instance_id(&mut self) -> u64 {
+        let id = self.next_instance_id.max(1);
+        self.next_instance_id = id.saturating_add(1);
+        id
+    }
+
+    pub fn inject_team_intel(&mut self, team: Team, cell_idx: usize, j_evidence: f32) {
+        if j_evidence <= 0.0 {
+            return;
+        }
+        let targets: &[usize] = match team.index() {
+            Some(0) => &[0],
+            Some(1) => &[1],
+            _ => &[0, 1],
+        };
+        for &t_idx in targets {
+            if cell_idx < self.team_i_intel[t_idx].len() {
+                let fused = fuse_intel_log_survival(self.team_i_intel[t_idx][cell_idx], j_evidence);
+                self.team_i_intel[t_idx][cell_idx] = fused;
+                if cell_idx < self.team_i_vis_tier[t_idx].len() {
+                    self.team_i_vis_tier[t_idx][cell_idx] =
+                        transition_vis_tier_hysteresis(self.team_i_vis_tier[t_idx][cell_idx], fused);
+                }
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_world_instance(
+        &mut self,
+        kind: WorldInstanceKind,
+        team: Team,
+        owner_unit_id: Option<UnitId>,
+        pos: WorldPos,
+        label: impl Into<String>,
+        blast_radius_m: f32,
+        blast_kpa: f32,
+        crater_depth_m: f32,
+    ) -> Result<u64, String> {
+        let pos_clean = sanitize_pos(pos);
+        let cell = self
+            .terrain
+            .geom
+            .world_to_cell(pos_clean)
+            .map_err(|e| format!("world instance out of bounds: {e}"))?;
+        let id = self.alloc_instance_id();
+        self.world_instances.insert(
+            id,
+            WorldInstanceRecord {
+                instance_id: id,
+                kind,
+                team,
+                owner_unit_id,
+                pos: pos_clean,
+                created_tick: self.tick,
+                active: true,
+                label: label.into(),
+                blast_radius_m: sanitize_f32(blast_radius_m.max(0.0)),
+                blast_kpa: sanitize_f32(blast_kpa.max(0.0)),
+                crater_depth_m: sanitize_f32(crater_depth_m.max(0.0)),
+            },
+        );
+        if let Ok(cidx) = self.terrain.idx(cell) {
+            // Creator/owning side has immediate awareness (I_intel >= 0.75) on its own created instance.
+            if team != Team::Neutral {
+                self.inject_team_intel(team, cidx, 2.5);
+            }
+        }
+        self.unit_revision = self.unit_revision.wrapping_add(1);
+        Ok(id)
+    }
+
+    pub fn schedule_step_event(&mut self, mut event: ScheduledStepEvent) -> Result<u64, String> {
+        let max_tick = self.tick.saturating_add(MAX_STEP_CACHE_HORIZON_TICKS);
+        if event.target_tick < self.tick || event.target_tick > max_tick {
+            return Err(format!(
+                "step_cache target_tick {} out of 60-day range [{}..={}]",
+                event.target_tick, self.tick, max_tick
+            ));
+        }
+        if event.event_id == 0 {
+            event.event_id = self.alloc_event_id();
+        }
+        event.exact_ms = event.exact_ms.clamp(1, 16_000);
+        let eid = event.event_id;
+        self.step_cache.entry(event.target_tick).or_default().push(event);
+        Ok(eid)
+    }
+
+    pub fn drain_due_step_events(&mut self, up_to_tick: u64) -> Vec<ScheduledStepEvent> {
+        let due_ticks: Vec<u64> = self
+            .step_cache
+            .keys()
+            .copied()
+            .take_while(|&t| t <= up_to_tick)
+            .collect();
+        if due_ticks.is_empty() {
+            return Vec::new();
+        }
+        let mut out = Vec::new();
+        for t in due_ticks {
+            if let Some(mut bucket) = self.step_cache.remove(&t) {
+                out.append(&mut bucket);
+            }
+        }
+        out.sort_by_key(|ev| (ev.target_tick, ev.exact_ms, ev.event_id));
+        out
+    }
+
+    pub fn cancel_step_event(
+        &mut self,
+        event_id: u64,
+        tick_hint: Option<u64>,
+    ) -> Option<ScheduledStepEvent> {
+        if let Some(t) = tick_hint {
+            if let Some(bucket) = self.step_cache.get_mut(&t) {
+                if let Some(pos) = bucket.iter().position(|e| e.event_id == event_id) {
+                    let removed = bucket.remove(pos);
+                    if bucket.is_empty() {
+                        self.step_cache.remove(&t);
+                    }
+                    return Some(removed);
+                }
+            }
+        }
+        let found_tick = self
+            .step_cache
+            .iter()
+            .find_map(|(&t, bucket)| bucket.iter().any(|e| e.event_id == event_id).then_some(t))?;
+        let bucket = self.step_cache.get_mut(&found_tick)?;
+        let pos = bucket.iter().position(|e| e.event_id == event_id)?;
+        let removed = bucket.remove(pos);
+        if bucket.is_empty() {
+            self.step_cache.remove(&found_tick);
+        }
+        Some(removed)
     }
 
     pub fn spawn_platoon(&mut self, name: String, team: Team) -> PlatoonId {
@@ -227,6 +482,34 @@ impl WorldState {
         self.next_unit_id = self.next_unit_id.saturating_add(1);
         let id = UnitId(uid);
 
+        let is_vehicle = spec.role == UnitRole::ArmoredVehicle
+            || spec.mobility == MobilityKind::Tracked;
+        let profile_idx = if !spec.weapon_id.is_empty() && !spec.ammo_id.is_empty() {
+            catalog.find_profile_idx(
+                &spec.weapon_id,
+                &spec.ammo_id,
+                spec.fuze_id.as_deref(),
+                &spec.mount_ids,
+            )
+        } else {
+            None
+        };
+        let (soldiers, vehicle_damage) = if is_vehicle {
+            (
+                Vec::new(),
+                Some(VehicleDamageState::new(
+                    ArmorProfileRha::from_base_mm(spec.armor_mm),
+                    spec.men,
+                )),
+            )
+        } else {
+            let per_hp = (spec.hp.max(1.0) / spec.men.max(1) as f32).max(1.0);
+            let list = (1..=spec.men)
+                .map(|sid| SoldierRecord::new_healthy(sid, per_hp))
+                .collect();
+            (list, None)
+        };
+
         let rec = UnitRecord {
             id,
             callsign: spec.callsign.clone(),
@@ -259,9 +542,20 @@ impl WorldState {
             order: UnitOrder::Hold,
             fire_discipline: FireDiscipline::FireAtWill,
             cooldown_s: 0.0,
+            is_vehicle,
+            profile_idx,
+            soldiers,
+            vehicle_damage,
         };
 
         self.units.insert(uid, rec);
+        if let Ok(cell) = self.terrain.geom.world_to_cell(spec.pos) {
+            if let Ok(cidx) = self.terrain.idx(cell) {
+                if spec.team != Team::Neutral {
+                    self.inject_team_intel(spec.team, cidx, 2.5);
+                }
+            }
+        }
         if spec.role == UnitRole::PlatoonHq {
             if let Some(pid) = spec.platoon_id {
                 if let Some(pl) = self.platoons.get_mut(&pid) {
@@ -273,6 +567,21 @@ impl WorldState {
         }
         self.unit_revision = self.unit_revision.wrapping_add(1);
         Ok(id)
+    }
+
+    pub fn set_unit_armor_rha(&mut self, id: UnitId, rha: ArmorProfileRha) -> bool {
+        let Some(u) = self.units.get_mut(&id.0) else {
+            return false;
+        };
+        u.armor_mm = sanitize_f32(rha.front_mm.max(0.0));
+        u.is_vehicle = true;
+        if let Some(vd) = &mut u.vehicle_damage {
+            vd.armor_rha = rha;
+        } else {
+            u.vehicle_damage = Some(VehicleDamageState::new(rha, u.men.max(1)));
+        }
+        self.unit_revision = self.unit_revision.wrapping_add(1);
+        true
     }
 
     pub fn despawn_unit(&mut self, id: UnitId) -> bool {
@@ -311,6 +620,45 @@ impl WorldState {
         }
         if world.terrain.mine_density.len() != n_cells {
             world.terrain.mine_density.resize(n_cells, 0.0);
+        }
+        for t in 0..2 {
+            if world.team_i_intel[t].len() != n_cells {
+                world.team_i_intel[t].resize(n_cells, 0.0);
+            }
+            if world.team_i_vis_tier[t].len() != n_cells {
+                world.team_i_vis_tier[t].resize(n_cells, VisTier::Hidden);
+            }
+            if world.team_s_threat[t].len() != n_cells {
+                world.team_s_threat[t].resize(n_cells, 0.0);
+            }
+        }
+        if let Some(&max_inst) = world.world_instances.keys().max() {
+            if world.next_instance_id <= max_inst {
+                world.next_instance_id = max_inst.saturating_add(1);
+            }
+        }
+        for u in world.units.values_mut() {
+            let inferred_veh =
+                u.is_vehicle || u.role == UnitRole::ArmoredVehicle || u.mobility == MobilityKind::Tracked;
+            u.is_vehicle = inferred_veh;
+            if inferred_veh {
+                if u.vehicle_damage.is_none() {
+                    u.vehicle_damage = Some(VehicleDamageState::new(
+                        ArmorProfileRha::from_base_mm(u.armor_mm),
+                        u.men.max(1),
+                    ));
+                }
+            } else if u.soldiers.is_empty() && u.max_men > 0 {
+                let per_hp = (u.max_hp.max(1.0) / u.max_men.max(1) as f32).max(1.0);
+                for sid in 1..=u.max_men {
+                    let mut s = SoldierRecord::new_healthy(sid, per_hp);
+                    if sid > u.men || !u.alive {
+                        s.alive = false;
+                        s.hp = 0.0;
+                    }
+                    u.soldiers.push(s);
+                }
+            }
         }
         Ok(world)
     }

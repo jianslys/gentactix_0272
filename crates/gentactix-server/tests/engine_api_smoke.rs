@@ -269,3 +269,303 @@ async fn test_v2_p4_headless_http_api_full_smoke() {
 
     srv.abort();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_v2_b4_http_i_triplet_step_cache_keyframes_and_stop_exact_ms() {
+    // Hard gate: gentactix-server/src/*.rs total lines MUST stay strictly < 400
+    let src_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut total_src_lines = 0usize;
+    for entry in std::fs::read_dir(&src_dir).unwrap() {
+        let p = entry.unwrap().path();
+        if p.extension().and_then(|e| e.to_str()) == Some("rs") {
+            let content = std::fs::read_to_string(&p).unwrap();
+            total_src_lines += content.lines().count();
+        }
+    }
+    assert!(
+        total_src_lines < 400,
+        "gentactix-server/src must stay thin (< 400 lines), got {total_src_lines}"
+    );
+
+    let state = AppState::new_blank(48, 48, 0.0, SimRuleset::hardcore_platoon()).unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let router = build_router(state);
+    let srv = tokio::spawn(async move {
+        axum::serve(listener, router).await.unwrap();
+    });
+    tokio::task::yield_now().await;
+
+    // Disable time machine deferral & autonomy so commands execute cleanly on exact step assertions,
+    // while keeping fog-of-war ON and allowing runtime map edits for detour obstacle.
+    let (_, mut rs) = get_json(addr, "/api/ruleset").await;
+    rs["allow_runtime_map_edit"] = json!(true);
+    rs["enable_time_machine_deferral"] = json!(false);
+    rs["enable_g_field_autonomy"] = json!(false);
+    rs["enforce_fog_of_war"] = json!(true);
+    let (st, put_rs) = post_json(addr, "PUT", "/api/ruleset", &rs).await;
+    assert_eq!(st, 200);
+    assert_eq!(put_rs["accepted"], true);
+
+    // Spawn Red MG shooter, Red tank (for 8-subsystem check), Red maneuvering squad (river detour),
+    // and fragile Blue squad right in front of Red MG so it dies mid-tick!
+    let (_, red_mg) = post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "spawn_unit",
+            "spec": {
+                "callsign": "Red-MG-B4", "team": "red", "role": "heavy_weapon_team",
+                "mobility": "foot", "pos": { "x": 100.0, "y": 200.0 }, "facing_deg": 0.0,
+                "men": 5, "hp": 100.0, "armor_mm": 0.0, "weapon_id": "wpn_mg42",
+                "ammo_id": "ammo_792x57_ss", "mount_ids": ["mount_lafette_42"],
+                "ammo_rounds": 1500, "smoke_grenades": 2, "base_speed_mps": 1.6,
+                "vision_m": 250.0, "base_radio_range_m": 800.0
+            }
+        }),
+    )
+    .await;
+    let mg_id = red_mg["created_id"].as_u64().unwrap();
+
+    let (_, red_tank) = post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "spawn_unit",
+            "spec": {
+                "callsign": "Red-Tank-B4", "team": "red", "role": "armored_vehicle",
+                "mobility": "tracked", "pos": { "x": 80.0, "y": 140.0 }, "facing_deg": 0.0,
+                "men": 4, "hp": 300.0, "armor_mm": 45.0, "weapon_id": "wpn_luger_p08",
+                "ammo_id": "ammo_9x19_m08_ball", "mount_ids": [], "ammo_rounds": 500,
+                "smoke_grenades": 2, "base_speed_mps": 4.0, "vision_m": 250.0,
+                "base_radio_range_m": 800.0
+            }
+        }),
+    )
+    .await;
+    let tank_id = red_tank["created_id"].as_u64().unwrap();
+
+    let (_, red_runner) = post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "spawn_unit",
+            "spec": {
+                "callsign": "Red-Detour", "team": "red", "role": "infantry_squad",
+                "mobility": "foot", "pos": { "x": 60.0, "y": 60.0 }, "facing_deg": 0.0,
+                "men": 9, "hp": 100.0, "armor_mm": 0.0, "weapon_id": "wpn_luger_p08",
+                "ammo_id": "ammo_9x19_m08_ball", "mount_ids": [], "ammo_rounds": 400,
+                "smoke_grenades": 1, "base_speed_mps": 2.4, "vision_m": 200.0,
+                "base_radio_range_m": 800.0
+            }
+        }),
+    )
+    .await;
+    let runner_id = red_runner["created_id"].as_u64().unwrap();
+
+    // Paint water obstacle right across Red-Detour's direct path at col=9..=10, row=6..=9
+    for r in 6..=9 {
+        for c in 9..=10 {
+            let (st_ed, ed_res) = post_json(
+                addr,
+                "POST",
+                "/api/command",
+                &json!({
+                    "kind": "edit_terrain",
+                    "cell": { "r": r, "c": c },
+                    "terrain_kind": "water"
+                }),
+            )
+            .await;
+            assert_eq!(st_ed, 200);
+            assert_eq!(ed_res["accepted"], true);
+        }
+    }
+    post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "move_unit",
+            "unit_id": runner_id,
+            "waypoints": [{ "x": 100.0, "y": 60.0 }]
+        }),
+    )
+    .await;
+
+    // Fragile visible Blue target at x=140, y=200, moving West (so it gets killed mid-tick and clamps stop_exact_ms!)
+    let (_, blue_fragile) = post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "spawn_unit",
+            "spec": {
+                "callsign": "Blue-Fragile", "team": "blue", "role": "infantry_squad",
+                "mobility": "foot", "pos": { "x": 140.0, "y": 200.0 }, "facing_deg": 180.0,
+                "men": 1, "hp": 6.0, "armor_mm": 0.0, "weapon_id": "wpn_luger_p08",
+                "ammo_id": "ammo_9x19_m08_ball", "mount_ids": [], "ammo_rounds": 100,
+                "smoke_grenades": 0, "base_speed_mps": 2.0, "vision_m": 200.0,
+                "base_radio_range_m": 800.0
+            }
+        }),
+    )
+    .await;
+    let fragile_id = blue_fragile["created_id"].as_u64().unwrap();
+    post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "set_fire_discipline",
+            "unit_id": fragile_id,
+            "discipline": "hold_fire"
+        }),
+    )
+    .await;
+    post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "move_unit",
+            "unit_id": fragile_id,
+            "waypoints": [{ "x": 120.0, "y": 200.0 }]
+        }),
+    )
+    .await;
+
+    // Schedule a timed charge by Red for tick=3 -> visible in Red step_cache_queue & visible_instances, hidden from distant Blue!
+    let (_, blue_far) = post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "spawn_unit",
+            "spec": {
+                "callsign": "Blue-ObserverFar", "team": "blue", "role": "infantry_squad",
+                "mobility": "foot", "pos": { "x": 360.0, "y": 360.0 }, "facing_deg": 0.0,
+                "men": 6, "hp": 100.0, "armor_mm": 0.0, "weapon_id": "wpn_luger_p08",
+                "ammo_id": "ammo_9x19_m08_ball", "mount_ids": [], "ammo_rounds": 100,
+                "smoke_grenades": 0, "base_speed_mps": 1.6, "vision_m": 150.0,
+                "base_radio_range_m": 800.0
+            }
+        }),
+    )
+    .await;
+    let _far_obs = blue_far["created_id"].as_u64().unwrap();
+
+    let (st_chg, chg_out) = post_json(
+        addr,
+        "POST",
+        "/api/command",
+        &json!({
+            "kind": "schedule_timed_charge",
+            "unit_id": mg_id,
+            "pos": { "x": 108.0, "y": 200.0 },
+            "delay_ticks": 3,
+            "blast_radius_m": 24.0,
+            "blast_kpa": 140.0
+        }),
+    )
+    .await;
+    assert_eq!(st_chg, 200);
+    assert_eq!(chg_out["accepted"], true);
+
+    // 1) Check ObservedStateView step_cache_queue & visible_instances + fog isolation
+    let (_, red_obs) = get_json(addr, "/api/state?team=red").await;
+    assert_eq!(red_obs["visible_instances"].as_array().unwrap().len(), 1);
+    assert_eq!(red_obs["step_cache_queue"].as_array().unwrap().len(), 1);
+    assert_eq!(red_obs["step_cache_queue"][0]["kind"], "detonation");
+    assert_eq!(red_obs["step_cache_queue"][0]["target_tick"], 3);
+
+    let (_, blue_obs) = get_json(addr, "/api/state?team=blue").await;
+    assert!(
+        blue_obs["step_cache_queue"].as_array().unwrap().is_empty(),
+        "Blue must NOT see Red's scheduled step_cache_queue under fog-of-war"
+    );
+
+    // 2) Check GET /api/fields/i?team=red orthogonal triplet (i_intel, i_vis_tier, h_blast, i_threat)
+    let (st, i_triplet) = get_json(addr, "/api/fields/i?team=red").await;
+    assert_eq!(st, 200);
+    assert_eq!(i_triplet["observer_team"], "red");
+    assert_eq!(i_triplet["i_intel"].as_array().unwrap().len(), 48 * 48);
+    assert_eq!(i_triplet["i_vis_tier"].as_array().unwrap().len(), 48 * 48);
+    assert_eq!(i_triplet["h_blast"].as_array().unwrap().len(), 48 * 48);
+    assert_eq!(i_triplet["i_threat"].as_array().unwrap().len(), 48 * 48);
+
+    // 3) Check GET /api/units/:id fog-trimmed 4-region soldier & 8-subsystem tank details
+    let (st, mg_detail) = get_json(addr, &format!("/api/units/{mg_id}?team=red")).await;
+    assert_eq!(st, 200);
+    assert_eq!(mg_detail["is_vehicle"], false);
+    assert_eq!(mg_detail["soldiers"].as_array().unwrap().len(), 5);
+    assert_eq!(mg_detail["soldiers"][0]["regions"].as_array().unwrap().len(), 4);
+    assert!(mg_detail["soldiers"][0]["regions"][0]["integrity"].is_number());
+    assert!(mg_detail["vehicle_damage"].is_null());
+
+    let (st, tank_detail) = get_json(addr, &format!("/api/units/{tank_id}?team=red")).await;
+    assert_eq!(st, 200);
+    assert_eq!(tank_detail["is_vehicle"], true);
+    assert_eq!(
+        tank_detail["vehicle_damage"]["subsystems"].as_array().unwrap().len(),
+        8
+    );
+    assert!(tank_detail["soldiers"].is_null());
+
+    // Step 1 tick: Red-MG kills Blue-Fragile mid-tick, Red-Detour detours river with segmented keyframes
+    let (st, step_res) = post_json(
+        addr,
+        "POST",
+        "/api/clock/step",
+        &json!({ "ticks": 1, "observer_team": "red" }),
+    )
+    .await;
+    assert_eq!(st, 200);
+    let pb = &step_res["steps"][0]["playback"];
+
+    // t=0s baselines exist before end-of-tick HP/ammo mutation (anti-spoiler Section 3.1)
+    let baselines = pb["unit_baselines"].as_array().unwrap();
+    let mg_base = baselines
+        .iter()
+        .find(|b| b["piece_id"] == mg_id.to_string())
+        .expect("mg baseline missing");
+    assert_eq!(mg_base["ammo_start"], 1500);
+    assert_eq!(mg_base["hp_start"], 100.0);
+
+    // Dead fragile unit MUST appear in particle_tracks with stop_exact_ms in 1..=16000!
+    let tracks = pb["particle_tracks"].as_array().unwrap();
+    let dead_track = tracks
+        .iter()
+        .find(|t| t["piece_id"] == fragile_id.to_string())
+        .expect("mid-tick killed unit track missing");
+    let stop_ms = dead_track["stop_exact_ms"]
+        .as_u64()
+        .expect("killed unit must carry stop_exact_ms");
+    assert!((1..=16000).contains(&stop_ms));
+    let dead_kfs = dead_track["keyframes"].as_array().unwrap();
+    assert!(dead_kfs.last().unwrap()[0].as_u64().unwrap() <= stop_ms);
+
+    // Detouring runner emits >= 2 keyframes ordered in 0..=16000
+    let runner_track = tracks
+        .iter()
+        .find(|t| t["piece_id"] == runner_id.to_string())
+        .expect("runner track missing");
+    let kfs = runner_track["keyframes"].as_array().unwrap();
+    assert!(kfs.len() >= 2);
+    assert_eq!(kfs[0][0], 0);
+    assert_eq!(kfs.last().unwrap()[0], 16000);
+
+    // Rich PlaybackEvent includes ammo_spent and hp_delta
+    let events = pb["playback_events"].as_array().unwrap();
+    let fire_ev = events
+        .iter()
+        .find(|e| e["source_piece_id"] == mg_id.to_string() && e["event_kind"] == "fire")
+        .expect("mg fire playback event missing");
+    assert!(fire_ev["ammo_spent"].as_u64().unwrap() > 0);
+    assert!(fire_ev["hp_delta"].as_f64().unwrap() > 0.0);
+
+    srv.abort();
+}

@@ -204,6 +204,25 @@ impl CompiledItem {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct AttackProfileIdx(pub u32);
+
+/// Pre-resolved hot-loop ballistic profile indexed by `AttackProfileIdx` (zero string lookup).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompactAttackProfile {
+    pub combat_rpm: f32,
+    pub base_accuracy: f32,
+    pub acc_decay_coeff: f32,
+    pub dmg_decay_coeff: f32,
+    pub damage: [f32; 6],
+    pub armor_pen_mm: f32,
+    pub frag_radius_m: f32,
+    pub ignore_trench_cover: f32,
+    pub is_dud: bool,
+    pub indirect: bool,
+    pub post_armor_spall_kill: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResolvedAttackProfile {
     pub weapon_id: String,
@@ -258,6 +277,8 @@ pub struct ItemCatalog {
     pub source: String,
     pub items: Vec<CompiledItem>,
     index_by_id: FxHashMap<String, usize>,
+    pub compiled_profiles: Vec<CompactAttackProfile>,
+    compiled_index: FxHashMap<(String, String, Option<String>, Vec<String>), AttackProfileIdx>,
 }
 
 impl ItemCatalog {
@@ -334,13 +355,105 @@ impl ItemCatalog {
             return Err(errors);
         }
 
-        Ok(Self {
+        let mut cat = Self {
             version: parsed.version,
             schema: parsed.schema,
             source: source.to_string(),
             items,
             index_by_id,
-        })
+            compiled_profiles: Vec::new(),
+            compiled_index: FxHashMap::default(),
+        };
+        cat.precompile_profiles();
+        Ok(cat)
+    }
+
+    fn precompile_profiles(&mut self) {
+        let mut keys: Vec<(String, String, Option<String>, Vec<String>)> = Vec::new();
+        for w_item in &self.items {
+            let Some(wpn) = &w_item.weapon else {
+                continue;
+            };
+            let mut mount_sets: Vec<Vec<String>> = vec![Vec::new()];
+            for m in &wpn.compatible_mounts {
+                mount_sets.push(vec![m.clone()]);
+            }
+            for ammo_id in &wpn.compatible_ammo {
+                let Some(ammo) = self.get(ammo_id).and_then(|a| a.ammo.as_ref()) else {
+                    continue;
+                };
+                let mut fuze_opts: Vec<Option<String>> = Vec::new();
+                if ammo.requires_fuze {
+                    fuze_opts.push(None);
+                    for fid in &ammo.compatible_fuzes {
+                        fuze_opts.push(Some(fid.clone()));
+                    }
+                } else {
+                    fuze_opts.push(None);
+                }
+                for fuze_id in fuze_opts {
+                    for mounts in &mount_sets {
+                        keys.push((w_item.id.clone(), ammo_id.clone(), fuze_id.clone(), mounts.clone()));
+                    }
+                }
+            }
+        }
+
+        for key in keys {
+            let mount_refs: Vec<&str> = key.3.iter().map(String::as_str).collect();
+            if let Ok(resolved) =
+                self.resolve_attack_profile(&key.0, &key.1, key.2.as_deref(), &mount_refs)
+            {
+                let indirect = self
+                    .get(&key.0)
+                    .and_then(|w| w.weapon.as_ref())
+                    .is_some_and(|w| w.indirect);
+                let post_armor_spall_kill = key
+                    .2
+                    .as_deref()
+                    .and_then(|fid| self.get(fid))
+                    .and_then(|f| f.fuze.as_ref())
+                    .and_then(|f| f.effect_mod.post_armor_spall_kill)
+                    .unwrap_or(false);
+                let idx = AttackProfileIdx(self.compiled_profiles.len() as u32);
+                self.compiled_profiles.push(CompactAttackProfile {
+                    combat_rpm: resolved.combat_rpm,
+                    base_accuracy: resolved.base_accuracy,
+                    acc_decay_coeff: resolved.acc_decay_coeff,
+                    dmg_decay_coeff: resolved.dmg_decay_coeff,
+                    damage: resolved.damage,
+                    armor_pen_mm: resolved.armor_pen_mm,
+                    frag_radius_m: resolved.frag_radius_m,
+                    ignore_trench_cover: resolved.ignore_trench_cover,
+                    is_dud: resolved.is_dud,
+                    indirect,
+                    post_armor_spall_kill,
+                });
+                self.compiled_index.insert(key, idx);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn find_profile_idx(
+        &self,
+        weapon_id: &str,
+        ammo_id: &str,
+        fuze_id: Option<&str>,
+        mount_ids: &[String],
+    ) -> Option<AttackProfileIdx> {
+        let key = (
+            weapon_id.to_string(),
+            ammo_id.to_string(),
+            fuze_id.map(str::to_string),
+            mount_ids.to_vec(),
+        );
+        self.compiled_index.get(&key).copied()
+    }
+
+    #[inline]
+    pub fn compact_profile(&self, idx: AttackProfileIdx) -> Option<&CompactAttackProfile> {
+        self.compiled_profiles.get(idx.0 as usize)
     }
 
     /// O(1) hash lookup by item id.

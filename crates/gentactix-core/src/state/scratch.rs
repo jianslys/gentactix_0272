@@ -44,6 +44,15 @@ pub struct EventRecord {
     pub target_cell: Option<CellCoord>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct UnitStartBaseline {
+    pub hp: f32,
+    pub men: u16,
+    pub ammo_rounds: u32,
+    pub suppression: f32,
+    pub eff_speed_scale: f32,
+}
+
 /// Ephemeral per-tick scratch workspace (must be completely cleared at Stage 12).
 #[derive(Debug, Default, Clone)]
 pub struct TickScratch {
@@ -54,6 +63,8 @@ pub struct TickScratch {
     pub events: Vec<EventRecord>,
     pub terminal_statuses: BTreeMap<u64, EventTerminalStatus>,
     pub prior_positions: BTreeMap<u32, WorldPos>,
+    pub unit_start_baselines: BTreeMap<u32, UnitStartBaseline>,
+    pub motion_waypoints: BTreeMap<u32, Vec<WorldPos>>,
 }
 
 impl TickScratch {
@@ -86,6 +97,8 @@ impl TickScratch {
             && self.events.is_empty()
             && self.terminal_statuses.is_empty()
             && self.prior_positions.is_empty()
+            && self.unit_start_baselines.is_empty()
+            && self.motion_waypoints.is_empty()
     }
 
     pub fn clear_and_assert_empty(&mut self) {
@@ -96,6 +109,8 @@ impl TickScratch {
         self.events.clear();
         self.terminal_statuses.clear();
         self.prior_positions.clear();
+        self.unit_start_baselines.clear();
+        self.motion_waypoints.clear();
         assert!(
             self.is_completely_empty(),
             "TickScratch failed invariant check: non-empty after clear"
