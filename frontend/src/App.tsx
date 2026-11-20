@@ -1,20 +1,26 @@
 // GenTactix V2 frontend · 主装配（9 层全屏沙盘 + 16s 走表倍速 + UIO 四区 + 独立指挥 UI + UI ID 标牌）
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { BackendAdapter } from './engine/backendAdapter';
+import { HttpEngineAdapter } from './engine/httpEngineAdapter';
 import { LocalMockSandboxAdapter } from './engine/localMockSandbox';
 import { playedLog, progressiveSnapshot } from './engine/playback';
 import { DIRECT_COMMAND_RADIUS_M, HQ_UNIT_ID, RADIO_RADIUS_M, presetTerrain } from './engine/scenario';
 import {
   TICK_MS,
+  type CommandOutcomeJson,
   type DirectiveMode,
   type DirectiveTarget,
   type DirectiveTaskKind,
   type EngineerWorkKind,
   type FireDiscipline,
+  type IFieldTriplet,
   type InitialWorld,
   type MoveStance,
   type ScheduledStepEvent,
+  type TacticalCommandJson,
   type TickPlayback,
+  type UnitDetailView,
   type UnitState,
   type Vec2,
   type WaveDirective,
@@ -22,6 +28,14 @@ import {
 } from './engine/types';
 import { NineLayerViewport } from './render/NineLayerViewport';
 import type { PlannedRouteOverlay } from './render/canvasLayers';
+import {
+  GameContext,
+  useArtRegistry,
+  useWindowManager,
+  type BackendHealthInfo,
+  type BackendMode,
+  type GameContextValue,
+} from './store/gameContext';
 import {
   clearLayer6Strokes,
   loadLayer6Strokes,
@@ -56,14 +70,33 @@ import {
   type WaveDrawTool,
 } from './store/waveStore';
 import { CommanderWavePanel } from './ui/CommanderWavePanel';
+import { DevArtPanel } from './ui/DevArtPanel';
+import { ExampleCustomWindow } from './ui/ExampleCustomWindow';
+import { FloatingWindow } from './ui/FloatingWindow';
 import { FreehandToolbar } from './ui/FreehandToolbar';
 import { TopControlBar, type PlaybackSpeed } from './ui/TopControlBar';
 import { UiIdContext, UiTag } from './ui/UiTag';
 import { UioClipboardPanel } from './ui/UioClipboardPanel';
-import { UnitInspector } from './ui/UnitInspector';
+import { PlaybackLogBody, UnitInspectorBody } from './ui/UnitInspector';
 
 export const App: React.FC = () => {
-  const adapter = useMemo(() => new LocalMockSandboxAdapter(), []);
+  const [backendMode, setBackendModeState] = useState<BackendMode>('mock');
+  const [httpBaseUrl, setHttpBaseUrl] = useState<string>('');
+  const adapter = useMemo<BackendAdapter>(
+    () =>
+      backendMode === 'http' ? new HttpEngineAdapter({ baseUrl: httpBaseUrl }) : new LocalMockSandboxAdapter(),
+    [backendMode, httpBaseUrl],
+  );
+  const [healthInfo, setHealthInfo] = useState<BackendHealthInfo | null>(null);
+  const [selectedUnitDetail, setSelectedUnitDetail] = useState<UnitDetailView | null>(null);
+  const [devSampleUnitDetail, setDevSampleUnitDetail] = useState<UnitDetailView | null>(null);
+  const [iField, setIField] = useState<IFieldTriplet | null>(null);
+  const [showThreatOverlay, setShowThreatOverlay] = useState<boolean>(false);
+  const [sampleShake, setSampleShake] = useState<boolean>(false);
+  const [lastCommandOutcome, setLastCommandOutcome] = useState<CommandOutcomeJson | null>(null);
+  const winMgr = useWindowManager();
+  const art = useArtRegistry();
+
   const [initial, setInitial] = useState<InitialWorld | null>(null);
   const [baseSnapshot, setBaseSnapshot] = useState<WorldSnapshot | null>(null);
   const [waves, setWaves] = useState<WaveDirective[]>([]);
@@ -105,6 +138,15 @@ export const App: React.FC = () => {
   const [l9Enabled, setL9Enabled] = useState<boolean>(true);
   const [showUiIds, setShowUiIds] = useState<boolean>(true);
 
+  const setBackendMode = useCallback((mode: BackendMode) => {
+    setPlaying(false);
+    setActivePlayback(null);
+    setElapsedMs(0);
+    settledTicksRef.current.clear();
+    setBackendModeState(mode);
+    setStatusNote(mode === 'http' ? '已切换至 HTTP 真后端 (:8767)' : '已切换至离线 Mock 沙盒');
+  }, []);
+
   const refreshScheduleState = useCallback(
     async (tick: number) => {
       const [evs, all] = await Promise.all([adapter.lookahead(tick + 1, 'red'), adapter.listScheduled('red')]);
@@ -115,17 +157,78 @@ export const App: React.FC = () => {
   );
 
   useEffect(() => {
-    void adapter.loadInitial('red').then((w) => {
-      setInitial(w);
-      setBaseSnapshot(w.snapshot);
-      setWaves(w.waves);
-      setCurrentTick(w.snapshot.tick);
-      void refreshScheduleState(w.snapshot.tick);
-    });
+    let alive = true;
+    void adapter
+      .loadInitial('red')
+      .then((w) => {
+        if (!alive) return;
+        setInitial(w);
+        setBaseSnapshot(w.snapshot);
+        setWaves(w.waves);
+        setCurrentTick(w.snapshot.tick);
+        void refreshScheduleState(w.snapshot.tick);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setStatusNote(err instanceof Error ? `后端初始化失败：${err.message}` : '后端初始化失败');
+      });
     void loadLayer6Strokes().then((saved) => {
-      if (saved.length > 0) setStrokes(saved);
+      if (alive && saved.length > 0) setStrokes(saved);
     });
+    return () => {
+      alive = false;
+    };
   }, [adapter, refreshScheduleState]);
+
+  useEffect(() => {
+    if (!selectedUnitId || !adapter.getUnitDetail) {
+      setSelectedUnitDetail(null);
+      return;
+    }
+    let alive = true;
+    void adapter.getUnitDetail(selectedUnitId, 'red').then((d) => {
+      if (alive) setSelectedUnitDetail(d ?? null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [adapter, selectedUnitId, currentTick]);
+
+  const checkBackendHealth = useCallback(async () => {
+    if (!adapter.checkHealth) {
+      setHealthInfo({ ok: true, statusText: 'Mock 沙盒本地就绪', tick: currentTick });
+      return;
+    }
+    try {
+      const res = await adapter.checkHealth();
+      setHealthInfo({
+        ok: res.ok,
+        statusText: res.ok
+          ? `健康 v${res.version ?? '2.0'} (${res.cell_m ?? 8}m/${res.tick_s ?? 16}s)`
+          : '离线/无法连接',
+        tick: currentTick,
+      });
+    } catch {
+      setHealthInfo({ ok: false, statusText: 'HTTP 请求异常', tick: currentTick });
+    }
+  }, [adapter, currentTick]);
+
+  const refreshIField = useCallback(async () => {
+    if (!adapter.getIField) return;
+    const f = await adapter.getIField('red');
+    setIField(f ?? null);
+  }, [adapter]);
+
+  useEffect(() => {
+    if (showThreatOverlay) {
+      void refreshIField();
+    }
+  }, [showThreatOverlay, currentTick, refreshIField]);
+
+  const triggerSampleShake = useCallback(() => {
+    setSampleShake(true);
+    window.setTimeout(() => setSampleShake(false), 420);
+  }, []);
 
   const settlePlayback = useCallback((pb: TickPlayback) => {
     if (settledTicksRef.current.has(pb.tick)) return;
@@ -363,9 +466,24 @@ export const App: React.FC = () => {
   const scheduledDetonations = lookaheadEvents
     .filter((ev) => ev.kind === 'detonation' && ev.targetPos)
     .map((ev) => ev.targetPos!);
+  const sendQuickCommand = useCallback(
+    async (cmd: TacticalCommandJson, cmdSecInTick?: number) => {
+      if (!adapter.submitRawCommand) return null;
+      const out = await adapter.submitRawCommand(cmd as Record<string, unknown>, cmdSecInTick);
+      setLastCommandOutcome(out);
+      const updated = await adapter.getSnapshot('red');
+      setBaseSnapshot(updated);
+      setCurrentTick(updated.tick);
+      await refreshScheduleState(updated.tick);
+      return out;
+    },
+    [adapter, refreshScheduleState],
+  );
+
   const shaking =
-    activePlayback !== null &&
-    activePlayback.shakeAtMs.some((ms) => Math.abs(elapsedMs - ms) < 400);
+    sampleShake ||
+    (activePlayback !== null &&
+      activePlayback.shakeAtMs.some((ms) => Math.abs(elapsedMs - ms) < 400));
 
   const mapPickHint = pickingDraftId
     ? pickingMultiPoint
@@ -377,203 +495,307 @@ export const App: React.FC = () => {
         ? `独立指挥标绘：${waveDraft.tool}（Esc 退出）`
         : undefined;
 
-  return (
-    <UiIdContext.Provider value={showUiIds}>
-      <div onContextMenu={(e) => e.preventDefault()} style={{ width: '100%', height: '100%' }}>
-        <NineLayerViewport
-          terrain={initial?.terrain ?? presetTerrain()}
-          snapshot={displaySnapshot}
-          hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
-          directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
-          radioRadiusM={initial?.radioRadiusM ?? RADIO_RADIUS_M}
-          selectedUnitId={selectedUnitId}
-          activeWave={activeWave}
-          waveDraftGeometry={wavePreview}
-          draftTarget={mapPickTarget}
-          plannedRoutes={plannedRoutes}
-          hoveredDirectiveId={hoveredDirectiveId}
-          showPlannedRoutes={showPlannedRoutes}
-          pickingPoints={pickingPoints}
-          circleDragMode={rightTab === 'wave' && waveDraft.tool === 'barrage_circle'}
-          onCircleDraw={(center, radiusM) => setWaveDraft((d) => addWaveCircle(d, center, radiusM))}
-          onFinishPolyline={finishPolylinePick}
-          onCursorWorldMove={setCursorWorld}
-          activePlayback={activePlayback}
-          elapsedMs={elapsedMs}
-          scheduledDetonations={scheduledDetonations}
-          strokes={strokes}
-          freehandTool={freehandTool}
-          freehandColor={freehandColor}
-          onStrokesChange={handleStrokesChange}
-          l7Enabled={l7Enabled}
-          l7Weather={l7Weather}
-          l9Enabled={l9Enabled}
-          shaking={shaking}
-          rightInsetPx={rightCollapsed ? 140 : 456}
-          mapPickHint={mapPickHint}
-          onMapClick={handleMapClick}
-          hudChildren={
-            <div className="hud-shell">
-              <div className="hud-top">
-                <TopControlBar
-                  currentTick={currentTick}
-                  elapsedMs={elapsedMs}
-                  playing={playing}
-                  playbackSpeed={playbackSpeed}
-                  hasActivePlayback={activePlayback !== null}
-                  lookaheadEvents={lookaheadEvents}
-                  scheduledEvents={scheduledEvents}
-                  l7Enabled={l7Enabled}
-                  l7Weather={l7Weather}
-                  l9Enabled={l9Enabled}
-                  showUiIds={showUiIds}
-                  rightCollapsed={rightCollapsed}
-                  onStepNext={() => void handleStepNext()}
-                  onTogglePlay={() => setPlaying((p) => !p)}
-                  onChangeSpeed={setPlaybackSpeed}
-                  onScrubMs={handleScrubMs}
-                  onJumpToTick={(t) => void handleJumpToTick(t)}
-                  onToggleL7={() => setL7Enabled((v) => !v)}
-                  onChangeWeather={setL7Weather}
-                  onToggleL9={() => setL9Enabled((v) => !v)}
-                  onToggleUiIds={() => setShowUiIds((v) => !v)}
-                  onToggleRightCollapsed={() => setRightCollapsed((v) => !v)}
-                />
-              </div>
+  const selectedUnit = displaySnapshot.units.find((u) => u.id === selectedUnitId) ?? null;
 
-              <div className="hud-main">
-                <div className="hud-left">
-                  <FreehandToolbar
-                    tool={freehandTool}
-                    color={freehandColor}
-                    strokeCount={strokes.length}
-                    storageBackend={storageBackend}
-                    onChangeTool={setFreehandTool}
-                    onChangeColor={setFreehandColor}
-                    onClear={handleClearStrokes}
+  const gameContextValue: GameContextValue = {
+    backendMode,
+    setBackendMode,
+    httpBaseUrl,
+    setHttpBaseUrl,
+    adapter,
+    healthInfo,
+    checkBackendHealth,
+    initialWorld: initial,
+    snapshot: baseSnapshot,
+    displaySnapshot,
+    selectedUnit,
+    selectedUnitId,
+    setSelectedUnitId,
+    selectedUnitDetail,
+    devSampleUnitDetail,
+    setDevSampleUnitDetail,
+    iField,
+    refreshIField,
+    showThreatOverlay,
+    setShowThreatOverlay,
+    observer: 'red',
+    setObserver: () => {},
+    tickNumber: currentTick,
+    elapsedMs,
+    playing,
+    setPlaying,
+    showUiIds,
+    setShowUiIds,
+    ...art,
+    ...winMgr,
+    stepNext: handleStepNext,
+    jumpToTick: handleJumpToTick,
+    sendQuickCommand,
+    triggerSampleShake,
+    lastCommandOutcome,
+  };
+
+  return (
+    <GameContext.Provider value={gameContextValue}>
+      <UiIdContext.Provider value={showUiIds}>
+        <div onContextMenu={(e) => e.preventDefault()} style={{ width: '100%', height: '100%' }}>
+          <NineLayerViewport
+            terrain={initial?.terrain ?? presetTerrain()}
+            snapshot={displaySnapshot}
+            hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
+            directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
+            radioRadiusM={initial?.radioRadiusM ?? RADIO_RADIUS_M}
+            selectedUnitId={selectedUnitId}
+            activeWave={activeWave}
+            waveDraftGeometry={wavePreview}
+            draftTarget={mapPickTarget}
+            plannedRoutes={plannedRoutes}
+            hoveredDirectiveId={hoveredDirectiveId}
+            showPlannedRoutes={showPlannedRoutes}
+            pickingPoints={pickingPoints}
+            circleDragMode={rightTab === 'wave' && waveDraft.tool === 'barrage_circle'}
+            onCircleDraw={(center, radiusM) => setWaveDraft((d) => addWaveCircle(d, center, radiusM))}
+            onFinishPolyline={finishPolylinePick}
+            onCursorWorldMove={setCursorWorld}
+            activePlayback={activePlayback}
+            elapsedMs={elapsedMs}
+            scheduledDetonations={scheduledDetonations}
+            strokes={strokes}
+            freehandTool={freehandTool}
+            freehandColor={freehandColor}
+            onStrokesChange={handleStrokesChange}
+            l7Enabled={l7Enabled}
+            l7Weather={l7Weather}
+            l9Enabled={l9Enabled}
+            shaking={shaking}
+            rightInsetPx={winMgr.windows.W5.open && !winMgr.windows.W5.floating ? (rightCollapsed ? 140 : 456) : 24}
+            iField={iField}
+            showThreatOverlay={showThreatOverlay}
+            artVersion={art.artVersion}
+            mapPickHint={mapPickHint}
+            onMapClick={handleMapClick}
+            hudChildren={
+              <div className="hud-shell">
+                <div className="hud-top">
+                  <TopControlBar
+                    currentTick={currentTick}
+                    elapsedMs={elapsedMs}
+                    playing={playing}
+                    playbackSpeed={playbackSpeed}
+                    hasActivePlayback={activePlayback !== null}
+                    lookaheadEvents={lookaheadEvents}
+                    scheduledEvents={scheduledEvents}
+                    l7Enabled={l7Enabled}
+                    l7Weather={l7Weather}
+                    l9Enabled={l9Enabled}
+                    showUiIds={showUiIds}
+                    rightCollapsed={rightCollapsed}
+                    onStepNext={() => void handleStepNext()}
+                    onTogglePlay={() => setPlaying((p) => !p)}
+                    onChangeSpeed={setPlaybackSpeed}
+                    onScrubMs={handleScrubMs}
+                    onJumpToTick={(t) => void handleJumpToTick(t)}
+                    onToggleL7={() => setL7Enabled((v) => !v)}
+                    onChangeWeather={setL7Weather}
+                    onToggleL9={() => setL9Enabled((v) => !v)}
+                    onToggleUiIds={() => setShowUiIds((v) => !v)}
+                    onToggleRightCollapsed={() => setRightCollapsed((v) => !v)}
                   />
-                  <UnitInspector
-                    units={displaySnapshot.units}
-                    hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
-                    directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
-                    selectedUnitId={selectedUnitId}
-                    log={activePlayback ? playedLog(activePlayback, elapsedMs) : []}
-                    onSelectUnit={setSelectedUnitId}
-                  />
-                  {statusNote && (
-                    <div className="panel meta-note" data-testid="status-note">
-                      {statusNote}
-                    </div>
-                  )}
                 </div>
 
-                <div
-                  className={rightCollapsed ? 'hud-right collapsed' : 'hud-right'}
-                  data-testid="right-drawer"
-                  data-ui-id="W5"
-                >
-                  <div className="panel row" style={{ justifyContent: 'space-between' }}>
-                    <div className="row">
-                      <UiTag id="W5" kind="win" />
-                      {!rightCollapsed && (
-                        <>
-                          <button
-                            type="button"
-                            data-testid="tab-uio"
-                            data-ui-id="R1"
-                            className={rightTab === 'uio' ? 'btn active' : 'btn'}
-                            onClick={() => setRightTab('uio')}
-                          >
-                            <UiTag id="R1" />
-                            手写板 UIO
-                          </button>
-                          <button
-                            type="button"
-                            data-testid="tab-commander-wave"
-                            data-ui-id="R2"
-                            className={rightTab === 'wave' ? 'btn active' : 'btn'}
-                            onClick={() => setRightTab('wave')}
-                          >
-                            <UiTag id="R2" />
-                            独立【指挥 UI】
-                          </button>
-                        </>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      data-testid="btn-collapse-right"
-                      data-ui-id="R3"
-                      className="btn"
-                      onClick={() => setRightCollapsed((v) => !v)}
+                <div className="hud-main">
+                  <div className="hud-left">
+                    <FloatingWindow
+                      id="W2"
+                      testId="freehand-toolbar"
+                      winState={winMgr.windows.W2}
+                      onFocus={winMgr.focusWindow}
+                      onMove={winMgr.moveWindow}
+                      onToggleMinimize={winMgr.toggleMinimizeWindow}
+                      onClose={winMgr.closeWindow}
                     >
-                      <UiTag id="R3" />
-                      {rightCollapsed ? '展开手写板' : '收起'}
-                    </button>
-                  </div>
-
-                  {!rightCollapsed &&
-                    (rightTab === 'uio' ? (
-                      <UioClipboardPanel
-                        uio={uio}
+                      <FreehandToolbar
+                        embedded
+                        tool={freehandTool}
+                        color={freehandColor}
+                        strokeCount={strokes.length}
+                        storageBackend={storageBackend}
+                        onChangeTool={setFreehandTool}
+                        onChangeColor={setFreehandColor}
+                        onClear={handleClearStrokes}
+                      />
+                    </FloatingWindow>
+                    <FloatingWindow
+                      id="W3"
+                      testId="unit-inspector"
+                      winState={winMgr.windows.W3}
+                      onFocus={winMgr.focusWindow}
+                      onMove={winMgr.moveWindow}
+                      onToggleMinimize={winMgr.toggleMinimizeWindow}
+                      onClose={winMgr.closeWindow}
+                    >
+                      <UnitInspectorBody
                         units={displaySnapshot.units}
                         hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
                         directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
-                        waves={waves}
-                        activeWaveId={activeWaveId}
                         selectedUnitId={selectedUnitId}
-                        mapPickTarget={mapPickTarget}
-                        isPickingTarget={isPickingTarget}
-                        pickingDraftId={pickingDraftId}
-                        pickingPointsCount={pickingPoints.length}
-                        hoveredDirectiveId={hoveredDirectiveId}
-                        showPlannedRoutes={showPlannedRoutes}
-                        onTogglePlannedRoutes={() => setShowPlannedRoutes((v) => !v)}
-                        onHoverDirective={setHoveredDirectiveId}
-                        onToggleWave={(id) => setActiveWaveId((cur) => (cur === id ? undefined : id))}
-                        onTogglePickTarget={(active) => {
-                          setPickingDraftId(undefined);
-                          setPickingMultiPoint(false);
-                          setPickingPoints([]);
-                          setIsPickingTarget(active);
-                        }}
-                        onStartPickForDraft={(draftId, multiPoint) => {
-                          setIsPickingTarget(false);
-                          setPickingDraftId(draftId);
-                          setPickingMultiPoint(multiPoint);
-                          setPickingPoints([]);
-                        }}
-                        onFinishPolylinePick={finishPolylinePick}
-                        onClearPickedTarget={() => setMapPickTarget(undefined)}
-                        onCreateDraft={handleCreateDraft}
-                        onBindDraftUnit={(id, unitId) => setUio((prev) => updateDraftDirective(prev, id, { unitId }))}
-                        onBindDraftTarget={(id, target) => setUio((prev) => updateDraftDirective(prev, id, { target }))}
-                        onUpdateDraftTime={(id, s, e) => setUio((prev) => updateDraftDirective(prev, id, { startSec: s, endSec: e }))}
-                        onUpdateQueueTime={(id, s, e) => setUio((prev) => updateQueueDirectiveTime(prev, id, s, e))}
-                        onMoveToQueue={(id) => setUio((prev) => moveDraftToQueue(prev, id).state)}
-                        onMoveToDraft={(id) => setUio((prev) => moveQueueToDraft(prev, id))}
-                        onDeleteDraft={(id) => setUio((prev) => removeDraftDirective(prev, id))}
-                        onCopyToDraft={(id) => setUio((prev) => copyDirectiveToDraft(prev, id))}
-                        onRequeueArchive={(id) => setUio((prev) => moveArchiveToQueue(prev, id).state)}
-                        onIssueQueue={() => void handleIssueQueue()}
+                        onSelectUnit={setSelectedUnitId}
                       />
-                    ) : (
-                      <CommanderWavePanel
-                        draft={waveDraft}
-                        onChangeTitle={(title) => setWaveDraft((d) => ({ ...d, title }))}
-                        onSelectTool={(tool: WaveDrawTool) => setWaveDraft((d) => ({ ...d, tool, pendingPoints: [] }))}
-                        onCommitShape={() => setWaveDraft((d) => commitPendingWaveShape(d))}
-                        onUndoPoint={() => setWaveDraft((d) => undoWavePoint(d))}
-                        onClearDraft={() => setWaveDraft(createEmptyWaveDraft())}
-                        onIssueWave={() => void handleIssueWave()}
-                      />
-                    ))}
+                    </FloatingWindow>
+                    <FloatingWindow
+                      id="W4"
+                      testId="playback-log"
+                      winState={winMgr.windows.W4}
+                      onFocus={winMgr.focusWindow}
+                      onMove={winMgr.moveWindow}
+                      onToggleMinimize={winMgr.toggleMinimizeWindow}
+                      onClose={winMgr.closeWindow}
+                    >
+                      <PlaybackLogBody log={activePlayback ? playedLog(activePlayback, elapsedMs) : []} />
+                    </FloatingWindow>
+                    {statusNote && (
+                      <div className="panel meta-note" data-testid="status-note">
+                        {statusNote}
+                      </div>
+                    )}
+                  </div>
+
+                  <FloatingWindow
+                    id="W5"
+                    testId="right-drawer"
+                    className={rightCollapsed ? 'hud-right collapsed' : 'hud-right'}
+                    winState={winMgr.windows.W5}
+                    onFocus={winMgr.focusWindow}
+                    onMove={winMgr.moveWindow}
+                    onToggleMinimize={winMgr.toggleMinimizeWindow}
+                    onClose={winMgr.closeWindow}
+                  >
+                    <div
+                      className="row"
+                      style={{ justifyContent: 'space-between', marginBottom: rightCollapsed ? 0 : '6px' }}
+                    >
+                      <div className="row">
+                        {!rightCollapsed && (
+                          <>
+                            <button
+                              type="button"
+                              data-testid="tab-uio"
+                              data-ui-id="R1"
+                              className={rightTab === 'uio' ? 'btn active' : 'btn'}
+                              onClick={() => setRightTab('uio')}
+                            >
+                              <UiTag id="R1" />
+                              手写板 UIO
+                            </button>
+                            <button
+                              type="button"
+                              data-testid="tab-commander-wave"
+                              data-ui-id="R2"
+                              className={rightTab === 'wave' ? 'btn active' : 'btn'}
+                              onClick={() => setRightTab('wave')}
+                            >
+                              <UiTag id="R2" />
+                              独立【指挥 UI】
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        data-testid="btn-collapse-right"
+                        data-ui-id="R3"
+                        className="btn"
+                        onClick={() => setRightCollapsed((v) => !v)}
+                      >
+                        <UiTag id="R3" />
+                        {rightCollapsed ? '展开手写板' : '收起'}
+                      </button>
+                    </div>
+
+                    {!rightCollapsed &&
+                      (rightTab === 'uio' ? (
+                        <UioClipboardPanel
+                          uio={uio}
+                          units={displaySnapshot.units}
+                          hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
+                          directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
+                          waves={waves}
+                          activeWaveId={activeWaveId}
+                          selectedUnitId={selectedUnitId}
+                          mapPickTarget={mapPickTarget}
+                          isPickingTarget={isPickingTarget}
+                          pickingDraftId={pickingDraftId}
+                          pickingPointsCount={pickingPoints.length}
+                          hoveredDirectiveId={hoveredDirectiveId}
+                          showPlannedRoutes={showPlannedRoutes}
+                          onTogglePlannedRoutes={() => setShowPlannedRoutes((v) => !v)}
+                          onHoverDirective={setHoveredDirectiveId}
+                          onToggleWave={(id) => setActiveWaveId((cur) => (cur === id ? undefined : id))}
+                          onTogglePickTarget={(active) => {
+                            setPickingDraftId(undefined);
+                            setPickingMultiPoint(false);
+                            setPickingPoints([]);
+                            setIsPickingTarget(active);
+                          }}
+                          onStartPickForDraft={(draftId, multiPoint) => {
+                            setIsPickingTarget(false);
+                            setPickingDraftId(draftId);
+                            setPickingMultiPoint(multiPoint);
+                            setPickingPoints([]);
+                          }}
+                          onFinishPolylinePick={finishPolylinePick}
+                          onClearPickedTarget={() => setMapPickTarget(undefined)}
+                          onCreateDraft={handleCreateDraft}
+                          onBindDraftUnit={(id, unitId) => setUio((prev) => updateDraftDirective(prev, id, { unitId }))}
+                          onBindDraftTarget={(id, target) => setUio((prev) => updateDraftDirective(prev, id, { target }))}
+                          onUpdateDraftTime={(id, s, e) => setUio((prev) => updateDraftDirective(prev, id, { startSec: s, endSec: e }))}
+                          onUpdateQueueTime={(id, s, e) => setUio((prev) => updateQueueDirectiveTime(prev, id, s, e))}
+                          onMoveToQueue={(id) => setUio((prev) => moveDraftToQueue(prev, id).state)}
+                          onMoveToDraft={(id) => setUio((prev) => moveQueueToDraft(prev, id))}
+                          onDeleteDraft={(id) => setUio((prev) => removeDraftDirective(prev, id))}
+                          onCopyToDraft={(id) => setUio((prev) => copyDirectiveToDraft(prev, id))}
+                          onRequeueArchive={(id) => setUio((prev) => moveArchiveToQueue(prev, id).state)}
+                          onIssueQueue={() => void handleIssueQueue()}
+                        />
+                      ) : (
+                        <CommanderWavePanel
+                          draft={waveDraft}
+                          onChangeTitle={(title) => setWaveDraft((d) => ({ ...d, title }))}
+                          onSelectTool={(tool: WaveDrawTool) => setWaveDraft((d) => ({ ...d, tool, pendingPoints: [] }))}
+                          onCommitShape={() => setWaveDraft((d) => commitPendingWaveShape(d))}
+                          onUndoPoint={() => setWaveDraft((d) => undoWavePoint(d))}
+                          onClearDraft={() => setWaveDraft(createEmptyWaveDraft())}
+                          onIssueWave={() => void handleIssueWave()}
+                        />
+                      ))}
+                  </FloatingWindow>
                 </div>
+
+                <FloatingWindow
+                  id="W7"
+                  winState={winMgr.windows.W7}
+                  onFocus={winMgr.focusWindow}
+                  onMove={winMgr.moveWindow}
+                  onToggleMinimize={winMgr.toggleMinimizeWindow}
+                  onClose={winMgr.closeWindow}
+                >
+                  <DevArtPanel />
+                </FloatingWindow>
+                <FloatingWindow
+                  id="W8"
+                  winState={winMgr.windows.W8}
+                  onFocus={winMgr.focusWindow}
+                  onMove={winMgr.moveWindow}
+                  onToggleMinimize={winMgr.toggleMinimizeWindow}
+                  onClose={winMgr.closeWindow}
+                >
+                  <ExampleCustomWindow />
+                </FloatingWindow>
               </div>
-            </div>
-          }
-        />
-      </div>
-    </UiIdContext.Provider>
+            }
+          />
+        </div>
+      </UiIdContext.Provider>
+    </GameContext.Provider>
   );
 };

@@ -41,20 +41,20 @@
 
 ---
 
-### 1.2 已合入前端与 Phase B1~B4 后端的差异对齐清单
+### 1.2 已合入前端与 Phase B1~B4 后端的对齐完成清单（8 项全数打通）
 
-合入自远端 `origin/v2/pure-engine` 的前端骨架已在 [frontend/src/engine/localMockSandbox.ts](../frontend/src/engine/localMockSandbox.ts) 跑通纯前端闭环，但 [frontend/src/engine/httpEngineAdapter.ts](../frontend/src/engine/httpEngineAdapter.ts) 与 [frontend/src/engine/types.ts](../frontend/src/engine/types.ts) 尚属早期占位插座。切换接入真后端时，需对齐以下 **8 处真实协议差异**：
+本仓库已全面完成 `frontend/` 与 Phase B1~B4 真后端之间的 **8 项协议与保姆底座对接**（保留 `Mock 沙盒` 与 `HTTP 真后端` 一键热切换）：
 
-| 序号 | 前端现有文件/占位写法 | 真实后端 Phase B1~B4 契约 | 对齐动作 |
+| 序号 | 对接模块 | 真实后端 Phase B1~B4 契约 | 已落地前端文件与状态 |
 | :---: | :--- | :--- | :--- |
-| **1** | `vite.config.ts` 无 `server.proxy` | `gentactix-server` 无 CORS 响应头 | 在 `vite.config.ts` 增加 `/api` 与 `/health` 代理 |
-| **2** | `httpEngineAdapter.loadInitial` 硬编码 `512x512` 空地形 | `GET /api/terrain.bin`（`24B GTXV2TER` + 全格高程/地貌/掩蔽/烟幕）及 `POST /api/world/scenario` | 初始化拉取 `/api/terrain.bin` 解码真实高程、水域、林地、道路、桥梁与建筑格 |
-| **3** | `httpEngineAdapter.getSnapshot` 忽略 `visible_instances` 与 `step_cache_queue` | `GET /api/state?team=...` 直接返回 `visible_instances`（按 `I_intel` 裁切）与本方 `step_cache_queue` | 映射 `visible_instances` 至散落物/尸体/炸药/工事，直接喂 `step_cache_queue` 给 UIO 前向预警 |
-| **4** | `httpEngineAdapter.issueQueue` 丢弃 `CommandOutcome` 返回值 | `POST /api/command` 返回真实 `deferred_until_tick`、`ticket_id`、`remote_delay_ticks`、`via_runner` | 解析回包回填 `DirectiveIssueReceipt`，不要写死 `cachedTick + 1` 或 `remote: false` |
-| **5** | `httpEngineAdapter.issueWave` 直接 `throw` 未实现 | `POST /api/command` 已原生支持 `{ kind: "issue_commander_wave", team, hq_unit_id?, delay_ticks, zones }` | 按 `WaveGeometry` 转 `WaveZoneSpec[]` 调 `/api/command` |
-| **6** | `httpEngineAdapter.advanceTick` 丢弃 `/api/clock/step` 返回的 `playback` | `POST /api/clock/step` 原生返回 `steps[i].playback`（含 `unit_baselines`、`particle_tracks`、`keyframes`、`stop_exact_ms`、`playback_events`） | 直接把 `steps[0].playback` 转成逐秒防剧透 `TickPlayback`，禁止只靠回合末快照补全 |
-| **7** | 前端 `UnitRole` / `TacticalCommandJson` 为简化子集（缺 `armor_profile` 展示、`schedule_timed_charge` 等） | 后端 `UnitRole` 含 6 种角色，`TacticalCommand` 含 18 种变体，且 `/api/units/:id` 返回迷雾裁剪后 `soldiers`（4 部位）与 `vehicle_damage`（8 部件） | 扩充前端单位检视器与适配器类型，区分步兵 4 部位与装甲车辆 8 子系统 |
-| **8** | 前端缺双场认知热图与物理只读预览对接 | `GET /api/fields/i?team=...`（返回 `i_intel` / `i_vis_tier` / `h_blast` / `i_threat`）、`GET /api/fields/g`、`POST /api/query/{plan,los,arc,work}` | 将 `UnitInspector` / Layer 5 射界与路径预览直连后端只读 `/api/query/*` 端点 |
+| **1** | Vite 开发反代 | `gentactix-server` 无 CORS 响应头 | **已打通**：[`vite.config.ts`](../frontend/vite.config.ts) 配置 `/api` 与 `/health` 代理至 `127.0.0.1:8767` |
+| **2** | 二进制地形流 | `GET /api/terrain.bin`（`24B GTXV2TER` + 高程/地类/掩蔽/烟幕） | **已打通**：[`terrainBinary.ts`](../frontend/src/engine/terrainBinary.ts) 解码 `Float32`/`Uint8` 流并在 `renderLayer1BaseMap` 连续渲染 |
+| **3** | 迷雾实况与实例 | `GET /api/state?team=...`（`visible_instances` 与 `step_cache_queue`） | **已打通**：[`httpEngineAdapter.ts`](../frontend/src/engine/httpEngineAdapter.ts) 全量映射散落物/武器/尸体/工事与前向事件 |
+| **4** | 队列签发回执 | `POST /api/command` 返回 `CommandOutcome`（真实延迟与票据） | **已打通**：解析 `deferred_until_tick`/`ticket_id`/`remote_delay_ticks`，且自动转换 `'stealth' -> 'cautious'` |
+| **5** | 司令部波形 | `POST /api/command` `{ kind: "issue_commander_wave", ... }` | **已打通**：`HttpEngineAdapter.issueWave` 转 `WaveZoneSpec[]`（含圆/折线/矩形 AO）实发后端 |
+| **6** | 16s 时间演出机 | `POST /api/clock/step` 返回 `steps[0].playback` 关键帧与毫秒事件 | **已打通**：[`playback.ts`](../frontend/src/engine/playback.ts) 的 `convertBackendPlayback` + `evaluateFrameAt`（剔除 `is_prerender_skirt`，支持 `stop_exact_ms`） |
+| **7** | 单兵4部位 / 坦克8部件 | `GET /api/units/:id?team=...` 返回 `soldiers[]` 与 `vehicle_damage` | **已打通**：[`UnitInspector.tsx`](../frontend/src/ui/UnitInspector.tsx) `W3.I6` / `W3.I7` 渲染彩色部位条与 RHA 剖面 |
+| **8** | 双场热图与联调面板 | `GET /api/fields/i?team=...`（`i_threat` / `i_intel` / `h_blast`） | **已打通**：[`DevArtPanel.tsx`](../frontend/src/ui/DevArtPanel.tsx) (`W7`) 支持切 `Mock/HTTP`、`/health` 测活与 `L5 i_threat` 威胁热图叠加 |
 
 ---
 
@@ -649,3 +649,44 @@ export function parseTerrainBinary(buf: ArrayBuffer): ParsedTerrainBinary {
    - **静态地图贴图**：推荐 `WebP` / `PNG`（sRGB 色彩空间，无嵌入 ICC 冲突配置文件），建议按 `1024×1024 px` 分块切片命名（如 `map_tile_{tx}_{ty}.webp`）；
    - **矢量军标 & UI 控件**：优先纯 `SVG`（统一 `viewBox="0 0 64 64"`，中心 `(32, 32)` 对齐世界 `WorldPos` 质心，正右方 `0°` 顺时针与后端 `facing_deg` 的 `atan2(dy, dx).toDegrees()` 严格一致）；
    - **文件编码死规矩**：`frontend/` 内所有 `.ts` / `.tsx` / `.css` / `.json` / `.html` 与 `docs/*.md` 保持 **UTF-8 无 BOM**。
+
+---
+
+## 四 · 保姆级前端程序与美术傻瓜开发指南
+
+为了确保“不懂复杂状态机也能 5 分钟上手改图、改面板、加按钮”，`frontend/` 内置以下 **4 套保姆级底座基础设施**：
+
+### 4.1 美术零代码换图与换色（零 404 兜底）
+
+1. **丢图即生效（推荐放进 `frontend/src/assets/...`）**：
+   - 注册表清单见 [`assetManifest.ts`](../frontend/src/art/assetManifest.ts)（含 `map.base`、`map.ao`、`decal.crater/scorch/foxhole/trench`、`unit.*`、`obj.*`、`fx.smoke` 共 17 个槽位）与 [`public/assets/README.md`](../frontend/public/assets/README.md)。
+   - 未放图时**不会产生任何 404 请求或报错**，Canvas 会自动用程序化矢量兜底。
+   - 若打包后不重编替换，将图放进 `frontend/public/assets/...` 并在 [`manifest.json`](../frontend/public/assets/manifest.json) 的 `"overrides"` 中登记路径，然后在界面点击右上角 `W1.dock.W7 -> 热重载 public/assets` 即可瞬间生效。
+2. **一处改全盘色板（[`themeTokens.ts`](../frontend/src/art/themeTokens.ts)）**：
+   - 修改 `THEME_TOKENS` 中的 `redTeam`、`blueTeam`、`terrainPaper` 等十六进制颜色，CSS `--gtx-*` 变量与 Canvas 绘制色自动同步。
+3. **美术调试与样板透视工作台（[`DevArtPanel.tsx`](../frontend/src/ui/DevArtPanel.tsx) `W7`）**：
+   - 点顶部坞栏 `开发`（`W1.dock.W7`）呼出，可一键查看已命中 PNG 槽位、预览单兵 4 部位卡与装甲 8 部件卡、叠加 `L5 i_threat` 威胁热图、测试爆破震屏，并支持随时切换 `Mock 沙盒 <-> HTTP 真后端`。
+
+### 4.2 全层级可见 UI ID 寻址规范（改哪里一眼锁定）
+
+- **三级命名规范**：
+  - 窗口级（黄底黑字 `ui-id-win`）：`W1` ~ `W8`（悬停提示对应 `.tsx` 源码路径）；
+  - 控件级（蓝底白字 `ui-id-ctl`）：如 `T2`、`F1`、`W2.btn_min`、`W1.dock.W7`；
+  - 选项级（青底白字 `ui-id-opt` & `<option>` 前缀）：如 `W1.T4.opt_4x`、`W2.F4.opt_red`、`W5A.U2.opt_macro`。
+- **一键藏标截高清图**：点击顶栏 `T12`（`ID 标牌：开/关`）立即隐藏全屏 `[data-ui-tag]` 角标与下拉框前缀；再次点击立即恢复。
+
+### 4.3 浮动窗口系统（Docked-by-Default -> Detach-on-Drag）
+
+- **默认不挡战场，按需自由拖出**：
+  - 所有核心窗口（`W2` 画笔、`W3` 部队透视、`W4` 演出日志、`W5` 右侧指令抽屉、`W7` 开发台、`W8` 模板）统一包裹 [`FloatingWindow.tsx`](../frontend/src/ui/FloatingWindow.tsx)。
+  - `W2..W5` 默认贴边自适应排布（绝不盖住中央战区）；按住任意窗口标题栏拖动即自动脱离吸附自由浮动（支持 `—` 最小化与 `×` 关闭），坐标与状态自动存入 `localStorage`（`gentactix_window_layout_v1`）。
+  - 顶部 [`WindowDockBar.tsx`](../frontend/src/ui/WindowDockBar.tsx)（`W1.dock`）可随时重开任意已关窗口；拖乱后点 **`W1.dock.reset`（重置布局）** 一键复原。
+
+### 4.4 前端程序员 3 步加新面板（零 Props 透传）
+
+1. **复制模板**：直接复制 [`ExampleCustomWindow.tsx`](../frontend/src/ui/ExampleCustomWindow.tsx)（`W8`），改成自己的业务组件名；
+2. **注册 ID**：在 [`windowStore.ts`](../frontend/src/store/windowStore.ts) 的 `ManagedWindowId` 与 `createDefaultWindowLayout()` 新增窗口 ID（如 `'W9'`），在 `App.tsx` 用 `<FloatingWindow id="W9">` 包住；
+3. **调两行 Hook 拿全部能力**：
+   - `const game = useGame();`（来自 [`gameContext.tsx`](../frontend/src/store/gameContext.tsx)）：直接读取 `game.displaySnapshot`、`game.selectedUnit`、`game.selectedUnitDetail`、`game.iField`、`game.tickNumber`、`game.elapsedMs`；
+   - `void game.sendQuickCommand({ kind: 'hold_unit', unit_id: unit.id });`：一句异步调用在 Mock 沙盒与 HTTP 真后端双端通用执行；
+   - 新按钮/下拉/开关优先使用 [`UiControls.tsx`](../frontend/src/ui/UiControls.tsx) 的 `<UiButton uiId="W9.xxx">`、`<UiSelect uiId="W9.xxx" options={...} />`、`<UiToggle uiId="W9.xxx" />`，自动携带完整可见 ID。

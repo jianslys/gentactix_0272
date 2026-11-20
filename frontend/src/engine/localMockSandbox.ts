@@ -22,9 +22,11 @@ import {
   TICK_MS,
   TICK_SECONDS,
   type CommandDelayInfo,
+  type CommandOutcomeJson,
   type DirectiveIssueReceipt,
   type DiscreteChange,
   type GroundObject,
+  type IFieldTriplet,
   type InitialWorld,
   type IssueQueueReceipt,
   type IssueQueueRequest,
@@ -37,9 +39,11 @@ import {
   type TerrainDestruction,
   type TerrainModel,
   type TickPlayback,
+  type UnitDetailView,
   type UnitKeyframe,
   type UnitState,
   type Vec2,
+  type VisTier,
   type WaveDirective,
   type WorldSnapshot,
 } from './types';
@@ -609,6 +613,136 @@ export class LocalMockSandboxAdapter implements BackendAdapter {
 
   async listScheduled(observer: Team): Promise<ScheduledStepEvent[]> {
     return this.stepCache.listForTeam(observer);
+  }
+
+  async checkHealth(): Promise<{ ok: boolean; version?: string; cell_m?: number; tick_s?: number }> {
+    return { ok: true, version: '2.0.0-mock', cell_m: 8.0, tick_s: TICK_SECONDS };
+  }
+
+  async getUnitDetail(unitId: number, _observer: Team): Promise<UnitDetailView | undefined> {
+    const u = this.units.find((x) => x.id === unitId);
+    if (!u) return undefined;
+    const isVeh = Boolean(u.isVehicle || u.role === 'armored_vehicle');
+    if (isVeh) {
+      return {
+        id: u.id,
+        callsign: u.name,
+        team: u.team,
+        role: u.role,
+        pos: { ...u.pos },
+        facing_deg: u.facingDeg ?? 0,
+        alive: u.alive,
+        vis_tier: 'full',
+        men: u.soldiers,
+        hp: u.hp ?? 300,
+        suppression: u.suppression / 10,
+        posture: u.posture ?? 'active',
+        is_vehicle: true,
+        vehicle_damage: {
+          armor_rha: { front_mm: 50, side_mm: 30, rear_mm: 17.5, top_mm: 12.5 },
+          subsystems: [1, 1, 1, 1, 1, 1, 1, 1],
+          crew_alive: u.soldiers,
+          crew_max: u.maxSoldiers,
+          ammo_cooked_off: false,
+          burning: false,
+        },
+      };
+    }
+    const soldiers = Array.from({ length: u.maxSoldiers }, (_, idx) => {
+      const alive = idx < u.soldiers;
+      const wounded = alive && idx === 0 && u.suppression > 15;
+      return {
+        soldier_id: idx + 1,
+        alive,
+        hp: alive ? (wounded ? 6.5 : 11.1) : 0,
+        max_hp: 11.1,
+        regions: [
+          { integrity: alive ? 1.0 : 0.0, cumulative_damage: 0 },
+          { integrity: alive ? (wounded ? 0.55 : 1.0) : 0.0, cumulative_damage: wounded ? 4.5 : 0 },
+          { integrity: alive ? 1.0 : 0.0, cumulative_damage: 0 },
+          { integrity: alive ? 1.0 : 0.0, cumulative_damage: 0 },
+        ] as UnitDetailView['soldiers'] extends Array<infer S> ? S extends { regions: infer R } ? R : never : never,
+        bleeding_loss: wounded ? 12 : 0,
+        bleed_rate_per_tick: wounded ? 1.4 : 0,
+        suppression: u.suppression / 10,
+      };
+    });
+    return {
+      id: u.id,
+      callsign: u.name,
+      team: u.team,
+      role: u.role,
+      pos: { ...u.pos },
+      facing_deg: u.facingDeg ?? 0,
+      alive: u.alive,
+      vis_tier: 'full',
+      men: u.soldiers,
+      hp: u.hp ?? u.soldiers * 11.1,
+      suppression: u.suppression / 10,
+      posture: u.posture ?? 'active',
+      ammo_rounds: u.ammo,
+      is_vehicle: false,
+      soldiers,
+    };
+  }
+
+  async getIField(observer: Team): Promise<IFieldTriplet | undefined> {
+    const rows = Math.round(this.terrain.heightM / 8);
+    const cols = Math.round(this.terrain.widthM / 8);
+    const n = rows * cols;
+    const i_intel = new Array<number>(n).fill(0);
+    const i_vis_tier = new Array<VisTier>(n).fill('hidden');
+    const h_blast = new Array<number>(n).fill(0);
+    const i_threat = new Array<number>(n).fill(0);
+    const friendlies = this.units.filter((u) => u.alive && u.team === observer);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = c * 8 + 4;
+        const y = r * 8 + 4;
+        const idx = r * cols + c;
+        let maxIntel = 0;
+        for (const f of friendlies) {
+          const d = distance(f.pos, { x, y });
+          if (d <= VISION_RADIUS_M) {
+            maxIntel = Math.max(maxIntel, Math.max(0.18, 1 - (d / VISION_RADIUS_M) * 0.75));
+          }
+        }
+        i_intel[idx] = maxIntel;
+        i_vis_tier[idx] = maxIntel >= 0.75 ? 'full' : maxIntel >= 0.45 ? 'spotted' : maxIntel >= 0.2 ? 'suspected' : 'hidden';
+      }
+    }
+    for (const dest of this.destruction) {
+      const c = Math.max(0, Math.min(cols - 1, Math.floor(dest.pos.x / 8)));
+      const r = Math.max(0, Math.min(rows - 1, Math.floor(dest.pos.y / 8)));
+      h_blast[r * cols + c] = 0.85;
+      i_threat[r * cols + c] = 0.85;
+    }
+    return {
+      kind: 'i',
+      observer_team: observer,
+      rows,
+      cols,
+      cell_m: 8.0,
+      values: i_threat,
+      i_intel,
+      i_vis_tier,
+      h_blast,
+      i_threat,
+    };
+  }
+
+  async submitRawCommand(cmd: Record<string, unknown>): Promise<CommandOutcomeJson> {
+    const unitId = Number(cmd['unit_id'] ?? 0);
+    const targetUnit = this.units.find((u) => u.id === unitId);
+    if (cmd['kind'] === 'set_night' && typeof cmd['night'] === 'boolean') {
+      this.night = cmd['night'];
+      return { accepted: true, code: 'MOCK_NIGHT', detail: `night=${this.night}` };
+    }
+    if (cmd['kind'] === 'set_fire_discipline' && targetUnit) {
+      targetUnit.discipline = String(cmd['discipline'] ?? 'return_fire') as UnitState['discipline'];
+      return { accepted: true, code: 'MOCK_DISC', detail: 'updated discipline' };
+    }
+    return { accepted: true, code: 'MOCK_OK', detail: String(cmd['kind'] ?? 'ok') };
   }
 }
 

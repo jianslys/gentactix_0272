@@ -3,6 +3,7 @@
 
 import type {
   DirectiveTarget,
+  IFieldTriplet,
   TerrainModel,
   TickPlayback,
   UnitState,
@@ -11,6 +12,9 @@ import type {
   WaveGeometry,
   WorldSnapshot,
 } from '../engine/types';
+import { getArtImage } from '../art/assetLoader';
+import type { ArtSlotKey } from '../art/assetManifest';
+import { THEME_TOKENS } from '../art/themeTokens';
 import type { FreehandStroke, WeatherMode } from '../store/layerStore';
 
 export interface CameraView {
@@ -65,13 +69,50 @@ export function renderLayer1BaseMap(
   tf: RenderTransform,
 ): void {
   ctx.clearRect(0, 0, tf.widthPx, tf.heightPx);
-  // 连续军用地图纸底色
+  const baseImg = getArtImage('map.base');
+  if (baseImg) {
+    const tl = worldToPx({ x: 0, y: 0 }, tf);
+    const br = worldToPx({ x: terrain.widthM, y: terrain.heightM }, tf);
+    ctx.drawImage(baseImg, tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+    return;
+  }
+
+  // 连续军用地图纸底色（同步 Theme Token）
   const bg = ctx.createLinearGradient(0, 0, tf.widthPx, tf.heightPx);
-  bg.addColorStop(0, '#cfc9b4');
+  bg.addColorStop(0, THEME_TOKENS.terrainPaper);
   bg.addColorStop(0.5, '#c7c1aa');
   bg.addColorStop(1, '#bdb79f');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, tf.widthPx, tf.heightPx);
+
+  // 真后端 /api/terrain.bin 二进制高程与地类微调底色（纯填色、严禁描边成网格线）
+  if (terrain.binary) {
+    const bin = terrain.binary;
+    const cellW = Math.ceil(scaleM(bin.cellM, tf)) + 1;
+    const cellH = Math.ceil(scaleM(bin.cellM, tf)) + 1;
+    const step = bin.rows * bin.cols > 6400 ? 2 : 1;
+    for (let r = 0; r < bin.rows; r += step) {
+      for (let c = 0; c < bin.cols; c += step) {
+        const idx = r * bin.cols + c;
+        const elev = bin.elevationM[idx] ?? 0;
+        const kind = bin.kind[idx] ?? 0;
+        const pos = worldToPx({ x: c * bin.cellM, y: r * bin.cellM }, tf);
+        if (kind === 1) {
+          ctx.fillStyle = 'rgba(104, 132, 88, 0.36)';
+        } else if (kind === 2) {
+          ctx.fillStyle = 'rgba(72, 128, 168, 0.42)';
+        } else if (kind === 3) {
+          ctx.fillStyle = 'rgba(142, 128, 98, 0.32)';
+        } else if (elev > 5) {
+          const alpha = Math.min(0.28, (elev - 5) / 120);
+          ctx.fillStyle = `rgba(116, 98, 68, ${alpha.toFixed(3)})`;
+        } else {
+          continue;
+        }
+        ctx.fillRect(pos.x, pos.y, cellW * step, cellH * step);
+      }
+    }
+  }
 
   // 地貌斑块（林地/耕地/沼泽）
   for (const patch of terrain.patches) {
@@ -164,6 +205,11 @@ export function renderLayer2Destruction(
     const c = worldToPx(d.pos, tf);
     const r = Math.max(5, scaleM(d.radiusM, tf));
     if (d.kind === 'crater' || d.kind === 'scorch') {
+      const decalImg = getArtImage(d.kind === 'crater' ? 'decal.crater' : 'decal.scorch');
+      if (decalImg) {
+        ctx.drawImage(decalImg, c.x - r, c.y - r, r * 2, r * 2);
+        continue;
+      }
       const g = ctx.createRadialGradient(c.x, c.y, r * 0.15, c.x, c.y, r);
       g.addColorStop(0, 'rgba(38, 28, 22, 0.85)');
       g.addColorStop(0.55, 'rgba(84, 64, 48, 0.65)');
@@ -180,6 +226,19 @@ export function renderLayer2Destruction(
       ctx.stroke();
     } else if (d.kind === 'foxhole' || d.kind === 'trench') {
       const pts = d.points && d.points.length >= 2 ? d.points : [d.pos, { x: d.pos.x + 14, y: d.pos.y }];
+      const segImg = getArtImage(d.kind === 'trench' ? 'decal.trench' : 'decal.foxhole');
+      if (segImg && pts.length === 2) {
+        const p0 = worldToPx(pts[0]!, tf);
+        const p1 = worldToPx(pts[1]!, tf);
+        const len = Math.hypot(p1.x - p0.x, p1.y - p0.y) || r * 2;
+        const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+        ctx.save();
+        ctx.translate((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+        ctx.rotate(ang);
+        ctx.drawImage(segImg, -len / 2, -r * 0.45, len, r * 0.9);
+        ctx.restore();
+        continue;
+      }
       ctx.save();
       ctx.beginPath();
       pts.forEach((pt, idx) => {
@@ -207,6 +266,16 @@ export function renderLayer3AmbientOcclusion(
   tf: RenderTransform,
 ): void {
   ctx.clearRect(0, 0, tf.widthPx, tf.heightPx);
+  const aoImg = getArtImage('map.ao');
+  if (aoImg) {
+    const tl = worldToPx({ x: 0, y: 0 }, tf);
+    const br = worldToPx({ x: terrain.widthM, y: terrain.heightM }, tf);
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.drawImage(aoImg, tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+    ctx.restore();
+    return;
+  }
   // 山坡西北向日光斜照产生的东南侧微弱 AO 阴影
   for (const hill of terrain.hills) {
     const c = worldToPx({ x: hill.center.x + 16, y: hill.center.y + 18 }, tf);
@@ -250,7 +319,10 @@ export function renderLayer4Entities(
   for (const obj of snap.groundObjects) {
     const p = worldToPx(obj.pos, tf);
     ctx.save();
-    if (obj.kind === 'item') {
+    const objImg = getArtImage(`obj.${obj.kind}` as ArtSlotKey);
+    if (objImg) {
+      ctx.drawImage(objImg, p.x - 9, p.y - 9, 18, 18);
+    } else if (obj.kind === 'item') {
       ctx.fillStyle = '#c89b3c';
       ctx.strokeStyle = '#3b2e13';
       ctx.lineWidth = 1.2;
@@ -281,16 +353,24 @@ export function renderLayer4Entities(
   }
 
   // 烟幕云团
+  const smokeImg = getArtImage('fx.smoke');
   for (const s of snap.smoke) {
     const p = worldToPx(s.pos, tf);
     const r = scaleM(s.radiusM, tf);
-    const g = ctx.createRadialGradient(p.x, p.y, r * 0.1, p.x, p.y, r);
-    g.addColorStop(0, 'rgba(232, 236, 238, 0.72)');
-    g.addColorStop(1, 'rgba(220, 224, 228, 0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-    ctx.fill();
+    if (smokeImg) {
+      ctx.save();
+      ctx.globalAlpha = 0.72;
+      ctx.drawImage(smokeImg, p.x - r, p.y - r, r * 2, r * 2);
+      ctx.restore();
+    } else {
+      const g = ctx.createRadialGradient(p.x, p.y, r * 0.1, p.x, p.y, r);
+      g.addColorStop(0, 'rgba(232, 236, 238, 0.72)');
+      g.addColorStop(1, 'rgba(220, 224, 228, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // 作战单位兵牌
@@ -298,8 +378,9 @@ export function renderLayer4Entities(
     const p = worldToPx(u.pos, tf);
     const isSelected = u.id === selectedUnitId;
     const isHq = u.role === 'platoon_hq';
-    const w = isHq ? 28 : 24;
-    const h = isHq ? 20 : 17;
+    const isVeh = Boolean(u.isVehicle || u.role === 'armored_vehicle');
+    const w = isVeh ? 32 : isHq ? 28 : 24;
+    const h = isVeh ? 20 : isHq ? 20 : 17;
 
     ctx.save();
     if (isSelected) {
@@ -308,28 +389,66 @@ export function renderLayer4Entities(
       ctx.strokeRect(p.x - w / 2 - 4, p.y - h / 2 - 4, w + 8, h + 8);
     }
 
-    ctx.fillStyle = !u.alive ? '#57534e' : u.team === 'red' ? '#b9382c' : '#2b5f9e';
-    ctx.strokeStyle = '#1f1b16';
-    ctx.lineWidth = 1.6;
-    ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h);
-    ctx.strokeRect(p.x - w / 2, p.y - h / 2, w, h);
+    const slotKey: ArtSlotKey = isVeh
+      ? u.team === 'blue'
+        ? 'unit.armored_vehicle_blue'
+        : 'unit.armored_vehicle_red'
+      : isHq
+        ? 'unit.platoon_hq_red'
+        : u.team === 'blue'
+          ? 'unit.enemy_squad_blue'
+          : 'unit.rifle_squad_red';
+    const unitImg = getArtImage(slotKey);
 
-    // 北约兵牌内部符号
-    ctx.strokeStyle = '#f8f4e8';
-    ctx.lineWidth = 1.4;
-    if (isHq) {
-      // 排部三点 + 指挥星
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
-      ctx.stroke();
+    if (unitImg) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      if (!u.alive) ctx.globalAlpha = 0.45;
+      if (isVeh && u.facingDeg !== undefined) {
+        ctx.rotate((u.facingDeg * Math.PI) / 180);
+      }
+      const size = isVeh ? 34 : 28;
+      ctx.drawImage(unitImg, -size / 2, -size / 2, size, size);
+      if (isVeh) {
+        const turretImg = getArtImage(u.team === 'blue' ? 'unit.turret_blue' : 'unit.turret_red');
+        if (turretImg) {
+          ctx.drawImage(turretImg, -size * 0.42, -size * 0.42, size * 0.84, size * 0.84);
+        }
+      }
+      ctx.restore();
     } else {
-      // 步兵交叉斜线
-      ctx.beginPath();
-      ctx.moveTo(p.x - w / 2 + 2, p.y - h / 2 + 2);
-      ctx.lineTo(p.x + w / 2 - 2, p.y + h / 2 - 2);
-      ctx.moveTo(p.x + w / 2 - 2, p.y - h / 2 + 2);
-      ctx.lineTo(p.x - w / 2 + 2, p.y + h / 2 - 2);
-      ctx.stroke();
+      ctx.fillStyle = !u.alive ? '#57534e' : u.team === 'red' ? THEME_TOKENS.redTeam : THEME_TOKENS.blueTeam;
+      ctx.strokeStyle = '#1f1b16';
+      ctx.lineWidth = 1.6;
+      ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h);
+      ctx.strokeRect(p.x - w / 2, p.y - h / 2, w, h);
+
+      // 北约兵牌内部符号
+      ctx.strokeStyle = '#f8f4e8';
+      ctx.lineWidth = 1.4;
+      if (isVeh) {
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, w * 0.28, h * 0.26, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        const rad = ((u.facingDeg ?? 0) * Math.PI) / 180;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + Math.cos(rad) * 14, p.y + Math.sin(rad) * 14);
+        ctx.stroke();
+      } else if (isHq) {
+        // 排部三点 + 指挥星
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        // 步兵交叉斜线
+        ctx.beginPath();
+        ctx.moveTo(p.x - w / 2 + 2, p.y - h / 2 + 2);
+        ctx.lineTo(p.x + w / 2 - 2, p.y + h / 2 - 2);
+        ctx.moveTo(p.x + w / 2 - 2, p.y - h / 2 + 2);
+        ctx.lineTo(p.x - w / 2 + 2, p.y + h / 2 - 2);
+        ctx.stroke();
+      }
     }
 
     // 名称 + 实时人数/弹药
@@ -338,7 +457,7 @@ export function renderLayer4Entities(
     ctx.textAlign = 'center';
     ctx.fillText(`${u.name} (${u.soldiers}/${u.maxSoldiers})`, p.x, p.y - h / 2 - 6);
     if (u.activity.type === 'build') {
-      ctx.fillStyle = '#15803d';
+      ctx.fillStyle = THEME_TOKENS.accentGreen;
       ctx.fillRect(p.x - w / 2, p.y + h / 2 + 3, w * u.workProgress, 3);
     }
     ctx.restore();
@@ -527,11 +646,30 @@ export function renderLayer5Rings(
     cursorWorldPos?: Vec2;
     circleDragPreview?: { center: Vec2; radiusM: number } | null;
     scheduledDetonations?: Vec2[];
+    iField?: IFieldTriplet | null;
+    showThreatOverlay?: boolean;
     tf: RenderTransform;
   },
 ): void {
   const { tf } = opts;
   ctx.clearRect(0, 0, tf.widthPx, tf.heightPx);
+
+  // 可选 I 场威胁热图叠加（来自 /api/fields/i，纯填色不画网格线）
+  if (opts.showThreatOverlay && opts.iField) {
+    const { rows, cols, cell_m, i_threat } = opts.iField;
+    const cellW = Math.ceil(scaleM(cell_m, tf)) + 1;
+    const cellH = Math.ceil(scaleM(cell_m, tf)) + 1;
+    const step = rows * cols > 6400 ? 2 : 1;
+    for (let r = 0; r < rows; r += step) {
+      for (let c = 0; c < cols; c += step) {
+        const threat = i_threat[r * cols + c] ?? 0;
+        if (threat <= 0.05) continue;
+        const pos = worldToPx({ x: c * cell_m, y: r * cell_m }, tf);
+        ctx.fillStyle = `rgba(220, 38, 38, ${Math.min(0.42, threat * 0.45).toFixed(3)})`;
+        ctx.fillRect(pos.x, pos.y, cellW * step, cellH * step);
+      }
+    }
+  }
 
   if (opts.hq) {
     const c = worldToPx(opts.hq.pos, tf);

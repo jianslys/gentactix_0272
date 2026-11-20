@@ -9,16 +9,17 @@ export interface FreehandToolbarProps {
   color: string;
   strokeCount: number;
   storageBackend: 'indexeddb' | 'localstorage';
+  embedded?: boolean;
   onChangeTool: (tool: FreehandTool) => void;
   onChangeColor: (color: string) => void;
   onClear: () => void;
 }
 
 const COLORS = [
-  { value: '#dc2626', label: '红铅' },
-  { value: '#2563eb', label: '蓝铅' },
-  { value: '#15803d', label: '绿铅' },
-  { value: '#1c1917', label: '炭黑' },
+  { value: '#dc2626', label: '红铅', optId: 'W2.F4.opt_red' },
+  { value: '#2563eb', label: '蓝铅', optId: 'W2.F4.opt_blue' },
+  { value: '#15803d', label: '绿铅', optId: 'W2.F4.opt_green' },
+  { value: '#1c1917', label: '炭黑', optId: 'W2.F4.opt_black' },
 ];
 
 export const FreehandToolbar: React.FC<FreehandToolbarProps> = ({
@@ -26,16 +27,19 @@ export const FreehandToolbar: React.FC<FreehandToolbarProps> = ({
   color,
   strokeCount,
   storageBackend,
+  embedded = false,
   onChangeTool,
   onChangeColor,
   onClear,
 }) => {
-  return (
-    <div className="panel freehand-bar" data-testid="freehand-toolbar" data-ui-id="W2">
-      <span className="panel-tag">
-        <UiTag id="W2" kind="win" />
-        L6 手绘板（仅本地）
-      </span>
+  const inner = (
+    <>
+      {!embedded && (
+        <span className="panel-tag">
+          <UiTag id="W2" kind="win" />
+          L6 手绘板（仅本地）
+        </span>
+      )}
       <button
         type="button"
         data-testid="l6-tool-none"
@@ -72,7 +76,8 @@ export const FreehandToolbar: React.FC<FreehandToolbarProps> = ({
           <button
             key={c.value}
             type="button"
-            title={c.label}
+            data-ui-id={c.optId}
+            title={`${c.optId} · ${c.label}`}
             aria-label={c.label}
             className={color === c.value ? 'swatch active' : 'swatch'}
             style={{ background: c.value }}
@@ -97,6 +102,15 @@ export const FreehandToolbar: React.FC<FreehandToolbarProps> = ({
         <UiTag id="F6" />
         笔画 {strokeCount} · {storageBackend === 'indexeddb' ? 'IndexedDB 已同步' : 'LocalStorage 已同步'}
       </span>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="freehand-bar">{inner}</div>;
+  }
+  return (
+    <div className="panel freehand-bar" data-testid="freehand-toolbar" data-ui-id="W2">
+      {inner}
     </div>
   );
 };

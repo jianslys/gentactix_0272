@@ -22,7 +22,7 @@ import type {
   WaveDirective,
 } from '../engine/types';
 import { queueConflicts, type UioState } from '../store/uioStore';
-import { UiTag } from './UiTag';
+import { UiIdContext, UiTag } from './UiTag';
 
 export interface UioClipboardPanelProps {
   uio: UioState;
@@ -114,6 +114,8 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
   onRequeueArchive,
   onIssueQueue,
 }) => {
+  const showIds = React.useContext(UiIdContext);
+  const optTxt = (optId: string, label: string) => (showIds ? `[${optId}] ${label}` : label);
   const [mode, setMode] = useState<DirectiveMode>('task');
   const [taskKind, setTaskKind] = useState<DirectiveTaskKind>('move_unit');
   const [bindSelectedUnit, setBindSelectedUnit] = useState<boolean>(false);
@@ -255,8 +257,10 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
             value={mode}
             onChange={(e) => setMode(e.target.value as DirectiveMode)}
           >
-            <option value="task">单任务</option>
-            <option value="macro">事件宏（前出→散兵坑→警戒）</option>
+            <option value="task" data-ui-id="W5A.U2.opt_task">{optTxt('W5A.U2.opt_task', '单任务')}</option>
+            <option value="macro" data-ui-id="W5A.U2.opt_macro">
+              {optTxt('W5A.U2.opt_macro', '事件宏（前出→散兵坑→警戒）')}
+            </option>
           </select>
 
           <span className="row" data-ui-id="U3" style={{ gap: '4px' }}>
@@ -269,13 +273,27 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
                 value={taskKind}
                 onChange={(e) => setTaskKind(e.target.value as DirectiveTaskKind)}
               >
-                <option value="move_unit">机动 Move</option>
-                <option value="attack_pos">火力压制 AttackPos</option>
-                <option value="attack_unit">攻击单位 AttackUnit</option>
-                <option value="build_work">构筑工事 BuildWork</option>
-                <option value="pop_smoke">施放烟幕 PopSmoke</option>
-                <option value="set_fire_discipline">开火纪律</option>
-                <option value="hold_unit">停止待命 Hold</option>
+                <option value="move_unit" data-ui-id="W5A.U3.task.opt_move_unit">
+                  {optTxt('W5A.U3.task.opt_move_unit', '机动 Move')}
+                </option>
+                <option value="attack_pos" data-ui-id="W5A.U3.task.opt_attack_pos">
+                  {optTxt('W5A.U3.task.opt_attack_pos', '火力压制 AttackPos')}
+                </option>
+                <option value="attack_unit" data-ui-id="W5A.U3.task.opt_attack_unit">
+                  {optTxt('W5A.U3.task.opt_attack_unit', '攻击单位 AttackUnit')}
+                </option>
+                <option value="build_work" data-ui-id="W5A.U3.task.opt_build_work">
+                  {optTxt('W5A.U3.task.opt_build_work', '构筑工事 BuildWork')}
+                </option>
+                <option value="pop_smoke" data-ui-id="W5A.U3.task.opt_pop_smoke">
+                  {optTxt('W5A.U3.task.opt_pop_smoke', '施放烟幕 PopSmoke')}
+                </option>
+                <option value="set_fire_discipline" data-ui-id="W5A.U3.task.opt_set_fire_discipline">
+                  {optTxt('W5A.U3.task.opt_set_fire_discipline', '开火纪律')}
+                </option>
+                <option value="hold_unit" data-ui-id="W5A.U3.task.opt_hold_unit">
+                  {optTxt('W5A.U3.task.opt_hold_unit', '停止待命 Hold')}
+                </option>
               </select>
             )}
 
@@ -286,10 +304,18 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
                 value={work}
                 onChange={(e) => setWork(e.target.value as EngineerWorkKind)}
               >
-                <option value="foxhole_line">散兵坑线</option>
-                <option value="zigzag_trench">曲折堑壕</option>
-                <option value="minefield">雷场</option>
-                <option value="demolition">爆破准备</option>
+                <option value="foxhole_line" data-ui-id="W5A.U3.work.opt_foxhole_line">
+                  {optTxt('W5A.U3.work.opt_foxhole_line', '散兵坑线')}
+                </option>
+                <option value="zigzag_trench" data-ui-id="W5A.U3.work.opt_zigzag_trench">
+                  {optTxt('W5A.U3.work.opt_zigzag_trench', '曲折堑壕')}
+                </option>
+                <option value="minefield" data-ui-id="W5A.U3.work.opt_minefield">
+                  {optTxt('W5A.U3.work.opt_minefield', '雷场')}
+                </option>
+                <option value="demolition" data-ui-id="W5A.U3.work.opt_demolition">
+                  {optTxt('W5A.U3.work.opt_demolition', '爆破准备')}
+                </option>
               </select>
             )}
 
@@ -299,9 +325,15 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
               value={stance}
               onChange={(e) => setStance(e.target.value as MoveStance)}
             >
-              <option value="normal">正常行军</option>
-              <option value="fast">急行军</option>
-              <option value="stealth">隐蔽匍匐</option>
+              <option value="normal" data-ui-id="W5A.U3.stance.opt_normal">
+                {optTxt('W5A.U3.stance.opt_normal', '正常行军')}
+              </option>
+              <option value="fast" data-ui-id="W5A.U3.stance.opt_fast">
+                {optTxt('W5A.U3.stance.opt_fast', '急行军')}
+              </option>
+              <option value="stealth" data-ui-id="W5A.U3.stance.opt_stealth">
+                {optTxt('W5A.U3.stance.opt_stealth', '隐蔽匍匐')}
+              </option>
             </select>
 
             <select
@@ -310,9 +342,15 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
               value={discipline}
               onChange={(e) => setDiscipline(e.target.value as FireDiscipline)}
             >
-              <option value="return_fire">还击</option>
-              <option value="fire_at_will">自由开火</option>
-              <option value="hold_fire">严守停火</option>
+              <option value="return_fire" data-ui-id="W5A.U3.fire.opt_return_fire">
+                {optTxt('W5A.U3.fire.opt_return_fire', '还击')}
+              </option>
+              <option value="fire_at_will" data-ui-id="W5A.U3.fire.opt_fire_at_will">
+                {optTxt('W5A.U3.fire.opt_fire_at_will', '自由开火')}
+              </option>
+              <option value="hold_fire" data-ui-id="W5A.U3.fire.opt_hold_fire">
+                {optTxt('W5A.U3.fire.opt_hold_fire', '严守停火')}
+              </option>
             </select>
           </span>
         </div>

@@ -4,6 +4,8 @@
 
 import type {
   CommandDelayInfo,
+  CommandOutcomeJson,
+  IFieldTriplet,
   InitialWorld,
   IssueQueueReceipt,
   IssueQueueRequest,
@@ -11,6 +13,7 @@ import type {
   ScheduledStepEvent,
   Team,
   TickPlayback,
+  UnitDetailView,
   WaveDirective,
   WorldSnapshot,
 } from './types';
@@ -42,4 +45,12 @@ export interface BackendAdapter {
   lookahead(targetTick: number, observer: Team): Promise<ScheduledStepEvent[]>;
   /** 己方全部未来预约事件（迷雾过滤）。 */
   listScheduled(observer: Team): Promise<ScheduledStepEvent[]>;
+  /** 按迷雾裁剪查询单兵 4 部位 / 坦克 8 子系统详情。 */
+  getUnitDetail?(unitId: number, observer: Team): Promise<UnitDetailView | undefined>;
+  /** 查询正交 I 场三元组（i_intel / i_vis_tier / h_blast / i_threat）。 */
+  getIField?(observer: Team): Promise<IFieldTriplet | undefined>;
+  /** 检测后端 HTTP 健康状态。 */
+  checkHealth?(): Promise<{ ok: boolean; version?: string; cell_m?: number; tick_s?: number }>;
+  /** 直接提交底层原始指令（仅供便捷面板或自定义按钮调用）。 */
+  submitRawCommand?(cmd: Record<string, unknown>, cmdSecInTick?: number): Promise<CommandOutcomeJson>;
 }

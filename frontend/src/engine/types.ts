@@ -12,16 +12,26 @@ export const MAX_STEP_CACHE_HORIZON_TICKS = 324_000;
 
 export type Team = 'red' | 'blue' | 'neutral';
 
+export type VisTier = 'hidden' | 'suspected' | 'spotted' | 'full';
+
 export interface Vec2 {
   x: number;
   y: number;
 }
 
-export type UnitRole = 'platoon_hq' | 'rifle_squad' | 'enemy_squad';
+export type UnitRole =
+  | 'platoon_hq'
+  | 'rifle_squad'
+  | 'enemy_squad'
+  | 'infantry_squad'
+  | 'heavy_weapon_team'
+  | 'engineer_squad'
+  | 'armored_vehicle'
+  | 'recon_team';
 
-export type FireDiscipline = 'hold_fire' | 'return_fire' | 'fire_at_will';
+export type FireDiscipline = 'hold_fire' | 'return_fire' | 'fire_at_will' | 'suppressive';
 
-export type MoveStance = 'normal' | 'fast' | 'stealth';
+export type MoveStance = 'normal' | 'fast' | 'stealth' | 'cautious';
 
 export type EngineerWorkKind = 'minefield' | 'foxhole_line' | 'zigzag_trench' | 'demolition';
 
@@ -51,6 +61,12 @@ export interface UnitState {
   discipline: FireDiscipline;
   alive: boolean;
   activity: UnitActivity;
+  visTier?: VisTier;
+  facingDeg?: number;
+  isVehicle?: boolean;
+  hp?: number;
+  maxHp?: number;
+  posture?: 'active' | 'pinned' | 'prone';
 }
 
 export type GroundObjectKind = 'item' | 'weapon' | 'corpse';
@@ -296,6 +312,7 @@ export interface UnitKeyframe {
   ms: number;
   pos: Vec2;
   workProgress: number;
+  stopExactMs?: number;
 }
 
 export type DiscreteChange =
@@ -364,6 +381,17 @@ export interface TerrainPatch {
   kind: 'forest' | 'field' | 'marsh';
 }
 
+export interface ParsedTerrainBinary {
+  version: number;
+  rows: number;
+  cols: number;
+  cellM: number;
+  elevationM: Float32Array;
+  kind: Uint8Array;
+  coverBonus: Float32Array;
+  smokeDensity: Float32Array;
+}
+
 export interface TerrainModel {
   widthM: number;
   heightM: number;
@@ -371,4 +399,130 @@ export interface TerrainModel {
   patches: TerrainPatch[];
   river: Vec2[];
   roads: Vec2[][];
+  binary?: ParsedTerrainBinary;
+}
+
+// ---------------------------------------------------------------------------
+// Phase B1~B4 真后端详细契约类型（迷雾裁剪单兵4部位 / 坦克8部件 / I场三元组 / 演出载荷）
+// ---------------------------------------------------------------------------
+
+export interface BodyRegionState {
+  integrity: number;
+  cumulative_damage: number;
+}
+
+export interface SoldierDetailRecord {
+  soldier_id: number;
+  alive: boolean;
+  hp: number;
+  max_hp: number;
+  regions: [BodyRegionState, BodyRegionState, BodyRegionState, BodyRegionState];
+  bleeding_loss: number;
+  bleed_rate_per_tick: number;
+  suppression: number;
+}
+
+export interface ArmorProfileRha {
+  front_mm: number;
+  side_mm: number;
+  rear_mm: number;
+  top_mm: number;
+}
+
+export interface VehicleDamageDetail {
+  armor_rha: ArmorProfileRha;
+  /** [0]=Engine, [1]=Tracks, [2]=MainGun, [3]=TurretRing, [4]=Optics, [5]=Radio, [6]=AmmoRack, [7]=FuelTank */
+  subsystems: [number, number, number, number, number, number, number, number];
+  crew_alive: number;
+  crew_max: number;
+  ammo_cooked_off: boolean;
+  burning: boolean;
+}
+
+export interface UnitDetailView {
+  id: number;
+  callsign: string;
+  team: Team;
+  role?: UnitRole;
+  pos: Vec2;
+  facing_deg: number;
+  alive: boolean;
+  vis_tier: VisTier;
+  men?: number;
+  hp?: number;
+  suppression?: number;
+  posture?: 'active' | 'pinned' | 'prone';
+  weapon_id?: string;
+  ammo_rounds?: number;
+  is_vehicle?: boolean;
+  soldiers?: SoldierDetailRecord[];
+  vehicle_damage?: VehicleDamageDetail;
+}
+
+export interface IFieldTriplet {
+  kind: 'i';
+  observer_team: Team;
+  rows: number;
+  cols: number;
+  cell_m: number;
+  values: number[];
+  i_intel: number[];
+  i_vis_tier: VisTier[];
+  h_blast: number[];
+  i_threat: number[];
+}
+
+export interface BackendUnitTickBaseline {
+  piece_id: string;
+  team: Team;
+  hp_start?: number;
+  men_start?: number;
+  ammo_start?: number;
+  suppression_start?: number;
+}
+
+export interface BackendParticleTrackNode {
+  piece_id: string;
+  team: Team;
+  pos_start: [number, number];
+  pos_end: [number, number];
+  initial_visibility: 0 | 1;
+  is_prerender_skirt: boolean;
+  keyframes: Array<[number, [number, number]]>;
+  stop_exact_ms?: number;
+}
+
+export interface BackendPlaybackEvent {
+  exact_ms: number;
+  category: string;
+  event_kind: string;
+  source_piece_id?: string;
+  target_piece_id?: string;
+  exact_hp_loss?: number;
+  exact_supp_add?: number;
+  hp_delta?: number;
+  casualties?: number;
+  ammo_spent?: number;
+  terrain_cell?: [number, number];
+  entity_id?: string;
+  directive_id?: string;
+}
+
+export interface BackendTimeMachinePayload {
+  tick: number;
+  window_ms: [number, number];
+  unit_baselines: BackendUnitTickBaseline[];
+  particle_tracks: BackendParticleTrackNode[];
+  playback_events: BackendPlaybackEvent[];
+}
+
+export interface CommandOutcomeJson {
+  accepted: boolean;
+  deferred_until_tick?: number;
+  ticket_id?: number;
+  remote_delay_ticks?: number;
+  via_runner?: boolean;
+  code: string;
+  detail: string;
+  created_id?: number;
 }

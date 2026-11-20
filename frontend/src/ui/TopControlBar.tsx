@@ -3,7 +3,9 @@
 import React, { useState } from 'react';
 import { MAX_STEP_CACHE_HORIZON_TICKS, TICK_MS, type ScheduledStepEvent } from '../engine/types';
 import type { WeatherMode } from '../store/layerStore';
+import { UiSelect } from './UiControls';
 import { UiTag } from './UiTag';
+import { WindowDockBar } from './WindowDockBar';
 
 export type PlaybackSpeed = 1 | 2 | 4;
 
@@ -116,18 +118,19 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
             {playing ? '暂停走表' : '逐秒播放'}
           </button>
 
-          <select
-            aria-label="走表倍速"
-            data-testid="select-playback-speed"
-            data-ui-id="T4"
-            className="select"
-            value={playbackSpeed}
-            onChange={(e) => onChangeSpeed(Number(e.target.value) as PlaybackSpeed)}
-          >
-            <option value={1}>T4 1x 实时</option>
-            <option value={2}>T4 2x 倍速</option>
-            <option value={4}>T4 4x 快放</option>
-          </select>
+          <UiSelect
+            uiId="T4"
+            testId="select-playback-speed"
+            ariaLabel="走表倍速"
+            selectClassName="select"
+            value={String(playbackSpeed)}
+            onChangeValue={(v) => onChangeSpeed(Number(v) as PlaybackSpeed)}
+            options={[
+              { value: '1', label: '1x 实时', optId: 'W1.T4.opt_1x' },
+              { value: '2', label: '2x 倍速', optId: 'W1.T4.opt_2x' },
+              { value: '4', label: '4x 快放', optId: 'W1.T4.opt_4x' },
+            ]}
+          />
 
           <span className="row" data-ui-id="T5" style={{ gap: '2px' }}>
             <UiTag id="T5" />
@@ -183,19 +186,18 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
             <UiTag id="T9" />
             L7 特效A：{l7Enabled ? '开' : '关'}
           </button>
-          <span className="row" data-ui-id="T10" style={{ gap: '2px' }}>
-            <UiTag id="T10" />
-            <select
-              aria-label="L7天气"
-              className="select"
-              value={l7Weather}
-              onChange={(e) => onChangeWeather(e.target.value as WeatherMode)}
-            >
-              <option value="fog">薄雾</option>
-              <option value="rain">细雨</option>
-              <option value="snow">飘雪</option>
-            </select>
-          </span>
+          <UiSelect
+            uiId="T10"
+            ariaLabel="L7天气"
+            selectClassName="select"
+            value={l7Weather}
+            onChangeValue={(v) => onChangeWeather(v as WeatherMode)}
+            options={[
+              { value: 'fog', label: '薄雾', optId: 'W1.T10.opt_fog' },
+              { value: 'rain', label: '细雨', optId: 'W1.T10.opt_rain' },
+              { value: 'snow', label: '飘雪', optId: 'W1.T10.opt_snow' },
+            ]}
+          />
           <button
             type="button"
             data-testid="toggle-l9"
@@ -226,6 +228,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
             <UiTag id="T13" />
             {rightCollapsed ? '展开手写板' : '收起手写板'}
           </button>
+          <WindowDockBar />
         </div>
       </div>
 

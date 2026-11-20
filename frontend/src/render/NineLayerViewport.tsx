@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { distance } from '../engine/directives';
 import type {
   DirectiveTarget,
+  IFieldTriplet,
   TerrainModel,
   TickPlayback,
   UnitState,
@@ -62,6 +63,9 @@ export interface NineLayerViewportProps {
   shaking?: boolean;
   mapPickHint?: string;
   rightInsetPx?: number;
+  iField?: IFieldTriplet | null;
+  showThreatOverlay?: boolean;
+  artVersion?: number;
   onMapClick?: (worldPos: Vec2, hitUnit?: UnitState) => void;
   hudChildren?: React.ReactNode;
 }
@@ -102,6 +106,9 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
   shaking = false,
   mapPickHint,
   rightInsetPx = 456,
+  iField = null,
+  showThreatOverlay = false,
+  artVersion = 0,
   onMapClick,
   hudChildren,
 }) => {
@@ -159,19 +166,19 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
     if (c1) renderLayer1BaseMap(c1, terrain, tf);
     const c3 = l3Ref.current?.getContext('2d');
     if (c3) renderLayer3AmbientOcclusion(c3, terrain, tf);
-  }, [terrain, stageW, stageH, camera]);
+  }, [terrain, stageW, stageH, camera, artVersion]);
 
   // Layer 2（地形破坏，压在 L3 之下）
   useEffect(() => {
     const c2 = l2Ref.current?.getContext('2d');
     if (c2) renderLayer2Destruction(c2, snapshot, tf);
-  }, [snapshot, terrain, stageW, stageH, camera]);
+  }, [snapshot, terrain, stageW, stageH, camera, artVersion]);
 
   // Layer 4（实例兵牌、物品、武器、尸体、走表瞬时特效）
   useEffect(() => {
     const c4 = l4Ref.current?.getContext('2d');
     if (c4) renderLayer4Entities(c4, snapshot, selectedUnitId, tf, { elapsedMs, playback: activePlayback });
-  }, [snapshot, selectedUnitId, activePlayback, elapsedMs, terrain, stageW, stageH, camera]);
+  }, [snapshot, selectedUnitId, activePlayback, elapsedMs, terrain, stageW, stageH, camera, artVersion]);
 
   // Layer 5（范围圈、队列航路、波次投影、橡皮筋预览）
   useEffect(() => {
@@ -195,6 +202,8 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
       cursorWorldPos: cursorWorld,
       circleDragPreview: circleDrag,
       scheduledDetonations,
+      iField,
+      showThreatOverlay,
       tf,
     });
   }, [
@@ -213,6 +222,8 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
     cursorWorld,
     circleDrag,
     scheduledDetonations,
+    iField,
+    showThreatOverlay,
     terrain,
     stageW,
     stageH,
