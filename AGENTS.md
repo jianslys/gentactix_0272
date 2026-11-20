@@ -18,7 +18,7 @@
 1. `AGENTS.md`（本文件 — 协作与架构红线）
 2. `README.md`（仓库当前结构、编译与启停命令）
 3. `FUNCTION_AND_INTERFACE_MANUAL.md`（`gentactix-core` 12 模块、`TacticalCommand` 15 类指令、`gentactix-server` 18 条路由契约）
-4. *仅当开发新前端界面时*：查看 `art-direction/vibe-images/` 下的视觉参考图。
+4. **严禁默认读取美术图**：日常引擎、架构、数据契约与逻辑开发阶段禁止读取任何图片；*仅当大王明确下令执行 UI / 视觉美术还原任务时*，才按需读取唯一允许的美术参考图 `art-direction/2f89d1e3-b843-410a-b72a-4001b2c64ffc.png`。
 
 > [!NOTE]
 > `docs/SPEC/` 为 V1 时期数学/物理推演底稿留档；若其中早期结构描述与当前 V2 源码或 `FUNCTION_AND_INTERFACE_MANUAL.md` 冲突，**一律以当前 V2 代码及手册为准**（旧 V1 代码与旧前端已归档于 `refactor/pure-engine` 与 `main` 分支，严禁搬回现役代码）。

@@ -18,7 +18,7 @@ gentactix/
 │   └── gentactix-server/              # 极简 Axum HTTP 服务壳（src 合计 < 400 行，零物理业务逻辑）
 ├── data/
 │   └── items_catalog.json             # 二战单兵/班组武器、弹药、引信、枪架唯一权威目录
-├── art-direction/                     # 军用印刷地图 UI 视觉参考图（供后续新建前端对齐用）
+├── art-direction/                     # 唯一授权美术参考图（2f89d1e3-b843-410a-b72a-4001b2c64ffc.png，仅美术/UI 阶段按需查阅）
 ├── docs/                              # 历史理论与早期物理 SPEC 留档（参考用，以 V2 代码为准）
 └── LICENSE
 ```

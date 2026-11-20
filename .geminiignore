@@ -8,7 +8,6 @@ release/
 
 # ---- Browser Profiles, Scratch & Art-Direction Heavy Assets ----
 scratch/
-art-direction/
 archive/
 _chrome_profile*/
 _chrome_profile/
@@ -38,6 +37,8 @@ probe_result.json
 *.webp
 *.mp4
 *.webm
+# Sole approved readable art reference
+!art-direction/2f89d1e3-b843-410a-b72a-4001b2c64ffc.png
 
 # ---- Large Theoretical Papers (tracked in Git, read on demand only) ----
 docs/research-theory/
