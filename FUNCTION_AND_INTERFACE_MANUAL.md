@@ -1,6 +1,7 @@
 # GenTactix V2 Pure Engine 核心模块与 HTTP 接口速查手册
 
-> **定位**：面向后续前端开发与内核维护的 GenTactix V2.0.0（排/班尺度 `8.0m` / `16s` 步长）真实代码与 HTTP API 对照手册（含 Phase B1~B4 完整契约）。
+> **定位**：面向后续前端开发与内核维护的 GenTactix V2.0.0（排/班尺度 `8.0m` / `16s` 步长）真实代码与 HTTP API 速查对照手册（含 Phase B1~B4 完整契约）。  
+> **完整前端联调 TypeScript 契约、差异对照表与九层美术规范**：见 [docs/FRONTEND_DEV_AND_ART_MANUAL.md](docs/FRONTEND_DEV_AND_ART_MANUAL.md)。
 
 ---
 
