@@ -101,6 +101,21 @@ export function updateDraftDirective(
   };
 }
 
+export function updateQueueDirectiveTime(
+  state: UioState,
+  id: string,
+  startSec: number,
+  endSec: number,
+): UioState {
+  const safeStart = Math.max(0, Number.isFinite(startSec) ? startSec : 0);
+  const safeEnd = Math.max(safeStart + 1, Number.isFinite(endSec) ? endSec : safeStart + 1);
+  return {
+    ...state,
+    queue: state.queue.map((d) => (d.id === id ? { ...d, startSec: safeStart, endSec: safeEnd } : d)),
+    gateError: null,
+  };
+}
+
 export function removeDraftDirective(state: UioState, id: string): UioState {
   return {
     ...state,

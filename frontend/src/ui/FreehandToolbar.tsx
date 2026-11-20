@@ -1,7 +1,8 @@
-// GenTactix V2 frontend · Layer 6 手绘工具条（画笔 / 颜色 / 橡皮 / 清空 / 本地持久化提示）
+// GenTactix V2 frontend · Layer 6 手绘工具条（W2: F1..F6）
 
 import React from 'react';
 import type { FreehandTool } from '../store/layerStore';
+import { UiTag } from './UiTag';
 
 export interface FreehandToolbarProps {
   tool: FreehandTool;
@@ -30,33 +31,43 @@ export const FreehandToolbar: React.FC<FreehandToolbarProps> = ({
   onClear,
 }) => {
   return (
-    <div className="panel freehand-bar" data-testid="freehand-toolbar">
-      <span className="panel-tag">L6 手绘板（仅本地）</span>
+    <div className="panel freehand-bar" data-testid="freehand-toolbar" data-ui-id="W2">
+      <span className="panel-tag">
+        <UiTag id="W2" kind="win" />
+        L6 手绘板（仅本地）
+      </span>
       <button
         type="button"
         data-testid="l6-tool-none"
+        data-ui-id="F1"
         className={tool === 'none' ? 'btn active' : 'btn'}
         onClick={() => onChangeTool('none')}
       >
+        <UiTag id="F1" />
         鼠标选兵
       </button>
       <button
         type="button"
         data-testid="l6-tool-pen"
+        data-ui-id="F2"
         className={tool === 'pen' ? 'btn active' : 'btn'}
         onClick={() => onChangeTool('pen')}
       >
+        <UiTag id="F2" />
         手绘笔
       </button>
       <button
         type="button"
         data-testid="l6-tool-eraser"
+        data-ui-id="F3"
         className={tool === 'eraser' ? 'btn active' : 'btn'}
         onClick={() => onChangeTool('eraser')}
       >
+        <UiTag id="F3" />
         橡皮擦
       </button>
-      <div className="color-swatches">
+      <div className="color-swatches" data-ui-id="F4">
+        <UiTag id="F4" />
         {COLORS.map((c) => (
           <button
             key={c.value}
@@ -72,10 +83,18 @@ export const FreehandToolbar: React.FC<FreehandToolbarProps> = ({
           />
         ))}
       </div>
-      <button type="button" data-testid="l6-clear" className="btn danger" onClick={onClear}>
+      <button
+        type="button"
+        data-testid="l6-clear"
+        data-ui-id="F5"
+        className="btn danger"
+        onClick={onClear}
+      >
+        <UiTag id="F5" />
         清空画线
       </button>
-      <span className="meta-note" data-testid="l6-count">
+      <span className="meta-note" data-testid="l6-count" data-ui-id="F6">
+        <UiTag id="F6" />
         笔画 {strokeCount} · {storageBackend === 'indexeddb' ? 'IndexedDB 已同步' : 'LocalStorage 已同步'}
       </span>
     </div>

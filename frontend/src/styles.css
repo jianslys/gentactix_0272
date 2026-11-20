@@ -43,7 +43,7 @@ body,
 }
 
 .hud-left {
-  width: 260px;
+  width: 244px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -63,6 +63,146 @@ body,
   pointer-events: auto;
   max-height: 100%;
   overflow-y: auto;
+}
+
+.hud-right.collapsed {
+  width: auto;
+  max-width: none;
+  overflow-y: visible;
+}
+
+.ui-id-tag {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.35;
+  font-weight: 800;
+  padding: 0 4px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+  letter-spacing: 0.2px;
+  user-select: all;
+}
+
+.ui-id-win {
+  background: #fbbf24;
+  color: #1c1917;
+  border: 1px solid #f59e0b;
+}
+
+.ui-id-ctl {
+  background: #0284c7;
+  color: #f0f9ff;
+  border: 1px solid #38bdf8;
+}
+
+.map-hud-bottom-wrap {
+  position: absolute;
+  bottom: 8px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.map-hud-bottom {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  padding: 5px 8px;
+}
+
+.lane.drag-over {
+  outline: 2px dashed #facc15;
+  background: rgba(180, 83, 9, 0.22);
+}
+
+.card.hovered {
+  outline: 2px solid #facc15;
+}
+
+.timeline-box {
+  background: rgba(15, 13, 12, 0.85);
+  border: 1px solid #443e35;
+  border-radius: 4px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timeline-unit-label {
+  width: 72px;
+  font-size: 11px;
+  color: #e7d8b5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-track {
+  position: relative;
+  flex: 1;
+  height: 16px;
+  background: #1c1917;
+  border: 1px solid #3f3a32;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.timeline-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 2px;
+  background: rgba(245, 158, 11, 0.78);
+  border: 1px solid #fbbf24;
+  color: #1c1917;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 11px;
+  padding: 0 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.timeline-bar.conflict {
+  background: rgba(220, 38, 38, 0.85);
+  border-color: #fca5a5;
+  color: #fef2f2;
+}
+
+.bookmark-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.bookmark-pill {
+  background: #2b2621;
+  color: #fde68a;
+  border: 1px solid #92400e;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.bookmark-pill:hover {
+  background: #78350f;
 }
 
 .panel {

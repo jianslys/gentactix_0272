@@ -4,6 +4,7 @@
 import type {
   DirectiveTarget,
   TerrainModel,
+  TickPlayback,
   UnitState,
   Vec2,
   WaveDirective,
@@ -12,29 +13,49 @@ import type {
 } from '../engine/types';
 import type { FreehandStroke, WeatherMode } from '../store/layerStore';
 
+export interface CameraView {
+  zoom: number;
+  panX: number;
+  panY: number;
+}
+
 export interface RenderTransform {
   widthPx: number;
   heightPx: number;
   worldWidthM: number;
   worldHeightM: number;
+  camera?: CameraView;
+}
+
+function getCameraMetrics(tf: RenderTransform): { scale: number; originX: number; originY: number } {
+  const baseScale = Math.min(tf.widthPx / tf.worldWidthM, tf.heightPx / tf.worldHeightM);
+  const zoom = tf.camera?.zoom ?? 1;
+  const panX = tf.camera?.panX ?? 0;
+  const panY = tf.camera?.panY ?? 0;
+  const scale = baseScale * zoom;
+  const originX = (tf.widthPx - tf.worldWidthM * baseScale) / 2 + panX;
+  const originY = (tf.heightPx - tf.worldHeightM * baseScale) / 2 + panY;
+  return { scale, originX, originY };
 }
 
 export function worldToPx(p: Vec2, tf: RenderTransform): Vec2 {
+  const m = getCameraMetrics(tf);
   return {
-    x: (p.x / tf.worldWidthM) * tf.widthPx,
-    y: (p.y / tf.worldHeightM) * tf.heightPx,
+    x: m.originX + p.x * m.scale,
+    y: m.originY + p.y * m.scale,
   };
 }
 
 export function pxToWorld(px: Vec2, tf: RenderTransform): Vec2 {
+  const m = getCameraMetrics(tf);
   return {
-    x: Math.max(0, Math.min(tf.worldWidthM, (px.x / tf.widthPx) * tf.worldWidthM)),
-    y: Math.max(0, Math.min(tf.worldHeightM, (px.y / tf.heightPx) * tf.worldHeightM)),
+    x: Math.max(0, Math.min(tf.worldWidthM, (px.x - m.originX) / m.scale)),
+    y: Math.max(0, Math.min(tf.worldHeightM, (px.y - m.originY) / m.scale)),
   };
 }
 
 function scaleM(meters: number, tf: RenderTransform): number {
-  return (meters / tf.worldWidthM) * tf.widthPx;
+  return meters * getCameraMetrics(tf).scale;
 }
 
 /** Layer 1: 基础地图色彩层（连续地形色彩、等高缓坡、水系、道路，绝无 8m 网格线）。 */
@@ -215,12 +236,13 @@ export function renderLayer3AmbientOcclusion(
   }
 }
 
-/** Layer 4: 实例兵牌层（作战单位、地面散落物品、散落武器、阵亡尸体、烟幕）。 */
+/** Layer 4: 实例兵牌层（作战单位、地面散落物品、散落武器、阵亡尸体、烟幕、走表瞬时演出特效）。 */
 export function renderLayer4Entities(
   ctx: CanvasRenderingContext2D,
   snap: WorldSnapshot,
   selectedUnitId: number | undefined,
   tf: RenderTransform,
+  playbackEffects?: { elapsedMs: number; playback: TickPlayback | null },
 ): void {
   ctx.clearRect(0, 0, tf.widthPx, tf.heightPx);
 
@@ -321,6 +343,71 @@ export function renderLayer4Entities(
     }
     ctx.restore();
   }
+
+  // 16s 走表瞬时演出反馈（严禁提前剧透，严格按 ch.ms <= elapsedMs 触发）
+  if (playbackEffects?.playback) {
+    const { elapsedMs, playback } = playbackEffects;
+    // 爆破冲击波光环
+    for (const ch of playback.changes) {
+      if (ch.type === 'destruction' && ch.ms <= elapsedMs && elapsedMs - ch.ms <= 1600) {
+        const age = (elapsedMs - ch.ms) / 1600;
+        const c = worldToPx(ch.item.pos, tf);
+        const r = scaleM(ch.item.radiusM * (0.4 + age * 1.9), tf);
+        ctx.save();
+        ctx.strokeStyle = `rgba(249, 115, 22, ${1 - age})`;
+        ctx.lineWidth = 3 * (1 - age * 0.6);
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = `rgba(254, 240, 138, ${0.45 * (1 - age)})`;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      // 伤亡/弹耗/压制瞬时飘字
+      if (ch.type === 'unit' && ch.ms <= elapsedMs && elapsedMs - ch.ms <= 1800) {
+        const u = snap.units.find((x) => x.id === ch.unitId);
+        if (!u) continue;
+        const age = (elapsedMs - ch.ms) / 1800;
+        const p = worldToPx(u.pos, tf);
+        const label =
+          ch.field === 'soldiers'
+            ? `人数→${ch.value}`
+            : ch.field === 'ammo'
+              ? `弹药 ${ch.value}`
+              : `压制 ${ch.value}%`;
+        ctx.save();
+        ctx.fillStyle =
+          ch.field === 'soldiers'
+            ? `rgba(220, 38, 38, ${1 - age})`
+            : ch.field === 'suppression'
+              ? `rgba(234, 88, 12, ${1 - age})`
+              : `rgba(245, 158, 11, ${1 - age})`;
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, p.x, p.y - 22 - age * 18);
+        ctx.restore();
+      }
+    }
+
+    // 交火曳光示意（仅在正在开火态或近期开火日志内）
+    for (const u of snap.units) {
+      if (u.activity.type === 'fire') {
+        const from = worldToPx(u.pos, tf);
+        const to = worldToPx(u.activity.target, tf);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.78)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
 }
 
 function drawArrow(ctx: CanvasRenderingContext2D, pts: Vec2[], tf: RenderTransform, color: string): void {
@@ -413,17 +500,32 @@ function drawWaveGeometry(
   }
 }
 
-/** Layer 5: 战术范围圈层（直接指挥圈、选定目标标绘、顶栏波次投影、指挥 UI 绘制预览）。 */
+export interface PlannedRouteOverlay {
+  id: string;
+  unitId: number;
+  target?: DirectiveTarget;
+  locked: boolean;
+  label: string;
+}
+
+/** Layer 5: 战术范围圈层（直接指挥圈、队内航路、波次投影、橡皮筋实时绘制预览）。 */
 export function renderLayer5Rings(
   ctx: CanvasRenderingContext2D,
   opts: {
     hq?: UnitState;
     selectedUnit?: UnitState;
+    units?: UnitState[];
     directRadiusM: number;
     radioRadiusM: number;
     activeWave?: WaveDirective;
     waveDraftGeometry?: WaveGeometry;
     draftTarget?: DirectiveTarget;
+    plannedRoutes?: PlannedRouteOverlay[];
+    hoveredDirectiveId?: string;
+    showPlannedRoutes?: boolean;
+    pickingPoints?: Vec2[];
+    cursorWorldPos?: Vec2;
+    circleDragPreview?: { center: Vec2; radiusM: number } | null;
     scheduledDetonations?: Vec2[];
     tf: RenderTransform;
   },
@@ -466,11 +568,114 @@ export function renderLayer5Rings(
     ctx.restore();
   }
 
+  // 队列与已签发纸条的航路/目标线（支持纸条悬停双向高亮）
+  if (opts.showPlannedRoutes !== false && opts.plannedRoutes && opts.units) {
+    for (const route of opts.plannedRoutes) {
+      const u = opts.units.find((x) => x.id === route.unitId);
+      if (!u || !route.target) continue;
+      const isHovered = route.id === opts.hoveredDirectiveId;
+      const pts: Vec2[] = [];
+      if (route.target.type === 'point') {
+        pts.push(u.pos, route.target.pos);
+      } else if (route.target.type === 'polyline') {
+        pts.push(u.pos, ...route.target.points);
+      } else {
+        const targetUnitId = route.target.unitId;
+        const tgt = opts.units.find((x) => x.id === targetUnitId);
+        if (tgt) pts.push(u.pos, tgt.pos);
+      }
+      if (pts.length < 2) continue;
+
+      ctx.save();
+      ctx.strokeStyle = isHovered
+        ? '#facc15'
+        : route.locked
+          ? 'rgba(34, 197, 94, 0.85)'
+          : 'rgba(245, 158, 11, 0.85)';
+      ctx.lineWidth = isHovered ? 3.5 : 2;
+      if (!route.locked) ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      pts.forEach((pt, idx) => {
+        const p = worldToPx(pt, tf);
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+
+      const endPx = worldToPx(pts[pts.length - 1]!, tf);
+      ctx.fillStyle = isHovered ? '#fef08a' : route.locked ? '#15803d' : '#b45309';
+      ctx.beginPath();
+      ctx.arc(endPx.x, endPx.y, isHovered ? 6 : 4, 0, Math.PI * 2);
+      ctx.fill();
+      if (isHovered) {
+        ctx.fillStyle = '#1c1917';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(route.label, endPx.x + 8, endPx.y - 6);
+      }
+      ctx.restore();
+    }
+  }
+
   if (opts.activeWave) {
     drawWaveGeometry(ctx, opts.activeWave.geometry, tf, false);
+    const b0 = opts.activeWave.geometry.barrages[0];
+    const anchor = b0?.type === 'circle' ? b0.center : b0?.type === 'polygon' ? b0.points[0] : opts.activeWave.geometry.assaultArrows[0]?.[0];
+    if (anchor) {
+      const ap = worldToPx(anchor, tf);
+      ctx.save();
+      ctx.fillStyle = 'rgba(28, 25, 22, 0.86)';
+      ctx.fillRect(ap.x - 40, ap.y - 28, 128, 18);
+      ctx.fillStyle = '#fde68a';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(`波次 G场 #${opts.activeWave.effectiveTick} 生效`, ap.x - 35, ap.y - 15);
+      ctx.restore();
+    }
   }
   if (opts.waveDraftGeometry) {
     drawWaveGeometry(ctx, opts.waveDraftGeometry, tf, true);
+  }
+
+  // 炮击圆拖拽实时半径预览
+  if (opts.circleDragPreview) {
+    const c = worldToPx(opts.circleDragPreview.center, tf);
+    const r = scaleM(opts.circleDragPreview.radiusM, tf);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(220, 38, 38, 0.9)';
+    ctx.fillStyle = 'rgba(220, 38, 38, 0.16)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#991b1b';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(`R=${Math.round(opts.circleDragPreview.radiusM)}m`, c.x + 8, c.y - 8);
+    ctx.restore();
+  }
+
+  // 多段折线拾取橡皮筋预览
+  if (opts.pickingPoints && opts.pickingPoints.length > 0) {
+    const previewPts = opts.cursorWorldPos ? [...opts.pickingPoints, opts.cursorWorldPos] : opts.pickingPoints;
+    ctx.save();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    previewPts.forEach((pt, idx) => {
+      const p = worldToPx(pt, tf);
+      if (idx === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+    for (const pt of opts.pickingPoints) {
+      const p = worldToPx(pt, tf);
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // 草稿标的物定位预览
