@@ -74,37 +74,41 @@ export const MapLegendPanel: React.FC<MapLegendPanelProps> = ({
   onStepNext,
 }) => {
   return (
-    <section className="basic-legend-panel" data-testid="legend-view-panel" data-ui-id="W10">
-      <div className="basic-ui-header" data-ui-id="W10.HDR">
+    <section
+      className={`basic-legend-panel parchment-dock ${collapsed ? 'is-collapsed' : 'is-expanded'}`}
+      data-testid="legend-view-panel"
+      data-ui-id="W10"
+    >
+      <div className="basic-ui-header parchment-dock-hdr" data-ui-id="W10.HDR">
         <div className="basic-ui-title">
           <UiTag id="W10" kind="win" source="src/ui/MapLegendPanel.tsx" />
-          <span>图例与地图视图</span>
+          <span>地图图层与视图</span>
         </div>
         <button
           type="button"
-          className="basic-ui-btn"
+          className="basic-ui-btn parchment-btn"
           data-testid="legend-toggle"
           data-ui-id="W10.TOGGLE"
           onClick={onToggleCollapse}
         >
           <UiTag id="W10.TOGGLE" />
-          {collapsed ? '展开' : '收起'}
+          {collapsed ? '展开 ⌃' : '收起 ⌄'}
         </button>
       </div>
 
       {!collapsed && (
-        <div className="basic-legend-body">
+        <div className="basic-legend-body parchment-dock-body">
           <div className="basic-legend-actions" data-ui-id="W10.MAP">
             <button
               type="button"
-              className="basic-ui-btn basic-ui-btn-primary"
+              className="basic-ui-btn basic-ui-btn-primary parchment-btn-primary"
               style={{ width: '100%' }}
               data-testid="legend-switch-map"
               data-ui-id="W10.MAP_SWITCH"
               onClick={onToggleMapView}
             >
               <UiTag id="W10.MAP_SWITCH" />
-              {mapViewMode === 'field' ? '切至副地图：军用印刷参谋图 [M]' : '切回主地图：近距现场视野 [M]'}
+              {mapViewMode === 'field' ? '展开副地图：参谋印刷图 [M]' : '折回主地图：近距现场视野 [M]'}
             </button>
           </div>
 
@@ -221,7 +225,7 @@ export const MapLegendPanel: React.FC<MapLegendPanelProps> = ({
           <div className="basic-legend-actions" data-ui-id="W10.ACT">
             <button
               type="button"
-              className="basic-ui-btn"
+              className="basic-ui-btn parchment-btn"
               data-testid="legend-open-w5"
               data-ui-id="V12"
               onClick={onOpenClipboard}
@@ -231,7 +235,7 @@ export const MapLegendPanel: React.FC<MapLegendPanelProps> = ({
             </button>
             <button
               type="button"
-              className="basic-ui-btn"
+              className="basic-ui-btn parchment-btn"
               data-testid="legend-open-w12"
               data-ui-id="V15"
               onClick={onOpenComposer}
@@ -241,7 +245,7 @@ export const MapLegendPanel: React.FC<MapLegendPanelProps> = ({
             </button>
             <button
               type="button"
-              className="basic-ui-btn"
+              className="basic-ui-btn parchment-btn"
               data-testid="legend-step-next"
               data-ui-id="V13"
               onClick={onStepNext}

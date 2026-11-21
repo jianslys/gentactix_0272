@@ -46,10 +46,11 @@ body,
 }
 
 .hud-left {
-  width: 256px;
+  width: 286px;
   max-height: calc(100vh - 108px);
   overflow-y: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: #596365 transparent;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -113,20 +114,25 @@ body,
 
 .ui-id-win {
   background: transparent;
-  color: #c94a3d;
+  color: #ee9286;
   border: none;
 }
 
 .ui-id-ctl {
   background: transparent;
-  color: #c94a3d;
+  color: #ee9286;
   border: none;
 }
 
 .ui-id-opt {
   background: transparent;
-  color: #c94a3d;
+  color: #ee9286;
   border: none;
+}
+
+.parchment-dock .ui-id-tag,
+.map-hud-tactical .ui-id-tag {
+  color: #b34135;
 }
 
 .ui-select-wrap {
@@ -351,9 +357,11 @@ body,
 
 .map-hud-bottom-wrap {
   position: absolute;
-  bottom: 8px;
+  bottom: 10px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   pointer-events: none;
   z-index: 8;
 }
@@ -365,7 +373,36 @@ body,
   gap: 8px;
   flex-wrap: wrap;
   max-width: 100%;
-  padding: 5px 8px;
+  padding: 5px 10px;
+}
+
+.map-hud-bottom.map-hud-tactical {
+  background: rgba(240, 235, 215, 0.94);
+  color: #373b32;
+  border: 1px solid #777e6a;
+  outline: 1px solid rgba(141, 146, 117, 0.32);
+  outline-offset: -3px;
+  box-shadow: 0 3px 12px rgba(50, 55, 35, 0.16);
+}
+
+.map-hud-bottom.map-hud-tactical .meta-note {
+  color: #5b6352;
+}
+
+.map-hud-bottom.map-hud-tactical .btn {
+  background: rgba(233, 227, 204, 0.96);
+  color: #374139;
+  border-color: #8c8d74;
+}
+
+.map-hud-bottom.map-hud-tactical .btn:hover:not(:disabled) {
+  background: #dfd8be;
+}
+
+.map-hud-bottom.map-hud-tactical .btn.primary {
+  background: #242e32;
+  color: #eddbb6;
+  border-color: #c5aa70;
 }
 
 .lane.drag-over {
@@ -484,18 +521,19 @@ body,
 }
 
 .btn {
-  background: var(--gtx-bg-panel-muted, #1a2732);
-  color: var(--gtx-text-primary, #e2ddd1);
-  border: 1px solid var(--gtx-border-strong, #3b5060);
-  border-radius: 3px;
+  background: transparent;
+  color: #d1d8d4;
+  border: 1px solid var(--gtx-border-strong, #526064);
+  border-radius: var(--gtx-radius-panel, 2px);
   padding: 4px 9px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
 .btn:hover:not(:disabled) {
-  background: #253746;
-  border-color: #557288;
+  background: #465155;
+  border-color: #6b7b7f;
 }
 
 .btn:disabled {
@@ -504,20 +542,21 @@ body,
 }
 
 .btn.active {
-  background: #2e556e;
-  border-color: #5b8fad;
-  color: #fff;
+  background: rgba(197, 170, 112, 0.12);
+  border-color: var(--gtx-accent-amber, #c5aa70);
+  color: #eddbb6;
 }
 
 .btn.primary {
-  background: #234c62;
-  border-color: #427c9e;
-  color: #eaf4f8;
+  background: rgba(167, 160, 130, 0.15);
+  border-color: #9a926e;
+  color: #e2d7b5;
   font-weight: 600;
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: #2f617d;
+  background: rgba(197, 170, 112, 0.24);
+  border-color: #c5aa70;
 }
 
 .btn.danger {
@@ -673,105 +712,105 @@ body,
   }
 }
 
-/* 顶部军规 HUD 顶栏 (UI-01 & UI-02) 1:1 照抄样式 */
+/* 顶部军规 HUD 顶栏 (UI-01 & UI-02) 对齐 4174 DESIGN STUDY / 01 */
 .top-hud-bar {
   width: 100%;
-  background: var(--gtx-bg-app, #0d1419);
-  border-bottom: 1px solid var(--gtx-border-soft, rgba(42, 63, 79, 0.45));
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  background: var(--gtx-bg-app, #1b2428);
+  border-bottom: 1px solid #11191d;
   user-select: none;
 }
 
 .top-tier1 {
-  height: 46px;
+  height: 52px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 16px;
-  border-bottom: 1px solid rgba(42, 63, 79, 0.35);
+  padding: 0 18px;
+  border-bottom: 1px solid #435054;
+  background: var(--gtx-bg-app, #1b2428);
 }
 
 .top-brand-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .top-brand-title {
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #d6d9d4;
 }
 
 .top-brand-subtitle {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: #6e8494;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  color: #8f9b9b;
   text-transform: uppercase;
 }
 
 .top-nav-tabs {
   display: flex;
   align-items: center;
-  gap: 28px;
-  height: 46px;
+  gap: 24px;
+  height: 52px;
 }
 
 .top-nav-tab {
   display: flex;
   align-items: center;
   height: 100%;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: #6e8494;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: #929c9c;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color 0.15s, border-color 0.15s;
 }
 
 .top-nav-tab:hover {
-  color: #c5d6e2;
+  color: #d6d9d4;
 }
 
 .top-nav-tab.active {
-  color: #ffffff;
-  font-weight: 700;
-  border-bottom: 2px solid #c89f55;
+  color: #ecdfbc;
+  font-weight: 600;
+  border-bottom: 2px solid #c5aa70;
 }
 
 .top-meta-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .top-meta-badge {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: #6e8494;
-  padding: 1px 6px;
-  border: 1px solid rgba(82, 108, 124, 0.25);
-  border-radius: 2px;
+  font-family: var(--gtx-font-mono, "Cascadia Code", Consolas, monospace);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #c9ba92;
+  padding: 4px 7px;
+  border: 1px solid #5d624f;
+  border-radius: 1px;
 }
 
 .top-clock {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--gtx-font-mono, "Cascadia Code", Consolas, monospace);
+  font-size: 18px;
+  font-weight: 600;
   letter-spacing: 0.08em;
-  color: #ffffff;
+  color: #d6d9d4;
 }
 
 .top-desc-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-size: 11px;
-  color: #6e8494;
+  color: #aeb7b5;
   cursor: pointer;
   background: transparent;
   border: none;
@@ -780,17 +819,17 @@ body,
 }
 
 .top-desc-btn:hover {
-  color: #c89f55;
+  color: #c5aa70;
 }
 
 .top-tier2 {
   min-height: 38px;
-  background: #090e12;
+  background: #2c373b;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 16px;
-  border-bottom: 1px solid rgba(42, 63, 79, 0.45);
+  padding: 0 18px;
+  border-bottom: 1px solid #11191d;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -798,7 +837,7 @@ body,
 .top-tier2-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   white-space: nowrap;
 }
 
@@ -810,7 +849,7 @@ body,
 }
 
 .top-divider {
-  color: #1e2c37;
+  color: #465055;
   font-size: 11px;
 }
 
@@ -855,67 +894,67 @@ body,
   color: #dce4ec;
 }
 
-/* 原图风格的倍速选择器与幽灵按钮 */
+/* 4174 DESIGN STUDY / 01 倍速选择器与直边指令按钮 */
 .speed-select-concept {
-  background: #0f171d;
-  color: #dce4ec;
-  border: 1px solid rgba(82, 108, 124, 0.45);
-  border-radius: 2px;
+  background: transparent;
+  color: #d1d8d4;
+  border: 1px solid #526064;
+  border-radius: 1px;
   padding: 2px 6px;
   font-size: 11px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  height: 24px;
+  font-family: var(--gtx-font-mono, "Cascadia Code", Consolas, monospace);
+  height: 26px;
   cursor: pointer;
 }
 
 .speed-select-concept:hover {
-  border-color: #557288;
+  background: #465155;
 }
 
 .btn-concept-play {
-  background: #111a21;
-  color: #ffffff;
-  border: 1px solid rgba(82, 108, 124, 0.45);
-  border-radius: 2px;
-  padding: 2px 10px;
+  background: transparent;
+  color: #d1d8d4;
+  border: 1px solid #526064;
+  border-radius: 1px;
+  padding: 0 10px;
   font-size: 11px;
-  height: 24px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
 .btn-concept-play:hover:not(:disabled) {
-  border-color: #c89f55;
-  background: #15222b;
+  background: #465155;
+  border-color: #6b7b7f;
 }
 
 .btn-concept-play.active {
-  border-color: #22c55e;
-  color: #22c55e;
+  border-color: #c5aa70;
+  color: #eddbb6;
 }
 
 .btn-concept-step {
-  background: #132430;
-  color: #dce4ec;
-  border: 1px solid #3b6079;
-  border-radius: 2px;
-  padding: 2px 8px;
+  background: rgba(167, 160, 130, 0.12);
+  color: #e2d7b5;
+  border: 1px solid #9a926e;
+  border-radius: 1px;
+  padding: 0 10px;
   font-size: 11px;
-  height: 24px;
-  font-weight: 600;
+  height: 26px;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.12s, border-color 0.12s;
 }
 
 .btn-concept-step:hover:not(:disabled) {
-  background: #1b3548;
-  border-color: #5289ad;
+  background: rgba(197, 170, 112, 0.22);
+  border-color: #c5aa70;
 }
 
 
@@ -1314,65 +1353,111 @@ body,
   height: 20px;
 }
 
-/* 右下角图例与视图开关 (W10) */
+/* 右下角图例与视图开关 (W10 · 对齐 4174 纸质 layer-dock / layer-card) */
 .basic-legend-panel {
   position: fixed;
-  right: 10px;
-  bottom: 10px;
+  right: 16px;
+  bottom: 16px;
   z-index: 50;
-  width: 280px;
-  background: #f5f5f4;
-  color: #111827;
-  border: 1px solid #1f2937;
-  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.25);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  width: 274px;
+  background: rgba(240, 236, 220, 0.97);
+  color: #414b42;
+  border: 1px solid #777e6a;
+  outline: 1px solid rgba(141, 146, 117, 0.28);
+  outline-offset: -4px;
+  box-shadow: 0 8px 24px rgba(50, 55, 35, 0.14);
+  font-family: var(--gtx-font-ui, "Segoe UI", "Microsoft YaHei", sans-serif);
   font-size: 11px;
   pointer-events: auto;
 }
 
+.basic-legend-panel.is-collapsed {
+  width: auto;
+  min-width: 170px;
+}
+
+.basic-legend-panel.parchment-dock .parchment-dock-hdr {
+  background: rgba(235, 229, 209, 0.95);
+  color: #364137;
+  border-bottom: 1px solid rgba(155, 156, 128, 0.25);
+  cursor: default;
+  letter-spacing: 1px;
+}
+
+.basic-legend-panel.is-collapsed .parchment-dock-hdr {
+  border-bottom: 0;
+}
+
+.parchment-btn {
+  background: rgba(233, 227, 204, 0.96);
+  color: #3a453b;
+  border: 1px solid #7c8470;
+  padding: 2px 7px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.parchment-btn:hover {
+  background: #e0ddc7;
+}
+
+.parchment-btn-primary {
+  background: #242e32;
+  color: #eddbb6;
+  border: 1px solid #c5aa70;
+  padding: 4px 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.parchment-btn-primary:hover {
+  background: #2e3b40;
+}
+
 .basic-legend-body {
-  padding: 6px;
+  padding: 8px 10px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .basic-legend-section {
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  padding: 5px 6px;
+  background: rgba(247, 243, 230, 0.72);
+  border: 1px solid rgba(155, 156, 128, 0.35);
+  padding: 6px 8px;
 }
 
 .basic-legend-subhdr {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   font-size: 11px;
-  color: #1f2937;
+  color: #293b34;
 }
 
 .basic-view-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3px 6px;
+  gap: 4px 8px;
 }
 
 .basic-view-grid label {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   cursor: pointer;
   font-size: 11px;
+  color: #3f4b41;
   white-space: nowrap;
 }
 
 .basic-legend-list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   font-size: 10px;
-  color: #374151;
+  color: #4a554b;
 }
 
 .basic-legend-list > div {
@@ -1385,16 +1470,16 @@ body,
   display: inline-block;
   width: 10px;
   height: 8px;
-  border: 1px solid #1f2937;
+  border: 1px solid #3a453b;
   flex-shrink: 0;
 }
 
 .lgd-red {
-  background: #9f2d20;
+  background: #436779;
 }
 
 .lgd-blue {
-  background: #2f5578;
+  background: #a94f43;
 }
 
 .lgd-item {
@@ -1407,7 +1492,7 @@ body,
 }
 
 .lgd-charge {
-  background: #dc2626;
+  background: #a94f43;
 }
 
 .lgd-mine {
@@ -1425,7 +1510,7 @@ body,
 .lgd-dash {
   display: inline-block;
   width: 16px;
-  border-top: 2px dashed #b45309;
+  border-top: 2px dashed #927445;
 }
 
 .basic-legend-actions {
@@ -1433,4 +1518,473 @@ body,
   align-items: center;
   justify-content: space-between;
   gap: 4px;
+}
+
+/* ==========================================================================
+   4174 DESIGN STUDY / 01 · 左侧单位检视栏 (W3) + 副地图印刷边饰 + 纸张展开折痕动画
+   ========================================================================== */
+
+.inspector-body-root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inspector-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #3d484c;
+}
+
+.inspector-eyebrow {
+  font: 9px var(--gtx-font-mono, Consolas, monospace);
+  letter-spacing: 2px;
+  color: #98a6a7;
+}
+
+.inspector-callsign {
+  font: 9px var(--gtx-font-mono, Consolas, monospace);
+  color: #91a5aa;
+  letter-spacing: 1px;
+}
+
+.inspector-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid #3d484c;
+}
+
+.inspector-card {
+  padding: 12px 6px;
+  border-bottom: 1px solid #3d484c;
+}
+
+.inspector-top-card {
+  padding-top: 10px;
+}
+
+.inspector-unit-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.inspector-app6-box {
+  position: relative;
+  width: 48px;
+  height: 32px;
+  border: 1.5px solid #c2d4d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.inspector-app6-echelon {
+  position: absolute;
+  top: -11px;
+  font: bold 9px var(--gtx-font-mono, Consolas, monospace);
+  color: #d6d9d4;
+}
+
+.inspector-unit-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.inspector-unit-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #e0e3d8;
+  letter-spacing: 0.6px;
+}
+
+.inspector-unit-code {
+  font: 9px var(--gtx-font-mono, Consolas, monospace);
+  color: #91a5aa;
+  letter-spacing: 1.2px;
+}
+
+.inspector-status-tag {
+  font-size: 10px;
+  color: #b7c8ad;
+  border: 1px solid #56695e;
+  padding: 3px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inspector-status-tag i {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background: #a2b89b;
+}
+
+.inspector-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #b3bfba;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+.inspector-section-title small {
+  font: 8px var(--gtx-font-mono, Consolas, monospace);
+  letter-spacing: 1px;
+  color: #778e91;
+}
+
+.inspector-strength {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.inspector-strength b {
+  font: 28px/1 var(--gtx-font-mono, Consolas, monospace);
+  color: #e0e3d8;
+  letter-spacing: -1px;
+}
+
+.inspector-strength span {
+  font: 12px var(--gtx-font-mono, Consolas, monospace);
+  color: #879896;
+}
+
+.inspector-strength label {
+  margin-left: auto;
+  font-size: 10px;
+  color: #95a39e;
+}
+
+.inspector-metric {
+  margin-top: 9px;
+}
+
+.inspector-metric-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #a3b0ab;
+  margin-bottom: 5px;
+}
+
+.inspector-metric-head b {
+  font: 10px var(--gtx-font-mono, Consolas, monospace);
+  color: #c2cbbd;
+  font-weight: 500;
+}
+
+.inspector-metric-track {
+  height: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    #42524f 0,
+    #42524f calc(10% - 3px),
+    transparent calc(10% - 3px),
+    transparent 10%
+  );
+}
+
+.inspector-metric-fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    #a8b3a0 0,
+    #a8b3a0 18px,
+    transparent 18px,
+    transparent 21px
+  );
+}
+
+.inspector-metric.amber .inspector-metric-fill {
+  background: repeating-linear-gradient(
+    90deg,
+    #bea574 0,
+    #bea574 18px,
+    transparent 18px,
+    transparent 21px
+  );
+}
+
+.inspector-data-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.inspector-datum label {
+  display: block;
+  font-size: 9px;
+  color: #8b9c98;
+  margin-bottom: 4px;
+}
+
+.inspector-datum b {
+  font-size: 11px;
+  font-weight: 400;
+  color: #d1d7cb;
+  font-family: var(--gtx-font-mono, Consolas, monospace);
+}
+
+.inspector-order-card {
+  position: relative;
+  padding-left: 14px;
+  border-left: 1px solid #667b7d;
+}
+
+.inspector-order-card::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 3px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid #c5b57f;
+  background: var(--gtx-bg-panel, #242e32);
+}
+
+.inspector-order-kind {
+  font-size: 12px;
+  color: #ddd6bc;
+}
+
+.inspector-order-card p {
+  font-size: 10px;
+  color: #8fa2a0;
+  line-height: 1.6;
+  margin: 6px 0 0;
+}
+
+/* 4174 副地图四角印刷边饰 */
+.tactical-map-title {
+  position: absolute;
+  top: 104px;
+  z-index: 6;
+  color: #4e5144;
+  pointer-events: auto;
+  animation: marginaliaFadeIn 280ms ease-out;
+}
+
+.tactical-title-btn {
+  display: block;
+  text-align: left;
+  padding: 10px 14px 10px 6px;
+  background: radial-gradient(ellipse at 20% 35%, rgba(222, 216, 190, 0.92), transparent 82%);
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tactical-title-heading {
+  display: block;
+  font-family: "Noto Serif SC", "Songti SC", Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 4px;
+  text-shadow: 0 1px #f3e9cf;
+  transition: font-size 0.24s ease, letter-spacing 0.24s ease;
+}
+
+.tactical-title-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+  font: 8px var(--gtx-font-mono, Consolas, monospace);
+  letter-spacing: 1.5px;
+  color: #747562;
+  transition: opacity 0.2s ease, max-height 0.24s ease;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.tactical-map-title.compact .tactical-title-heading {
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.tactical-map-title.compact .tactical-title-details {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+}
+
+.tactical-map-stamp {
+  position: absolute;
+  top: 104px;
+  z-index: 6;
+  color: #756d54;
+  font: 10px var(--gtx-sans, "Microsoft YaHei", sans-serif);
+  letter-spacing: 3px;
+  writing-mode: vertical-rl;
+  pointer-events: none;
+  animation: marginaliaFadeIn 300ms ease-out;
+}
+
+.tactical-map-stamp span {
+  border: 1px solid #969076;
+  padding: 8px 5px;
+  background: rgba(222, 216, 190, 0.65);
+}
+
+.tactical-compass {
+  position: absolute;
+  top: 196px;
+  z-index: 6;
+  color: #525c54;
+  pointer-events: none;
+  animation: marginaliaFadeIn 320ms ease-out;
+}
+
+.tactical-scale {
+  padding: 6px 12px 5px;
+  pointer-events: none;
+  color: #373b32;
+  background: rgba(240, 235, 215, 0.88);
+  border: 1px solid rgba(101, 105, 76, 0.55);
+  animation: marginaliaFadeIn 260ms ease-out;
+}
+
+.tactical-scale .scale-text {
+  font: 9px var(--gtx-font-mono, Consolas, monospace);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.tactical-scale .scale-bar {
+  display: flex;
+  border: 1px solid #363a30;
+  height: 5px;
+  width: 120px;
+}
+
+.tactical-scale .scale-bar i {
+  flex: 1;
+  background: #363a30;
+}
+
+.tactical-scale .scale-bar i:nth-child(even) {
+  background: #f6f1e3;
+}
+
+.tactical-scale .scale-caption {
+  font: 8px var(--gtx-font-mono, Consolas, monospace);
+  text-align: center;
+  letter-spacing: 0.6px;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+/* 副地图纸张展开 / 折回折痕动画 */
+.map-stage-unfolding {
+  transform-origin: center top;
+  animation: tacticalMapUnfold 380ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.tactical-crease-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 7;
+  background: linear-gradient(
+    180deg,
+    rgba(250, 245, 224, 0) 0%,
+    rgba(255, 250, 232, 0.52) 45%,
+    rgba(58, 49, 32, 0.24) 52%,
+    rgba(250, 245, 224, 0) 100%
+  );
+  animation: tacticalCreaseSweep 380ms ease-out forwards;
+}
+
+.tactical-fold-ghost {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 7;
+  background: linear-gradient(180deg, rgba(221, 215, 189, 0.92), rgba(211, 204, 177, 0.88));
+  border-bottom: 2px solid rgba(119, 126, 106, 0.7);
+  box-shadow: 0 18px 36px rgba(18, 22, 20, 0.45);
+  transform-origin: center top;
+  animation: tacticalMapFold 280ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes tacticalMapUnfold {
+  0% {
+    clip-path: inset(12% 3% 86% 3%);
+    transform: perspective(1200px) rotateX(6deg) translateY(18px) scale(0.985);
+    opacity: 0.72;
+  }
+  65% {
+    clip-path: inset(0% 0% 4% 0%);
+    transform: perspective(1200px) rotateX(1deg) translateY(2px) scale(0.998);
+    opacity: 0.98;
+  }
+  100% {
+    clip-path: inset(0% 0% 0% 0%);
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes tacticalCreaseSweep {
+  0% {
+    transform: translateY(-65%);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(75%);
+    opacity: 0;
+  }
+}
+
+@keyframes tacticalMapFold {
+  0% {
+    clip-path: inset(0% 0% 0% 0%);
+    transform: perspective(1200px) rotateX(0deg) scale(1);
+    opacity: 0.85;
+  }
+  100% {
+    clip-path: inset(12% 3% 88% 3%);
+    transform: perspective(1200px) rotateX(-8deg) translateY(-14px) scale(0.97);
+    opacity: 0;
+  }
+}
+
+@keyframes marginaliaFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-stage-unfolding,
+  .tactical-crease-sweep,
+  .tactical-fold-ghost,
+  .tactical-map-title,
+  .tactical-map-stamp,
+  .tactical-compass,
+  .tactical-scale {
+    animation: none !important;
+    transition: none !important;
+  }
 }

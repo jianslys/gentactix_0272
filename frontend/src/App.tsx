@@ -635,6 +635,16 @@ export const App: React.FC = () => {
     lastCommandOutcome,
   };
 
+  const leftDockOpen =
+    (winMgr.windows.W2.open && !winMgr.windows.W2.floating) ||
+    (winMgr.windows.W3.open && !winMgr.windows.W3.floating) ||
+    (winMgr.windows.W4.open && !winMgr.windows.W4.floating);
+  const rightDockExpanded =
+    (winMgr.windows.W5.open && !winMgr.windows.W5.floating && !rightCollapsed) ||
+    (winMgr.windows.W12.open && !winMgr.windows.W12.floating);
+  const rightDockCollapsed =
+    winMgr.windows.W5.open && !winMgr.windows.W5.floating && rightCollapsed && !winMgr.windows.W12.open;
+
   return (
     <GameContext.Provider value={gameContextValue}>
       <UiIdContext.Provider value={showUiIds}>
@@ -669,7 +679,8 @@ export const App: React.FC = () => {
               l7Weather={l7Weather}
               l9Enabled={l9Enabled}
               shaking={shaking}
-              rightInsetPx={winMgr.windows.W5.open && !winMgr.windows.W5.floating ? (rightCollapsed ? 140 : 440) : 24}
+              leftInsetPx={leftDockOpen ? 298 : 16}
+              rightInsetPx={rightDockExpanded ? 438 : rightDockCollapsed ? 140 : 16}
               iField={iField}
               showThreatOverlay={showThreatOverlay}
               showUnits={showUnits}
@@ -700,7 +711,7 @@ export const App: React.FC = () => {
                       l7Weather={l7Weather}
                       l9Enabled={l9Enabled}
                       showUiIds={showUiIds}
-                      rightCollapsed={rightCollapsed}
+                      rightCollapsed={!winMgr.windows.W5.open || rightCollapsed}
                       mapViewMode={mapViewMode}
                       onToggleMapView={() => setMapViewMode((m) => (m === 'field' ? 'tactical' : 'field'))}
                       onStepNext={() => void handleStepNext()}
@@ -712,7 +723,16 @@ export const App: React.FC = () => {
                       onChangeWeather={setL7Weather}
                       onToggleL9={() => setL9Enabled((v) => !v)}
                       onToggleUiIds={() => setShowUiIds((v) => !v)}
-                      onToggleRightCollapsed={() => setRightCollapsed((v) => !v)}
+                      onToggleRightCollapsed={() => {
+                        if (!winMgr.windows.W5.open) {
+                          setRightCollapsed(false);
+                          winMgr.openWindow('W5');
+                          if (winMgr.windows.W5.minimized) winMgr.toggleMinimizeWindow('W5');
+                          winMgr.focusWindow('W5');
+                        } else {
+                          setRightCollapsed((v) => !v);
+                        }
+                      }}
                     />
                   </div>
 

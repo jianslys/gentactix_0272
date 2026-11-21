@@ -93,21 +93,21 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
     >
       {/* 顶栏层 1: UI-01 战略指令与品牌带 (1:1 照抄 concept-desktop.png) */}
       <div className="top-tier1" data-ui-id="UI-01">
-        {/* 左侧：品牌 Logo 与军工标题 */}
+        {/* 左侧：4174 盾徽 Logo 与军工标题 */}
         <div className="top-brand-group">
           <UiTag id="W1" kind="win" />
-          <svg width="20" height="20" viewBox="0 0 18 18" style={{ flexShrink: 0 }}>
-            <rect x="1" y="1" width="16" height="16" fill="none" stroke="#c89f55" strokeWidth="1.2" />
-            <line x1="1" y1="17" x2="17" y2="1" stroke="#c89f55" strokeWidth="1.2" />
-            <rect x="7" y="7" width="4" height="4" fill="#b84d43" />
+          <svg width="22" height="26" viewBox="0 0 30 34" fill="none" style={{ flexShrink: 0, color: '#c5aa70' }}>
+            <path d="M3 5h24v19L15 31 3 24Z" stroke="currentColor" strokeWidth="1.35" />
+            <path d="m8 12 14 10M22 12 8 22M8 10h14v14H8Z" stroke="currentColor" strokeWidth="1.25" />
+            <path d="M12 2h6" stroke="currentColor" strokeWidth="1.35" />
           </svg>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <span className="top-brand-title" style={{ fontSize: '13px', lineHeight: 1.1, letterSpacing: '0.14em' }}>
+            <span className="top-brand-title" style={{ fontSize: '15px', lineHeight: 1.05, letterSpacing: '0.18em' }}>
               GENTACTIX
             </span>
             <span
               className="top-brand-subtitle"
-              style={{ fontSize: '8px', lineHeight: 1, letterSpacing: '0.16em', marginTop: '2px' }}
+              style={{ fontSize: '8px', lineHeight: 1, letterSpacing: '0.2em', marginTop: '3px' }}
             >
               OPERATIONAL COMMAND
             </span>
@@ -136,22 +136,24 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
           </div>
         </div>
 
-        {/* 右侧：DESIGN STUDY 标牌 + 状态绿灯 + 军规大时钟 + 设计说明 + ID 标牌 */}
+        {/* 右侧：DESIGN STUDY 标牌 + 暖金状态灯 + 军规大时钟 + 设计说明 + ID 标牌 */}
         <div className="top-meta-group">
           <span className="top-meta-badge">DESIGN STUDY / 01</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
             <span
               style={{
                 display: 'inline-block',
-                width: '6px',
-                height: '6px',
+                width: '5px',
+                height: '5px',
                 borderRadius: '50%',
-                background: '#22c55e',
-                boxShadow: '0 0 8px #22c55e',
+                background: '#c5aa70',
               }}
             />
             <span className="top-clock">
-              06:30:{(currentTick % 60).toString().padStart(2, '0')} LOCAL
+              06:30:{(currentTick % 60).toString().padStart(2, '0')}
+            </span>
+            <span style={{ fontSize: '9px', fontFamily: 'monospace', color: '#8e9a9b', letterSpacing: '0.08em' }}>
+              LOCAL
             </span>
           </div>
           <button

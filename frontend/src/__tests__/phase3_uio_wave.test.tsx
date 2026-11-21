@@ -221,6 +221,9 @@ describe('Phase 3 · SPEC 6.1 全套 7 项核心闭环 + 独立指挥 UI', () =>
 
   it('7) UI 端到端集成测试：门禁报错提示、时间槽冲突禁用签发按钮、快进 #3 显示预警、双面板切换', async () => {
     render(<App />);
+    await waitFor(() => expect(screen.getByTestId('dock-toggle-W5')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('dock-toggle-W5'));
+    fireEvent.click(screen.getByTestId('dock-toggle-W12'));
     await waitFor(() => expect(screen.getByTestId('wave-slip-wave-1')).toBeTruthy());
 
     // 点击生成未绑定草稿，再尝试送入任务队列 -> 被门禁拦截并出现警告

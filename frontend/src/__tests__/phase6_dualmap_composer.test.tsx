@@ -15,28 +15,47 @@ afterEach(() => {
 });
 
 describe('Phase 6 · 单壳双地图视图 + 纯四区手写板 W5 / 独立指令编写器 W12 + 美术与主题变量闭环', () => {
-  it('1) 默认全屏主地图(field)，可通过底部 M/S、顶栏 W1.MAP 与快捷键 [M] 切换至参谋副地图(tactical)再切回', async () => {
+  it('1) 默认全屏主地图(field)且 W5/W12 收起，按 [M]/按钮展开参谋副地图(tactical)带 unfolding 动画与纸质边饰再折回', async () => {
     render(<App />);
-    await waitFor(() => expect(screen.getByTestId('wave-slip-wave-1')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('nine-layer-viewport')).toBeTruthy());
 
     const viewport = screen.getByTestId('nine-layer-viewport');
     expect(viewport.getAttribute('data-map-view')).toBe('field');
+    expect(viewport.getAttribute('data-map-transition')).toBe('idle');
+    expect(screen.queryByTestId('uio-panel')).toBeNull();
+    expect(screen.queryByTestId('directive-composer')).toBeNull();
+    expect(screen.queryByTestId('tactical-map-title')).toBeNull();
+    expect(screen.queryByTestId('tactical-map-stamp')).toBeNull();
+    expect(screen.queryByTestId('tactical-compass')).toBeNull();
+    expect(screen.queryByTestId('tactical-scale-bar')).toBeNull();
 
     fireEvent.click(screen.getByTestId('toggle-map-view'));
     expect(viewport.getAttribute('data-map-view')).toBe('tactical');
+    expect(viewport.getAttribute('data-map-transition')).toBe('unfolding');
+    expect(screen.getByTestId('tactical-map-title')).toBeTruthy();
+    expect(screen.getByTestId('tactical-map-stamp')).toBeTruthy();
+    expect(screen.getByTestId('tactical-compass')).toBeTruthy();
+    expect(screen.getByTestId('tactical-scale-bar')).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('top-toggle-map-view'));
     expect(viewport.getAttribute('data-map-view')).toBe('field');
+    expect(viewport.getAttribute('data-map-transition')).toBe('folding');
+    expect(screen.queryByTestId('tactical-map-title')).toBeNull();
 
     fireEvent.keyDown(window, { key: 'm', code: 'KeyM' });
     expect(viewport.getAttribute('data-map-view')).toBe('tactical');
+    expect(viewport.getAttribute('data-map-transition')).toBe('unfolding');
 
     fireEvent.keyDown(window, { key: 'M', code: 'KeyM' });
     expect(viewport.getAttribute('data-map-view')).toBe('field');
+    expect(viewport.getAttribute('data-map-transition')).toBe('folding');
   });
 
   it('2) W5 手写板严格只排纸条(4 栏)，W12 编写器独立生成无头草稿并写入 W5，且零 display:none 伪装节点', async () => {
     const { container } = render(<App />);
+    await waitFor(() => expect(screen.getByTestId('dock-toggle-W5')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('dock-toggle-W5'));
+    fireEvent.click(screen.getByTestId('dock-toggle-W12'));
     await waitFor(() => expect(screen.getByTestId('wave-slip-wave-1')).toBeTruthy());
 
     // 确认页面内不存在 display: none 的隐藏假控件兜底区

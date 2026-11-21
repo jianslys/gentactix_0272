@@ -357,17 +357,19 @@ export const UnitInspectorBody: React.FC<UnitInspectorBodyProps> = ({
   const delay = selected ? computeCommandDelay(hq, selected, directRadiusM) : undefined;
   const detail = game?.devSampleUnitDetail ?? game?.selectedUnitDetail ?? null;
 
+  const strengthColor = selected?.team === 'red' ? '#436779' : '#a94f43';
+  const orgPct = selected ? Math.max(0, 100 - (selected.suppression ?? 0)) : 100;
+  const ammoPct = selected && (selected.maxAmmo ?? 0) > 0 ? Math.min(100, Math.round(((selected.ammo ?? 0) / selected.maxAmmo) * 100)) : 100;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div className="inspector-body-root">
       {/* 头部军规呼号 (UI-03) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(82, 108, 124, 0.3)', paddingBottom: '4px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '1.2px', color: '#8ba0ae', textTransform: 'uppercase' }}>
-          UNIT / INSPECTOR
-        </span>
-        <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#556877' }}>F-0310</span>
+      <div className="inspector-heading-row">
+        <span className="inspector-eyebrow">UNIT / INSPECTOR</span>
+        <span className="inspector-callsign">F-031{selected?.id ?? 0}</span>
       </div>
 
-      <div className="row" data-ui-id="I1" style={{ gap: '3px' }}>
+      <div className="row" data-ui-id="I1" style={{ gap: '3px', padding: '0 2px' }}>
         <UiTag id="I1" />
         {units.map((u) => (
           <button
@@ -384,160 +386,157 @@ export const UnitInspectorBody: React.FC<UnitInspectorBodyProps> = ({
       </div>
 
       {selected && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {/* 大徽章 + 番号 + 状态卡片 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(15, 23, 29, 0.75)', border: '1px solid rgba(82, 108, 124, 0.35)', borderRadius: '3px', padding: '8px' }}>
-            {/* APP-6 大军标徽章 */}
-            <div style={{ position: 'relative', width: '38px', height: '26px', background: selected.team === 'red' ? '#5b8296' : '#b84d43', border: '1.5px solid #dcd8cd', borderRadius: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ position: 'absolute', top: '-11px', fontSize: '9px', fontWeight: 'bold', color: '#dcd8cd', fontFamily: 'monospace' }}>II</span>
-              <svg width="24" height="16" viewBox="0 0 24 16">
-                <line x1="0" y1="0" x2="24" y2="16" stroke="#dcd8cd" strokeWidth="1.6" />
-                <line x1="24" y1="0" x2="0" y2="16" stroke="#dcd8cd" strokeWidth="1.6" />
-              </svg>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} data-ui-id="I2">
-                <UiTag id="I2" />
-                <span style={{ fontSize: '13px', fontWeight: 800, color: '#e2ddd1', letterSpacing: '0.4px' }}>
-                  {selected.name}
-                </span>
-              </div>
-              <span style={{ fontSize: '10px', color: '#8ba0ae', fontFamily: 'monospace' }}>
-                {selected.id} / 91 INFANTRY
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                <span style={{ display: 'inline-block', width: '6px', height: '6px', background: selected.suppression > 40 ? '#c94a3d' : '#4e9a68', borderRadius: '1px' }} />
-                <span style={{ fontSize: '10px', color: '#a0b4c0' }}>
-                  {selected.activity.type === 'hold' ? '待命·通信正常' : '执行任务中'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* UI-03B 作战实力 COMBAT STRENGTH */}
-          <div style={{ padding: '8px', background: 'rgba(15, 23, 29, 0.75)', border: '1px solid rgba(82, 108, 124, 0.35)', borderRadius: '3px', display: 'flex', flexDirection: 'column', gap: '6px' }} data-ui-id="I3">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', color: '#8ba0ae', textTransform: 'uppercase' }}>
-                <UiTag id="I3" />
-                作战实力 COMBAT STRENGTH
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              <span
-                data-testid="inspector-soldiers"
-                style={{ fontSize: '20px', fontWeight: 300, color: '#ffffff', fontFamily: 'monospace', lineHeight: 1 }}
+        <div className="inspector-stack">
+          {/* 4174 单位铭牌 + APP-6 符号头 + 状态角标 */}
+          <div className="inspector-card inspector-top-card">
+            <div className="inspector-unit-display">
+              <div
+                className="inspector-app6-box"
+                style={{
+                  background: selected.team === 'red' ? '#4c6875' : '#6c423b',
+                  borderColor: selected.team === 'red' ? '#c2d4d9' : '#ddab8f',
+                }}
               >
-                {selected.soldiers}/{selected.maxSoldiers}
+                <span className="inspector-app6-echelon">
+                  {selected.role === 'platoon_hq' ? 'III' : selected.isVehicle ? 'I' : 'II'}
+                </span>
+                <svg width="32" height="22" viewBox="0 0 32 22">
+                  {selected.isVehicle ? (
+                    <rect x="6" y="5" width="20" height="12" rx="6" fill="none" stroke="#c2d4d9" strokeWidth="1.4" />
+                  ) : selected.role === 'platoon_hq' ? (
+                    <text x="16" y="15" textAnchor="middle" fill="#c2d4d9" fontSize="10" fontFamily="Consolas, monospace">
+                      HQ
+                    </text>
+                  ) : (
+                    <>
+                      <line x1="2" y1="2" x2="30" y2="20" stroke="#c2d4d9" strokeWidth="1.4" />
+                      <line x1="30" y1="2" x2="2" y2="20" stroke="#c2d4d9" strokeWidth="1.4" />
+                    </>
+                  )}
+                </svg>
+              </div>
+              <div className="inspector-unit-meta">
+                <div className="inspector-unit-name" data-ui-id="I2">
+                  <UiTag id="I2" />
+                  <span>{selected.name}</span>
+                </div>
+                <span className="inspector-unit-code">
+                  {selected.id} / {ROLE_LABELS[selected.role] ?? selected.role}
+                </span>
+              </div>
+            </div>
+            <div className="inspector-status-tag" style={{ borderColor: selected.suppression > 40 ? '#a94f43' : '#56695e' }}>
+              <i style={{ background: selected.suppression > 40 ? '#c94a3d' : '#a2b89b' }} />
+              {selected.activity.type === 'idle' || selected.activity.type === 'hold' ? '待命 · 通信正常' : `执行任务：${selected.activity.type}`}
+            </div>
+          </div>
+
+          {/* 4174 UI-03B 作战实力 COMBAT STRENGTH (大字等宽 + 分段刻度进度条) */}
+          <div className="inspector-card" data-ui-id="I3">
+            <div className="inspector-section-title">
+              <span>
+                <UiTag id="I3" />
+                作战实力
               </span>
-              <span style={{ fontSize: '11px', color: '#8ba0ae' }}>人员</span>
+              <small>COMBAT STRENGTH</small>
             </div>
-            {/* 三条极细刻度槽 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#a0b4c0', marginBottom: '2px' }}>
-                  <span>组织度</span>
-                  <span data-testid="inspector-suppression" style={{ fontFamily: 'monospace' }}>
-                    {Math.max(0, 100 - (selected.suppression ?? 0))}% (压制 {selected.suppression}%)
-                  </span>
-                </div>
-                <div style={{ height: '2px', background: '#1c2933', borderRadius: '1px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.max(0, 100 - (selected.suppression ?? 0))}%`, height: '100%', background: (selected.suppression ?? 0) > 50 ? '#c94a3d' : '#4e9a68' }} />
-                </div>
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#a0b4c0', marginBottom: '2px' }}>
-                  <span>弹药储备</span>
-                  <span data-testid="inspector-ammo" style={{ fontFamily: 'monospace' }}>
-                    {selected.ammo}/{selected.maxAmmo} (
-                    {(selected.maxAmmo ?? 0) > 0 ? Math.round(((selected.ammo ?? 0) / selected.maxAmmo) * 100) : 100}%)
-                  </span>
-                </div>
-                <div style={{ height: '2px', background: '#1c2933', borderRadius: '1px', overflow: 'hidden' }}>
-                  <div style={{ width: `${(selected.maxAmmo ?? 0) > 0 ? Math.min(100, Math.round(((selected.ammo ?? 0) / selected.maxAmmo) * 100)) : 100}%`, height: '100%', background: '#c89f55' }} />
-                </div>
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#a0b4c0', marginBottom: '2px' }}>
-                  <span>补给水平</span>
-                  <span style={{ fontFamily: 'monospace' }}>88%</span>
-                </div>
-                <div style={{ height: '2px', background: '#1c2933', borderRadius: '1px', overflow: 'hidden' }}>
-                  <div style={{ width: '88%', height: '100%', background: '#4e9a68' }} />
-                </div>
-              </div>
+            <div className="inspector-strength">
+              <b data-testid="inspector-soldiers">{selected.soldiers}</b>
+              <span>/ {selected.maxSoldiers}</span>
+              <label>在位人员</label>
             </div>
-          </div>
 
-          {/* UI-03C 位置与环境 POSITION */}
-          <div style={{ padding: '8px', background: 'rgba(15, 23, 29, 0.75)', border: '1px solid rgba(82, 108, 124, 0.35)', borderRadius: '3px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', color: '#8ba0ae', textTransform: 'uppercase' }}>
-              位置与环境 POSITION
-            </span>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '10px', marginTop: '2px' }}>
-              <div>
-                <span style={{ color: '#6e8494' }}>坐标位置</span>
+            <div className="inspector-metric">
+              <div className="inspector-metric-head">
+                <span>组织度 / 压制</span>
+                <b data-testid="inspector-suppression">
+                  {orgPct}% (压制 {selected.suppression}%)
+                </b>
+              </div>
+              <div className="inspector-metric-track">
                 <div
-                  data-testid="inspector-pos"
-                  style={{ color: '#e2ddd1', fontWeight: 600, fontFamily: 'monospace' }}
-                >
+                  className="inspector-metric-fill"
+                  style={{
+                    width: `${orgPct}%`,
+                    background:
+                      selected.suppression > 50
+                        ? 'repeating-linear-gradient(90deg,#a94f43 0,#a94f43 16px,transparent 16px,transparent 19px)'
+                        : undefined,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="inspector-metric amber">
+              <div className="inspector-metric-head">
+                <span>弹药储备</span>
+                <b data-testid="inspector-ammo">
+                  {selected.ammo}/{selected.maxAmmo} ({ammoPct}%)
+                </b>
+              </div>
+              <div className="inspector-metric-track">
+                <div className="inspector-metric-fill" style={{ width: `${ammoPct}%` }} />
+              </div>
+            </div>
+
+            <div className="inspector-metric">
+              <div className="inspector-metric-head">
+                <span>工事 / 作业进度</span>
+                <b>{Math.round(selected.workProgress * 100)}%</b>
+              </div>
+              <div className="inspector-metric-track">
+                <div className="inspector-metric-fill" style={{ width: `${Math.round(selected.workProgress * 100)}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {/* 4174 UI-03C 位置与环境 POSITION */}
+          <div className="inspector-card">
+            <div className="inspector-section-title">
+              <span>位置与环境</span>
+              <small>POSITION</small>
+            </div>
+            <div className="inspector-data-grid">
+              <div className="inspector-datum">
+                <label>战区坐标</label>
+                <b data-testid="inspector-pos">
                   ({selected.pos.x.toFixed(1)}, {selected.pos.y.toFixed(1)}) m
-                </div>
+                </b>
               </div>
-              <div>
-                <span style={{ color: '#6e8494' }}>所在地域</span>
-                <div style={{ color: '#e2ddd1', fontWeight: 600 }}>林地边缘</div>
+              <div className="inspector-datum">
+                <label>交战纪律</label>
+                <b>{selected.discipline}</b>
               </div>
-              <div>
-                <span style={{ color: '#6e8494' }}>海拔</span>
-                <div style={{ color: '#e2ddd1', fontWeight: 600, fontFamily: 'monospace' }}>184 m</div>
+              <div className="inspector-datum">
+                <label>指挥通联</label>
+                <b style={{ color: delay?.remote ? '#d8b46e' : '#b7c8ad' }}>
+                  {delay?.remote ? `无线电 +${delay.delayTicks}拍` : '直连 0s'}
+                </b>
               </div>
-              <div>
-                <span style={{ color: '#6e8494' }}>态势可信度</span>
-                <div style={{ color: '#5b8296', fontWeight: 600 }}>己方实时报告</div>
+              <div className="inspector-datum">
+                <label>阵营识别</label>
+                <b style={{ color: strengthColor === '#436779' ? '#a6c4cf' : '#df9b8e' }}>
+                  {selected.team === 'red' ? '己方实报' : '敌情推定'}
+                </b>
               </div>
             </div>
           </div>
 
-          {/* UI-03D 当前意图 COMMAND INTENT */}
-          <div style={{ padding: '8px', background: 'rgba(15, 23, 29, 0.75)', border: '1px solid rgba(82, 108, 124, 0.35)', borderRadius: '3px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', color: '#8ba0ae', textTransform: 'uppercase' }}>
-              当前意图 COMMAND INTENT
-            </span>
-            <div style={{ fontSize: '11px', color: '#e2ddd1', fontWeight: 700 }}>
-              □ 向河桥展开
+          {/* 4174 UI-03D 当前意图 COMMAND INTENT (竖线 + 金点卡) */}
+          <div className="inspector-card">
+            <div className="inspector-section-title">
+              <span>当前意图</span>
+              <small>COMMAND INTENT</small>
             </div>
-            <div style={{ fontSize: '10px', color: '#8ba0ae', lineHeight: 1.35 }}>
-              示意意图：向河桥展开，此处的路线、距离及耗时仅供视觉评审。
-            </div>
-            <div style={{ fontSize: '10px', color: '#cbb78d', fontFamily: 'monospace', fontWeight: 600, marginTop: '2px' }}>
-              1.8 km ~ 24 min
+            <div className="inspector-order-card">
+              <div className="inspector-order-kind">当前状态：{selected.activity.type}</div>
+              <p>点击地图上对应兵牌可调出单兵部位与个人物品清单（W3）；按 M 展开参谋印刷副图。</p>
             </div>
           </div>
 
-          {/* UI-03E 快捷行动幽灵按钮 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <button
-              type="button"
-              className="btn"
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '6px 8px', fontSize: '11px', color: '#e2ddd1' }}
-              onClick={() => {}}
-            >
-              <span>⮹</span> 查看行动路线
-            </button>
-            <button
-              type="button"
-              className="btn"
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '6px 8px', fontSize: '11px', color: '#e2ddd1' }}
-              onClick={() => {}}
-            >
-              <span>⌖</span> 火控与视线分析
-            </button>
-          </div>
-
-          <div className="meta-note" data-ui-id="I4" style={{ fontSize: '10px', color: '#6e8494' }}>
+          <div className="meta-note" data-ui-id="I4" style={{ fontSize: '10px' }}>
             <UiTag id="I4" />
-            姿态/动作：{selected.activity.type} · 进度 {Math.round(selected.workProgress * 100)}% · 纪律{' '}
-            {selected.discipline}
+            动作：{selected.activity.type} · 作业 {Math.round(selected.workProgress * 100)}% · {selected.discipline}
           </div>
           {selected.role === 'platoon_hq' && (
             <div className="meta-note" data-testid="hq-move-rule" data-ui-id="I5">

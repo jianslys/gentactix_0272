@@ -66,6 +66,7 @@ export interface NineLayerViewportProps {
   l9Enabled: boolean;
   shaking?: boolean;
   mapPickHint?: string;
+  leftInsetPx?: number;
   rightInsetPx?: number;
   iField?: IFieldTriplet | null;
   showThreatOverlay?: boolean;
@@ -124,7 +125,8 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
   l9Enabled,
   shaking = false,
   mapPickHint,
-  rightInsetPx: _rightInsetPx = 456,
+  leftInsetPx = 298,
+  rightInsetPx: _rightInsetPx = 20,
   iField = null,
   showThreatOverlay = false,
   showUnits = true,
@@ -155,6 +157,20 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
   const [circleDrag, setCircleDrag] = useState<{ center: Vec2; radiusM: number } | null>(null);
   const [activeStroke, setActiveStroke] = useState<FreehandStroke | null>(null);
   const [isDraggingMap, setIsDraggingMap] = useState<boolean>(false);
+  const [titleCompact, setTitleCompact] = useState<boolean>(false);
+  const [mapTransition, setMapTransition] = useState<'idle' | 'unfolding' | 'folding'>('idle');
+  const prevMapViewRef = useRef<MapViewMode>(mapViewMode);
+
+  useEffect(() => {
+    const prev = prevMapViewRef.current;
+    if (prev === mapViewMode) return;
+    prevMapViewRef.current = mapViewMode;
+    const nextState: 'unfolding' | 'folding' = mapViewMode === 'tactical' ? 'unfolding' : 'folding';
+    setMapTransition(nextState);
+    const ms = nextState === 'unfolding' ? 380 : 280;
+    const timer = window.setTimeout(() => setMapTransition('idle'), ms);
+    return () => window.clearTimeout(timer);
+  }, [mapViewMode]);
   const panDragRef = useRef<{
     startX: number;
     startY: number;
@@ -572,12 +588,15 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
 
   const paperGrainImg = getArtImage('fx.paper_grain');
   const l6Visible = showFreehand && (mapViewMode === 'tactical' || freehandTool !== 'none');
+  const tacticalSvgGrainUrl =
+    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.62' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23g)' opacity='.13'/></svg>\")";
 
   return (
     <div
       ref={outerRef}
       data-testid="nine-layer-viewport"
       data-map-view={mapViewMode}
+      data-map-transition={mapTransition}
       className={shaking && l9Enabled ? 'viewport-shake' : undefined}
       style={{
         position: 'relative',
@@ -585,13 +604,14 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
         height: '100%',
         minHeight: '540px',
         overflow: 'hidden',
-        background: THEME_TOKENS.terrainPaper,
+        background: mapViewMode === 'tactical' ? THEME_TOKENS.terrainPaper : THEME_TOKENS.bgApp,
         userSelect: 'none',
       }}
     >
       {/* 全屏自适应沙盘容器（仅在非 L6 手绘模式接收地图点击、滚轮缩放、中键/Alt 平移） */}
       <div
         data-testid="map-stage"
+        className={mapTransition === 'unfolding' ? 'map-stage-unfolding' : undefined}
         onClick={handleMapClick}
         onDoubleClick={() => onFinishPolyline?.()}
         onContextMenu={(e) => {
@@ -699,9 +719,82 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
       >
         {hudChildren}
 
-        {/* W6 底部图台遥测、缩放与主/副双地图切换条（真实可见，居中不挡左右窗口） */}
-        <div className="map-hud-bottom-wrap" style={{ left: '266px', right: `${_rightInsetPx}px` }}>
-          <div className="panel map-hud-bottom" data-testid="map-hud-bar" data-ui-id="W6">
+        {/* 副地图纸张展开折痕扫过光影 / 收起折回残影动画层（严禁拦截鼠标事件） */}
+        {mapTransition === 'unfolding' && <div className="tactical-crease-sweep" aria-hidden="true" />}
+        {mapTransition === 'folding' && <div className="tactical-fold-ghost" aria-hidden="true" />}
+
+        {/* 副地图专属印刷地图四角边饰（4174 风格：标题卡、作战用图竖印章、指北针） */}
+        {mapViewMode === 'tactical' && (
+          <>
+            <div
+              className={`tactical-map-title ${titleCompact ? 'compact' : ''}`}
+              data-testid="tactical-map-title"
+              style={{ left: `${leftInsetPx + 12}px` }}
+            >
+              <button
+                type="button"
+                className="tactical-title-btn"
+                onClick={() => setTitleCompact((v) => !v)}
+                title="点击收为地区名；再次点击展开"
+              >
+                <span className="tactical-title-heading">白桦河战区</span>
+                <span className="tactical-title-details">
+                  <span>NORTHERN SECTOR / SHEET 04</span>
+                  <span>TOPOGRAPHIC SERIES · 1:25,000</span>
+                </span>
+              </button>
+            </div>
+
+            <div
+              className="tactical-map-stamp"
+              data-testid="tactical-map-stamp"
+              style={{ right: `${_rightInsetPx + 8}px` }}
+            >
+              <span>作战用图</span>
+            </div>
+
+            <div
+              className="tactical-compass"
+              data-testid="tactical-compass"
+              style={{ right: `${_rightInsetPx + 14}px` }}
+              aria-label="指北针"
+            >
+              <svg viewBox="0 0 50 70" width="46" height="64" aria-hidden="true">
+                <text x="25" y="10" textAnchor="middle" fill="currentColor" fontSize="9" fontFamily="Consolas, monospace">
+                  N
+                </text>
+                <path d="m25 17-9 32 9-7 9 7Z" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                <path d="m25 17-9 32 9-7Z" fill="currentColor" />
+                <path d="M25 42v19M10 42h30" stroke="currentColor" strokeWidth="0.65" />
+                <circle cx="25" cy="42" r="18" fill="none" stroke="currentColor" strokeWidth="0.45" />
+              </svg>
+            </div>
+          </>
+        )}
+
+        {/* W6 底部比例尺与图台遥测 / 主副地图切换条（自动避让左右停靠窗口） */}
+        <div className="map-hud-bottom-wrap" style={{ left: `${leftInsetPx}px`, right: `${_rightInsetPx}px` }}>
+          {mapViewMode === 'tactical' && (
+            <div className="tactical-scale" data-testid="tactical-scale-bar">
+              <div className="scale-text">
+                <span>0</span>
+                <span>{Math.round(200 / Math.max(0.5, camera.zoom))} m</span>
+              </div>
+              <div className="scale-bar">
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+              <div className="scale-caption">PRINT EDITION · 1:{Math.round(25000 / Math.max(0.5, camera.zoom))}</div>
+            </div>
+          )}
+
+          <div
+            className={`panel map-hud-bottom ${mapViewMode === 'tactical' ? 'map-hud-tactical' : ''}`}
+            data-testid="map-hud-bar"
+            data-ui-id="W6"
+          >
             <UiTag id="W6" kind="win" source="src/render/NineLayerViewport.tsx" />
             <button
               type="button"
@@ -712,7 +805,7 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
               title="切换 主地图(近距写实现场) / 副地图(军用印刷参谋图) (快捷键: M)"
             >
               <UiTag id="MAP.SWITCH" />
-              {mapViewMode === 'field' ? '主地图：近距现场 (点此切副图 [M])' : '副地图：参谋军图 (点此回主图 [M])'}
+              {mapViewMode === 'field' ? '主地图：近距现场 (M 展开副图)' : '副地图：参谋军图 (M 折回主图)'}
             </button>
             <div className="row" data-ui-id="M1">
               <UiTag id="M1" />
@@ -764,7 +857,7 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
         </div>
       </div>
 
-      {/* Layer 9: 特效 B 层（气氛组：暗角/纸纹颗粒/震屏，位于最顶层，支持独立开关） */}
+      {/* Layer 9: 特效 B 层（气氛组：主图暗角 / 副图牛皮印刷纸纹颗粒，位于最顶层，支持独立开关） */}
       <div
         data-layer="9"
         data-layer-name="atmosphere-vfx-b"
@@ -775,11 +868,17 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
           zIndex: 9,
           pointerEvents: 'none',
           display: l9Enabled ? 'block' : 'none',
+          mixBlendMode: mapViewMode === 'tactical' ? 'multiply' : 'normal',
           backgroundImage: paperGrainImg
-            ? `url(${paperGrainImg.src}), radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(10, 9, 8, 0.45) 100%)`
-            : 'radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(10, 9, 8, 0.45) 100%)',
-          backgroundRepeat: paperGrainImg ? 'repeat, no-repeat' : 'no-repeat',
-          boxShadow: 'inset 0 0 64px rgba(0, 0, 0, 0.35)',
+            ? `url(${paperGrainImg.src}), radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(10, 9, 8, 0.4) 100%)`
+            : mapViewMode === 'tactical'
+              ? `${tacticalSvgGrainUrl}, radial-gradient(ellipse at center, rgba(60, 52, 36, 0) 60%, rgba(72, 62, 44, 0.24) 100%)`
+              : 'radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(10, 9, 8, 0.42) 100%)',
+          backgroundRepeat: paperGrainImg || mapViewMode === 'tactical' ? 'repeat, no-repeat' : 'no-repeat',
+          boxShadow:
+            mapViewMode === 'tactical'
+              ? 'inset 0 0 42px rgba(72, 62, 42, 0.22)'
+              : 'inset 0 0 64px rgba(0, 0, 0, 0.35)',
         }}
       />
     </div>

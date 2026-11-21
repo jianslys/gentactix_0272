@@ -11,32 +11,45 @@ test('GenTactix V2 Frontend 全套 12 项端到端实机交互验收 + UI ID 标
   });
 
   await page.goto('/');
-  await expect(page.getByTestId('wave-slip-wave-1')).toBeVisible();
+  const viewportEl = page.getByTestId('nine-layer-viewport');
+  await expect(viewportEl).toBeVisible();
 
-  // 0. 校验全量窗口/控件 UI ID 标牌可见（含 W10/W12），零 display:none 假节点，且 T12 开关可切换显隐
-  for (const id of ['W1', 'W2', 'W3', 'W5', 'W5A', 'W6', 'W10', 'W12', 'T2', 'U8', 'U9']) {
-    await expect(page.locator(`[data-ui-tag="${id}"]`).first()).toBeVisible();
-  }
+  // 0a. 首屏默认清爽主地图(field) + 手写板 W5 / 编写器 W12 默认收起 + 零 display:none 伪装节点
+  await expect(viewportEl).toHaveAttribute('data-map-view', 'field');
+  await expect(page.getByTestId('uio-panel')).toHaveCount(0);
+  await expect(page.getByTestId('directive-composer')).toHaveCount(0);
+  await expect(page.getByTestId('tactical-map-title')).toHaveCount(0);
   const hiddenInlineCount = await page.evaluate(
     () => Array.from(document.querySelectorAll<HTMLElement>('*')).filter((el) => el.style.display === 'none').length,
   );
   expect(hiddenInlineCount).toBe(0);
 
-  await page.getByTestId('toggle-ui-ids').click();
-  await expect(page.locator('[data-ui-tag]')).toHaveCount(0);
-  await page.getByTestId('toggle-ui-ids').click();
-  await expect(page.locator('[data-ui-tag="W1"]').first()).toBeVisible();
-
-  // 0b. 单壳双地图切换验收：默认全屏主地图 field -> 底部 W6/MAP.SWITCH 切副图 tactical -> W10 图例内切回 field
-  const viewportEl = page.getByTestId('nine-layer-viewport');
-  await expect(viewportEl).toHaveAttribute('data-map-view', 'field');
-  await page.getByTestId('toggle-map-view').click();
+  // 0b. 单壳双地图切换与 4174 副地图展开边饰验收：[M] 展开参谋军图 -> 检验四角印刷挂件 -> W10 切回主地图 field
+  await page.keyboard.press('m');
   await expect(viewportEl).toHaveAttribute('data-map-view', 'tactical');
+  await expect(page.getByTestId('tactical-map-title')).toBeVisible();
+  await expect(page.getByTestId('tactical-map-stamp')).toBeVisible();
+  await expect(page.getByTestId('tactical-compass')).toBeVisible();
+  await expect(page.getByTestId('tactical-scale-bar')).toBeVisible();
   await page.getByTestId('legend-toggle').click();
   await expect(page.getByTestId('legend-switch-map')).toBeVisible();
   await page.getByTestId('legend-switch-map').click();
   await expect(viewportEl).toHaveAttribute('data-map-view', 'field');
+  await expect(page.getByTestId('tactical-map-title')).toHaveCount(0);
   await page.getByTestId('legend-toggle').click();
+
+  // 按需点开 W5 手写板与 W12 编写器，校验全量窗口/控件 UI ID 标牌可见，且 T12 开关可切换显隐
+  await page.getByTestId('dock-toggle-W5').click();
+  await page.getByTestId('dock-toggle-W12').click();
+  await expect(page.getByTestId('wave-slip-wave-1')).toBeVisible();
+
+  for (const id of ['W1', 'W2', 'W3', 'W5', 'W5A', 'W6', 'W10', 'W12', 'T2', 'U8', 'U9']) {
+    await expect(page.locator(`[data-ui-tag="${id}"]`).first()).toBeVisible();
+  }
+  await page.getByTestId('toggle-ui-ids').click();
+  await expect(page.locator('[data-ui-tag]')).toHaveCount(0);
+  await page.getByTestId('toggle-ui-ids').click();
+  await expect(page.locator('[data-ui-tag="W1"]').first()).toBeVisible();
 
   // 0c. 验证 W5 纯排纸条与 W12 独立编写器分离，并校验视野缩放 (M1) 与右侧手写板折叠/展开 (R3)
   await expect(page.getByTestId('directive-composer')).toBeVisible();

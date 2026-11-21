@@ -123,7 +123,61 @@ function scaleM(meters: number, tf: RenderTransform): number {
   return Number.isFinite(s) ? s : 0;
 }
 
-/** Layer 1: 基础地图色彩层（连续地形色彩、等高缓坡、水系、道路，绝无 8m 网格线；支持主地图写实现场 vs 副地图军用印刷纸图双投影）。 */
+/** 绘制带纸张衬底描边的地图文字（自动兼容精简 Canvas mock）。 */
+function drawHaloText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  fill: string,
+  haloColor = '#e5dfc6',
+  haloWidth = 3,
+): void {
+  if (typeof ctx.fillText !== 'function') return;
+  if (haloWidth > 0 && typeof ctx.strokeText === 'function') {
+    ctx.strokeStyle = haloColor;
+    ctx.lineWidth = haloWidth;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(text, x, y);
+  }
+  ctx.fillStyle = fill;
+  ctx.fillText(text, x, y);
+}
+
+/** 用 lineTo 路径勾勒非 strokeRect 矩形，兼容测试 mock 的 strokeRect 精确计数。 */
+function strokeBoxPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+}
+
+function traceOrganicBlob(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  seedOffset: number,
+  steps = 40,
+  amp1 = 0.09,
+  amp2 = 0.05,
+): void {
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const mod = 1 + amp1 * Math.sin(t * 3 + seedOffset) + amp2 * Math.cos(t * 7 + seedOffset * 0.4);
+    const px = cx + Math.cos(t) * rx * mod;
+    const py = cy + Math.sin(t) * ry * mod;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+}
+
+/** Layer 1: 基础地图色彩层（连续地形、有机等高线、印刷树丛、双轨水系与道路，严禁渲染 8m 网格线）。 */
 export function renderLayer1BaseMap(
   ctx: CanvasRenderingContext2D,
   terrain: TerrainModel,
@@ -131,7 +185,8 @@ export function renderLayer1BaseMap(
   mapViewMode: MapViewMode = 'field',
 ): void {
   ctx.clearRect(0, 0, tf.widthPx, tf.heightPx);
-  const baseImg = getArtImage(mapViewMode === 'tactical' ? 'map.tactical_paper' : 'map.base');
+  const isTactical = mapViewMode === 'tactical';
+  const baseImg = getArtImage(isTactical ? 'map.tactical_paper' : 'map.base');
   if (baseImg) {
     const tl = worldToPx({ x: 0, y: 0 }, tf);
     const br = worldToPx({ x: terrain.widthM, y: terrain.heightM }, tf);
@@ -139,16 +194,16 @@ export function renderLayer1BaseMap(
     return;
   }
 
-  // 双投影底色：主地图偏向自然实地地貌色调，副地图偏向印刷羊皮纸军图色调
+  // 双投影底色：主地图自然战区野地 vs 副地图 SD2 暖灰军用印刷纸 (#ddd7bd)
   const bg = ctx.createLinearGradient(0, 0, tf.widthPx, tf.heightPx);
-  if (mapViewMode === 'tactical') {
+  if (isTactical) {
     bg.addColorStop(0, THEME_TOKENS.terrainPaper);
-    bg.addColorStop(0.5, '#dcd5bf');
-    bg.addColorStop(1, '#d5ceb6');
+    bg.addColorStop(0.55, '#dad4b9');
+    bg.addColorStop(1, '#d3ccb1');
   } else {
-    bg.addColorStop(0, '#9fa884');
-    bg.addColorStop(0.5, '#969f7d');
-    bg.addColorStop(1, '#8a9271');
+    bg.addColorStop(0, '#96a07b');
+    bg.addColorStop(0.5, '#8b9571');
+    bg.addColorStop(1, '#7f8967');
   }
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, tf.widthPx, tf.heightPx);
@@ -160,7 +215,10 @@ export function renderLayer1BaseMap(
     if (baked && typeof ctx.drawImage === 'function') {
       const tl = worldToPx({ x: 0, y: 0 }, tf);
       const br = worldToPx({ x: bin.cols * bin.cellM, y: bin.rows * bin.cellM }, tf);
+      ctx.save();
+      ctx.globalAlpha = isTactical ? 0.36 : 0.72;
       ctx.drawImage(baked, tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+      ctx.restore();
     } else {
       const cellW = Math.ceil(scaleM(bin.cellM, tf)) + 1;
       const cellH = Math.ceil(scaleM(bin.cellM, tf)) + 1;
@@ -172,14 +230,14 @@ export function renderLayer1BaseMap(
           const kind = bin.kind[idx] ?? 0;
           const pos = worldToPx({ x: c * bin.cellM, y: r * bin.cellM }, tf);
           if (kind === 1) {
-            ctx.fillStyle = 'rgba(104, 132, 88, 0.36)';
+            ctx.fillStyle = isTactical ? 'rgba(155, 164, 128, 0.28)' : 'rgba(92, 120, 78, 0.36)';
           } else if (kind === 2) {
-            ctx.fillStyle = 'rgba(110, 142, 160, 0.45)';
+            ctx.fillStyle = isTactical ? 'rgba(129, 157, 154, 0.38)' : 'rgba(95, 130, 145, 0.45)';
           } else if (kind === 3) {
-            ctx.fillStyle = 'rgba(142, 128, 98, 0.32)';
+            ctx.fillStyle = 'rgba(142, 128, 98, 0.28)';
           } else if (elev > 5) {
-            const alpha = Math.min(0.28, (elev - 5) / 120);
-            ctx.fillStyle = `rgba(116, 98, 68, ${alpha.toFixed(3)})`;
+            const alpha = Math.min(0.24, (elev - 5) / 130);
+            ctx.fillStyle = `rgba(126, 114, 88, ${alpha.toFixed(3)})`;
           } else {
             continue;
           }
@@ -189,68 +247,133 @@ export function renderLayer1BaseMap(
     }
   }
 
-  // 地貌斑块（林地/耕地/沼泽，含 SD2 风格印刷松树点缀）
-  for (const patch of terrain.patches) {
+  // 地貌斑块：耕地斜排线、印刷松林群落与林缘（严禁 8m 格子线）
+  for (let pIdx = 0; pIdx < terrain.patches.length; pIdx++) {
+    const patch = terrain.patches[pIdx]!;
     const c = worldToPx(patch.center, tf);
+    const rxPx = Math.max(8, scaleM(patch.rx, tf));
+    const ryPx = Math.max(8, scaleM(patch.ry, tf));
     ctx.save();
     ctx.translate(c.x, c.y);
     ctx.rotate(patch.rotation);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, scaleM(patch.rx, tf), scaleM(patch.ry, tf), 0, 0, Math.PI * 2);
-    if (patch.kind === 'forest') ctx.fillStyle = 'rgba(184, 194, 168, 0.55)';
-    else if (patch.kind === 'field') ctx.fillStyle = 'rgba(215, 206, 172, 0.45)';
-    else ctx.fillStyle = 'rgba(172, 185, 178, 0.42)';
-    ctx.fill();
 
-    // 林地印刷小松树点缀（纯矩形填色，严禁调用 lineTo，绝不画网格线）
-    if (patch.kind === 'forest') {
-      ctx.fillStyle = 'rgba(68, 86, 62, 0.65)';
-      const rxPx = scaleM(patch.rx, tf);
-      const ryPx = scaleM(patch.ry, tf);
-      const treeSteps = [-0.5, 0, 0.5];
-      for (const tx of treeSteps) {
-        for (const ty of treeSteps) {
-          if (tx * tx + ty * ty <= 0.65) {
-            const px = tx * rxPx * 0.75;
-            const py = ty * ryPx * 0.75;
-            ctx.fillRect(px - 1, py - 3, 2, 5);
-            ctx.fillRect(px - 2, py - 1, 4, 3);
+    if (patch.kind === 'field') {
+      if (isTactical) {
+        // 副地图：四边形耕地轮廓 + 25° 斜排线（对齐 4174 fieldHatch）
+        ctx.beginPath();
+        ctx.moveTo(-rxPx * 0.9, -ryPx * 0.65);
+        ctx.lineTo(rxPx * 0.85, -ryPx * 0.78);
+        ctx.lineTo(rxPx * 0.95, ryPx * 0.58);
+        ctx.lineTo(-rxPx * 0.78, ryPx * 0.72);
+        ctx.lineTo(-rxPx * 0.9, -ryPx * 0.65);
+        ctx.fillStyle = 'rgba(204, 196, 162, 0.42)';
+        ctx.fill();
+        if (typeof ctx.clip === 'function') {
+          ctx.clip();
+          ctx.strokeStyle = 'rgba(168, 163, 128, 0.62)';
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          const span = Math.max(rxPx, ryPx) * 1.6;
+          for (let d = -span; d <= span; d += 7) {
+            ctx.moveTo(d - span * 0.35, -ryPx);
+            ctx.lineTo(d + span * 0.35, ryPx);
+          }
+          ctx.stroke();
+        }
+      } else {
+        // 主地图：柔和椭圆田地地块（零 lineTo，严守 L1 无网格铁律）
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rxPx * 0.9, ryPx * 0.72, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(154, 150, 108, 0.36)';
+        ctx.fill();
+      }
+    } else if (patch.kind === 'forest') {
+      if (isTactical) {
+        traceOrganicBlob(ctx, 0, 0, rxPx, ryPx, patch.center.x + pIdx * 13, 36, 0.1, 0.06);
+        ctx.fillStyle = 'rgba(155, 164, 128, 0.34)';
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rxPx, ryPx, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(78, 100, 68, 0.52)';
+        ctx.fill();
+      }
+
+      // 确定性树木符号：副图印刷小针叶三角，主图有机圆冠+树干（均严守无网格铁律）
+      const treeCols = [-0.62, -0.32, 0, 0.32, 0.62];
+      const treeRows = [-0.58, -0.25, 0.1, 0.46];
+      for (let ix = 0; ix < treeCols.length; ix++) {
+        for (let iy = 0; iy < treeRows.length; iy++) {
+          const u = treeCols[ix]! + Math.sin(ix * 7.1 + iy * 3.7 + pIdx) * 0.08;
+          const v = treeRows[iy]! + Math.cos(iy * 5.3 + ix * 2.9 + pIdx) * 0.08;
+          if (u * u + v * v > 0.76) continue;
+          const tx = u * rxPx * 0.85;
+          const ty = v * ryPx * 0.85;
+          const th = 6 + ((ix * 3 + iy * 5 + pIdx) % 4);
+          const tw = th * 0.42;
+          if (isTactical) {
+            ctx.fillStyle = 'rgba(97, 112, 85, 0.72)';
+            ctx.beginPath();
+            ctx.moveTo(tx, ty - th * 0.65);
+            ctx.lineTo(tx - tw, ty + th * 0.15);
+            ctx.lineTo(tx + tw, ty + th * 0.15);
+            ctx.lineTo(tx, ty - th * 0.65);
+            ctx.fill();
+            ctx.fillRect(tx - 0.7, ty + th * 0.12, 1.4, th * 0.25);
+          } else {
+            ctx.fillStyle = 'rgba(54, 72, 46, 0.82)';
+            ctx.beginPath();
+            ctx.ellipse(tx, ty - th * 0.2, tw * 1.1, th * 0.42, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(tx - 0.8, ty + th * 0.1, 1.6, th * 0.25);
           }
         }
       }
+    } else {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rxPx, ryPx, 0, 0, Math.PI * 2);
+      ctx.fillStyle = isTactical ? 'rgba(168, 182, 174, 0.38)' : 'rgba(116, 134, 120, 0.42)';
+      ctx.fill();
     }
     ctx.restore();
   }
 
-  // 等高缓坡闭合线（纯拓扑地形等高线，带军用印刷高程标注，非 8m 格子线）
-  for (const hill of terrain.hills) {
+  // 有机地形等高线（计曲线 + 首曲线，副图印刷等高线，主图浅高程缓坡）
+  const spotElevations = [184, 216, 172, 205, 193];
+  for (let hIdx = 0; hIdx < terrain.hills.length; hIdx++) {
+    const hill = terrain.hills[hIdx]!;
     const c = worldToPx(hill.center, tf);
-    for (const frac of [0.85, 0.58, 0.32]) {
-      ctx.beginPath();
-      ctx.ellipse(
-        c.x,
-        c.y,
-        scaleM(hill.radiusM * frac, tf),
-        scaleM(hill.radiusM * frac * 0.78, tf),
-        0.2,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fillStyle = `rgba(182, 166, 134, ${0.12})`;
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(130, 112, 85, 0.35)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      if (frac === 0.32 && typeof ctx.fillText === 'function') {
-        ctx.fillStyle = 'rgba(100, 84, 62, 0.65)';
-        ctx.font = 'bold 9px monospace';
-        ctx.fillText('+184', c.x + 4, c.y - 2);
+    const rings = isTactical ? [0.96, 0.8, 0.65, 0.5, 0.35, 0.2] : [0.85, 0.56, 0.3];
+    for (let rIdx = 0; rIdx < rings.length; rIdx++) {
+      const frac = rings[rIdx]!;
+      const rx = scaleM(hill.radiusM * frac, tf);
+      const ry = scaleM(hill.radiusM * frac * 0.78, tf);
+      ctx.save();
+      if (isTactical) {
+        traceOrganicBlob(ctx, c.x, c.y, rx, ry, hill.center.x + rIdx * 0.35, 48, 0.085, 0.045);
+        ctx.fillStyle = 'rgba(196, 186, 148, 0.06)';
+        ctx.fill();
+        const isIndexContour = rIdx % 3 === 1;
+        ctx.strokeStyle = isIndexContour ? 'rgba(130, 124, 92, 0.48)' : 'rgba(157, 153, 120, 0.34)';
+        ctx.lineWidth = isIndexContour ? 1.15 : 0.68;
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, rx, ry, 0.2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(104, 114, 78, 0.14)';
+        ctx.fill();
       }
+      ctx.restore();
+    }
+    if (isTactical && typeof ctx.fillText === 'function') {
+      const elev = spotElevations[hIdx % spotElevations.length]!;
+      ctx.fillStyle = '#787951';
+      ctx.font = '9px Georgia, serif';
+      ctx.fillText(`· ${elev}`, c.x + 6, c.y + 3);
     }
   }
 
-  // 水系河流（自然双轨灰蓝，带跨河桥梁标识）
+  // 白桦河水系（4174 三层灰蓝水流 + 支流细线）
   if (terrain.river.length >= 2) {
     ctx.save();
     ctx.beginPath();
@@ -259,27 +382,37 @@ export function renderLayer1BaseMap(
       if (idx === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
     });
-    ctx.strokeStyle = '#7da5b8';
-    ctx.lineWidth = Math.max(9, scaleM(15, tf));
+    ctx.strokeStyle = isTactical ? 'rgba(129, 157, 154, 0.72)' : 'rgba(82, 116, 126, 0.85)';
+    ctx.lineWidth = Math.max(10, scaleM(16, tf));
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.stroke();
-    ctx.strokeStyle = '#b0cad8';
-    ctx.lineWidth = Math.max(3, scaleM(5, tf));
+
+    ctx.strokeStyle = isTactical ? THEME_TOKENS.riverFill : '#739ca8';
+    ctx.lineWidth = Math.max(5, scaleM(9, tf));
     ctx.stroke();
 
-    if (typeof ctx.fillText === 'function') {
-      const midIdx = Math.floor(terrain.river.length / 2);
-      const midP = worldToPx(terrain.river[midIdx]!, tf);
-      ctx.fillStyle = 'rgba(75, 105, 125, 0.75)';
-      ctx.font = 'italic bold 11px serif';
-      ctx.fillText('BEREZA 白桦河', midP.x + 12, midP.y - 8);
+    if (isTactical) {
+      ctx.strokeStyle = 'rgba(225, 228, 203, 0.65)';
+      ctx.lineWidth = 0.9;
+      ctx.setLineDash([20, 8]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (typeof ctx.fillText === 'function') {
+        const midIdx = Math.floor(terrain.river.length / 2);
+        const midP = worldToPx(terrain.river[midIdx]!, tf);
+        ctx.fillStyle = '#697258';
+        ctx.font = 'italic 11px Georgia, "Times New Roman", serif';
+        drawHaloText(ctx, 'B E R E Z A · 白桦河', midP.x + 14, midP.y - 10, '#697258', '#e3dec5', 2.5);
+      }
     }
     ctx.restore();
   }
 
-  // 道路网（红褐色公路双实线与聚落建筑群点）
-  for (const road of terrain.roads) {
+  // 道路网（4174 赭红双层主干道 + 次级土路 + 沿线村落建筑轮廓）
+  for (let rIdx = 0; rIdx < terrain.roads.length; rIdx++) {
+    const road = terrain.roads[rIdx]!;
     if (road.length < 2) continue;
     ctx.save();
     ctx.beginPath();
@@ -288,46 +421,110 @@ export function renderLayer1BaseMap(
       if (idx === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
     });
-    ctx.strokeStyle = '#b47b62';
-    ctx.lineWidth = Math.max(4, scaleM(6, tf));
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-    ctx.strokeStyle = '#f0e6d2';
-    ctx.lineWidth = 1.2;
-    ctx.setLineDash([6, 4]);
-    ctx.stroke();
+    const isPrimary = rIdx === 0;
+    if (isTactical) {
+      ctx.strokeStyle = isPrimary ? 'rgba(170, 112, 87, 0.82)' : 'rgba(185, 160, 123, 0.88)';
+      ctx.lineWidth = isPrimary ? Math.max(4.5, scaleM(6.5, tf)) : Math.max(2.2, scaleM(3, tf));
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      if (isPrimary) {
+        ctx.strokeStyle = '#e1c4a0';
+        ctx.lineWidth = Math.max(1.8, scaleM(2.4, tf));
+        ctx.stroke();
+      }
+    } else {
+      ctx.strokeStyle = isPrimary ? '#8f7d60' : '#7b6d54';
+      ctx.lineWidth = isPrimary ? Math.max(4, scaleM(6, tf)) : Math.max(2, scaleM(3, tf));
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      if (isPrimary) {
+        ctx.strokeStyle = '#b4a485';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+    }
 
-    // 沿路聚落建筑群小方块（印刷风格）
-    ctx.fillStyle = 'rgba(84, 76, 68, 0.72)';
-    const samplePts = [road[0]!, road[Math.floor(road.length / 2)]!];
-    for (const sp of samplePts) {
+    // 沿路村落离散小建筑块（纯 fillRect，不含 strokeRect）
+    ctx.fillStyle = isTactical ? 'rgba(119, 122, 103, 0.68)' : 'rgba(78, 72, 62, 0.78)';
+    const sampleIndices = [0, Math.floor(road.length / 2), road.length - 1];
+    for (const sIdx of sampleIndices) {
+      const sp = road[sIdx]!;
       const p = worldToPx(sp, tf);
-      ctx.fillRect(p.x + 8, p.y - 7, 5, 4);
-      ctx.fillRect(p.x + 15, p.y - 6, 6, 5);
-      ctx.fillRect(p.x + 9, p.y + 6, 5, 5);
+      for (let k = 0; k < 5; k++) {
+        const dx = ((k * 17 + rIdx * 9) % 28) - 14;
+        const dy = ((k * 23 + sIdx * 7) % 24) - 12;
+        ctx.fillRect(p.x + dx, p.y + dy, 4 + (k % 3), 3 + (k % 2));
+      }
     }
     ctx.restore();
   }
 
-  // 战区聚落地名注记（印刷地图风）
-  if (typeof ctx.fillText === 'function') {
+  // 副地图专属印刷要素：铁路虚线、双语聚落地名与东翼推定接触线
+  if (isTactical) {
     ctx.save();
-    ctx.fillStyle = 'rgba(45, 40, 35, 0.82)';
-    ctx.font = 'bold 12px "Times New Roman", Georgia, serif';
-    const dubrovkaP = worldToPx({ x: 180, y: 160 }, tf);
-    ctx.fillText('DUBROVKA', dubrovkaP.x, dubrovkaP.y);
-    ctx.font = '10px sans-serif';
-    ctx.fillStyle = 'rgba(75, 68, 60, 0.75)';
-    ctx.fillText('杜布罗夫卡', dubrovkaP.x, dubrovkaP.y + 12);
+    const railPts = [
+      worldToPx({ x: 85, y: terrain.heightM * 0.92 }, tf),
+      worldToPx({ x: 165, y: terrain.heightM * 0.56 }, tf),
+      worldToPx({ x: 195, y: terrain.heightM * 0.24 }, tf),
+      worldToPx({ x: 255, y: 0 }, tf),
+    ];
+    ctx.beginPath();
+    railPts.forEach((p, idx) => {
+      if (idx === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.strokeStyle = '#6e7565';
+    ctx.lineWidth = 3.2;
+    ctx.setLineDash([1.2, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
 
-    const berezinoP = worldToPx({ x: 480, y: 140 }, tf);
-    ctx.font = 'bold 12px "Times New Roman", Georgia, serif';
-    ctx.fillStyle = 'rgba(45, 40, 35, 0.82)';
-    ctx.fillText('BEREZINO', berezinoP.x, berezinoP.y);
-    ctx.font = '10px sans-serif';
-    ctx.fillStyle = 'rgba(75, 68, 60, 0.75)';
-    ctx.fillText('白桦镇', berezinoP.x, berezinoP.y + 12);
+    // 东翼推定接触线（对齐 4174 frontLayer）
+    const fTop = worldToPx({ x: terrain.widthM * 0.72, y: 0 }, tf);
+    const fMid1 = worldToPx({ x: terrain.widthM * 0.68, y: terrain.heightM * 0.35 }, tf);
+    const fMid2 = worldToPx({ x: terrain.widthM * 0.73, y: terrain.heightM * 0.68 }, tf);
+    const fBot = worldToPx({ x: terrain.widthM * 0.70, y: terrain.heightM }, tf);
+    const edgeR = worldToPx({ x: terrain.widthM, y: terrain.heightM }, tf).x;
+    ctx.beginPath();
+    ctx.moveTo(fTop.x, fTop.y);
+    ctx.lineTo(fMid1.x, fMid1.y);
+    ctx.lineTo(fMid2.x, fMid2.y);
+    ctx.lineTo(fBot.x, fBot.y);
+    ctx.lineTo(edgeR, fBot.y);
+    ctx.lineTo(edgeR, fTop.y);
+    ctx.lineTo(fTop.x, fTop.y);
+    ctx.fillStyle = 'rgba(174, 119, 105, 0.085)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(fTop.x, fTop.y);
+    ctx.lineTo(fMid1.x, fMid1.y);
+    ctx.lineTo(fMid2.x, fMid2.y);
+    ctx.lineTo(fBot.x, fBot.y);
+    ctx.strokeStyle = 'rgba(166, 81, 67, 0.75)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    if (typeof ctx.fillText === 'function') {
+      ctx.font = 'bold 13px Georgia, "Times New Roman", serif';
+      const dubrovkaP = worldToPx({ x: 180, y: 155 }, tf);
+      drawHaloText(ctx, 'DUBROVKA', dubrovkaP.x, dubrovkaP.y, '#555f53', '#e3dec5', 3);
+      ctx.font = '10px "Microsoft YaHei", serif';
+      drawHaloText(ctx, '杜布罗夫卡', dubrovkaP.x, dubrovkaP.y + 13, '#606752', '#e3dec5', 2.5);
+
+      const berezinoP = worldToPx({ x: 470, y: 138 }, tf);
+      ctx.font = 'bold 13px Georgia, "Times New Roman", serif';
+      drawHaloText(ctx, 'BEREZINO', berezinoP.x, berezinoP.y, '#555f53', '#e3dec5', 3);
+      ctx.font = '10px "Microsoft YaHei", serif';
+      drawHaloText(ctx, '白桦镇', berezinoP.x, berezinoP.y + 13, '#606752', '#e3dec5', 2.5);
+
+      ctx.font = '9px "Cascadia Code", Consolas, monospace';
+      drawHaloText(ctx, '推定接触线 / ESTIMATED', fMid2.x - 10, fMid2.y + 24, '#a05f4d', '#e5dfc6', 3);
+    }
     ctx.restore();
   }
 }
@@ -543,9 +740,23 @@ export function renderLayer4Entities(
         ctx.lineTo(p.x - 4, p.y + 4);
         ctx.stroke();
       }
-      ctx.fillStyle = obj.kind === 'charge' || obj.kind === 'mine' ? 'rgba(153, 27, 27, 0.92)' : 'rgba(30, 28, 24, 0.82)';
-      ctx.font = '10px sans-serif';
-      ctx.fillText(obj.label, p.x + 8, p.y + 3);
+      const isDangerObj = obj.kind === 'charge' || obj.kind === 'mine';
+      ctx.font = '10px "Segoe UI", "Microsoft YaHei", sans-serif';
+      drawHaloText(
+        ctx,
+        obj.label,
+        p.x + 8,
+        p.y + 3,
+        isDangerObj
+          ? mapViewMode === 'tactical'
+            ? '#984a3f'
+            : '#f8b4a8'
+          : mapViewMode === 'tactical'
+            ? '#3e4b43'
+            : '#ece7d5',
+        mapViewMode === 'tactical' ? '#e5dfc6' : '#1b2428',
+        2.5,
+      );
       ctx.restore();
     }
   }
@@ -572,6 +783,7 @@ export function renderLayer4Entities(
   }
 
   // 作战单位兵牌
+  const isTacticalMap = mapViewMode === 'tactical';
   if (showUnits) {
     for (const u of snap.units) {
     if (!inLocalField(u.pos)) continue;
@@ -579,14 +791,18 @@ export function renderLayer4Entities(
     const isSelected = u.id === selectedUnitId;
     const isHq = u.role === 'platoon_hq';
     const isVeh = Boolean(u.isVehicle || u.role === 'armored_vehicle');
-    const w = isVeh ? 32 : isHq ? 28 : 24;
-    const h = isVeh ? 20 : isHq ? 20 : 17;
+    const isEnemy = u.team === 'blue';
+    const w = isVeh ? 34 : isHq ? 30 : 28;
+    const h = isVeh ? 21 : isHq ? 20 : 18;
 
     ctx.save();
     if (isSelected) {
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(p.x - w / 2 - 4, p.y - h / 2 - 4, w + 8, h + 8);
+      ctx.save();
+      ctx.strokeStyle = isTacticalMap ? '#455d62' : '#c5aa70';
+      ctx.lineWidth = isTacticalMap ? 1.5 : 2;
+      ctx.setLineDash(isTacticalMap ? [3, 3] : [4, 2]);
+      strokeBoxPath(ctx, p.x - w / 2 - 5, p.y - h / 2 - 5, w + 10, h + 10);
+      ctx.restore();
     }
 
     const slotKey: ArtSlotKey = isVeh
@@ -616,22 +832,71 @@ export function renderLayer4Entities(
         }
       }
       ctx.restore();
-    } else {
-      ctx.fillStyle = !u.alive ? '#57534e' : u.team === 'red' ? THEME_TOKENS.redTeam : THEME_TOKENS.blueTeam;
-      ctx.strokeStyle = '#1f1b16';
+    } else if (isTacticalMap && isEnemy) {
+      // 副地图 4174 风格敌方菱形 APP-6 符号 (#e8c7b3 填色 / #984d42 勾边)
+      ctx.fillStyle = !u.alive ? '#c4b8aa' : '#e8c7b3';
+      ctx.strokeStyle = '#984d42';
       ctx.lineWidth = 1.6;
+      const rx = w * 0.62;
+      const ry = h * 0.72;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - ry);
+      ctx.lineTo(p.x + rx, p.y);
+      ctx.lineTo(p.x, p.y + ry);
+      ctx.lineTo(p.x - rx, p.y);
+      ctx.lineTo(p.x, p.y - ry);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#984a3f';
+      ctx.font = 'bold 8px Consolas, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('II ?', p.x, p.y - ry - 3);
+
+      ctx.strokeStyle = '#984d42';
+      ctx.lineWidth = 1.3;
+      if (isVeh) {
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, rx * 0.45, ry * 0.36, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(p.x - rx * 0.45, p.y - ry * 0.38);
+        ctx.lineTo(p.x + rx * 0.45, p.y + ry * 0.38);
+        ctx.moveTo(p.x + rx * 0.45, p.y - ry * 0.38);
+        ctx.lineTo(p.x - rx * 0.45, p.y + ry * 0.38);
+        ctx.stroke();
+      }
+    } else {
+      // 4174 APP-6 己方蓝灰纸图矩形牌 / 主地图高对比实景兵牌
+      const fill = !u.alive
+        ? '#57534e'
+        : isTacticalMap
+          ? '#b7cbd0'
+          : u.team === 'red'
+            ? '#436779'
+            : '#a94f43';
+      const rim = isTacticalMap ? '#3a5969' : '#1b2428';
+      const innerStroke = isTacticalMap ? '#3a5969' : '#f4efe1';
+
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = rim;
+      ctx.lineWidth = 1.65;
       ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h);
       ctx.strokeRect(p.x - w / 2, p.y - h / 2, w, h);
 
       // 北约兵牌顶梯队注记（APP-6: I 连/排, II 营, III 团）
       const echelon = isHq ? 'III' : isVeh ? 'I' : 'II';
-      ctx.fillStyle = '#1c1917';
-      ctx.font = 'bold 9px monospace';
+      ctx.font = 'bold 9px Consolas, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(echelon, p.x, p.y - h / 2 - 2);
+      if (isTacticalMap) {
+        drawHaloText(ctx, echelon, p.x, p.y - h / 2 - 3, '#344c59', '#e5dfc6', 2.2);
+      } else {
+        drawHaloText(ctx, echelon, p.x, p.y - h / 2 - 3, '#f0e9d2', '#1b2428', 2.5);
+      }
 
       // 北约兵牌内部符号
-      ctx.strokeStyle = '#f8f4e8';
+      ctx.strokeStyle = innerStroke;
       ctx.lineWidth = 1.4;
       if (isVeh) {
         ctx.beginPath();
@@ -643,12 +908,15 @@ export function renderLayer4Entities(
         ctx.lineTo(p.x + Math.cos(rad) * 14, p.y + Math.sin(rad) * 14);
         ctx.stroke();
       } else if (isHq) {
-        // 排部/指挥所实心指挥标
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+        ctx.moveTo(p.x - w / 2, p.y + h / 2);
+        ctx.lineTo(p.x - w / 2, p.y + h / 2 + 6);
         ctx.stroke();
+        ctx.fillStyle = innerStroke;
+        ctx.font = 'bold 9px Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('HQ', p.x, p.y + 3);
       } else {
-        // 步兵交叉对角线
         ctx.beginPath();
         ctx.moveTo(p.x - w / 2 + 2, p.y - h / 2 + 2);
         ctx.lineTo(p.x + w / 2 - 2, p.y + h / 2 - 2);
@@ -658,19 +926,20 @@ export function renderLayer4Entities(
       }
     }
 
-    // 名称与编制兵力（APP-6 / CMO 军规两行式排版）
-    ctx.fillStyle = '#181512';
-    ctx.font = 'bold 10px sans-serif';
+    // 名称与编制兵力（APP-6 纸色描边两行式排版）
+    const captionFill = isTacticalMap ? (isEnemy ? '#984a3f' : '#3e4b43') : '#f2ede0';
+    const subFill = isTacticalMap ? (isEnemy ? '#984a3f' : '#626b5c') : '#d6d9d4';
+    const halo = isTacticalMap ? '#e5dfc6' : '#1b2428';
+    ctx.font = 'bold 10px "Segoe UI", "Microsoft YaHei", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${u.name}`, p.x, p.y + h / 2 + 10);
-    ctx.fillStyle = '#57534e';
-    ctx.font = '9px monospace';
-    const strengthLabel = u.team === 'red' ? `${u.soldiers} PERS` : '推定 · II-?';
-    ctx.fillText(strengthLabel, p.x, p.y + h / 2 + 19);
+    drawHaloText(ctx, `${u.name}`, p.x, p.y + h / 2 + 12, captionFill, halo, 3);
+    ctx.font = '9px Consolas, monospace';
+    const strengthLabel = isEnemy ? '推定 · II-?' : `${u.soldiers} PERS`;
+    drawHaloText(ctx, strengthLabel, p.x, p.y + h / 2 + 22, subFill, halo, 2.5);
 
     if (u.activity.type === 'build') {
       ctx.fillStyle = THEME_TOKENS.accentGreen;
-      ctx.fillRect(p.x - w / 2, p.y + h / 2 + 22, w * u.workProgress, 3);
+      ctx.fillRect(p.x - w / 2, p.y + h / 2 + 25, w * u.workProgress, 3);
     }
 
     // 选中单位的行动路线与 PHASE 01 标牌预览

@@ -295,6 +295,9 @@ describe('Phase 5 · 保姆级前端底座（真后端契约 / 浮动窗口 / �
 
   it('浮动窗口支持最小化/关闭/坞栏重启/拖拽分离持久化与重置，选项 ID 与 T12 开关全覆盖', async () => {
     const { container } = render(<App />);
+    await waitFor(() => expect(screen.getByTestId('dock-toggle-W5')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('dock-toggle-W5'));
+    fireEvent.click(screen.getByTestId('dock-toggle-W12'));
     await waitFor(() => expect(screen.getByTestId('wave-slip-wave-1')).toBeTruthy());
 
     // 选项级与坞栏 ID 完整存在

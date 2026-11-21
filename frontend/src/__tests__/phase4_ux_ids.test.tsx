@@ -27,6 +27,9 @@ afterEach(() => {
 describe('Phase 4 · UI ID 标牌系统 + P0/P1 交互升级', () => {
   it('默认在界面上标出全部窗口与控件 ID，且 T12 开关可一键隐藏/恢复', async () => {
     const { container } = render(<App />);
+    await waitFor(() => expect(screen.getByTestId('dock-toggle-W5')).toBeTruthy());
+    expect(screen.queryByTestId('uio-panel')).toBeNull();
+    fireEvent.click(screen.getByTestId('dock-toggle-W5'));
     await waitFor(() => expect(screen.getByTestId('wave-slip-wave-1')).toBeTruthy());
 
     for (const id of ['W1', 'W2', 'W3', 'W4', 'W5', 'W5A', 'W6', 'T2', 'T12', 'U8', 'U9']) {
@@ -42,6 +45,8 @@ describe('Phase 4 · UI ID 标牌系统 + P0/P1 交互升级', () => {
 
   it('右侧抽屉折叠开关与走表倍速切换正常工作', async () => {
     render(<App />);
+    await waitFor(() => expect(screen.getByTestId('dock-toggle-W5')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('dock-toggle-W5'));
     await waitFor(() => expect(screen.getByTestId('uio-panel')).toBeTruthy());
 
     fireEvent.click(screen.getByTestId('btn-collapse-right'));
