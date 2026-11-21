@@ -4,6 +4,7 @@
 import type {
   DirectiveTarget,
   IFieldTriplet,
+  ParsedTerrainBinary,
   TerrainModel,
   TickPlayback,
   UnitState,
@@ -16,6 +17,43 @@ import { getArtImage } from '../art/assetLoader';
 import type { ArtSlotKey } from '../art/assetManifest';
 import { THEME_TOKENS } from '../art/themeTokens';
 import type { FreehandStroke, WeatherMode } from '../store/layerStore';
+
+export type MapViewMode = 'field' | 'tactical';
+
+const terrainBakeCache = new WeakMap<ParsedTerrainBinary, HTMLCanvasElement>();
+
+function getBakedBinaryTerrain(bin: ParsedTerrainBinary): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const cached = terrainBakeCache.get(bin);
+  if (cached) return cached;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, bin.cols * 2);
+  canvas.height = Math.max(1, bin.rows * 2);
+  const offCtx = canvas.getContext('2d');
+  if (!offCtx) return null;
+  for (let r = 0; r < bin.rows; r++) {
+    for (let c = 0; c < bin.cols; c++) {
+      const idx = r * bin.cols + c;
+      const elev = bin.elevationM[idx] ?? 0;
+      const kind = bin.kind[idx] ?? 0;
+      if (kind === 1) {
+        offCtx.fillStyle = 'rgba(104, 132, 88, 0.36)';
+      } else if (kind === 2) {
+        offCtx.fillStyle = 'rgba(110, 142, 160, 0.45)';
+      } else if (kind === 3) {
+        offCtx.fillStyle = 'rgba(142, 128, 98, 0.32)';
+      } else if (elev > 5) {
+        const alpha = Math.min(0.28, (elev - 5) / 120);
+        offCtx.fillStyle = `rgba(116, 98, 68, ${alpha.toFixed(3)})`;
+      } else {
+        continue;
+      }
+      offCtx.fillRect(c * 2, r * 2, 2, 2);
+    }
+  }
+  terrainBakeCache.set(bin, canvas);
+  return canvas;
+}
 
 export interface CameraView {
   zoom: number;
@@ -85,14 +123,15 @@ function scaleM(meters: number, tf: RenderTransform): number {
   return Number.isFinite(s) ? s : 0;
 }
 
-/** Layer 1: 基础地图色彩层（连续地形色彩、等高缓坡、水系、道路，绝无 8m 网格线）。 */
+/** Layer 1: 基础地图色彩层（连续地形色彩、等高缓坡、水系、道路，绝无 8m 网格线；支持主地图写实现场 vs 副地图军用印刷纸图双投影）。 */
 export function renderLayer1BaseMap(
   ctx: CanvasRenderingContext2D,
   terrain: TerrainModel,
   tf: RenderTransform,
+  mapViewMode: MapViewMode = 'field',
 ): void {
   ctx.clearRect(0, 0, tf.widthPx, tf.heightPx);
-  const baseImg = getArtImage('map.base');
+  const baseImg = getArtImage(mapViewMode === 'tactical' ? 'map.tactical_paper' : 'map.base');
   if (baseImg) {
     const tl = worldToPx({ x: 0, y: 0 }, tf);
     const br = worldToPx({ x: terrain.widthM, y: terrain.heightM }, tf);
@@ -100,39 +139,52 @@ export function renderLayer1BaseMap(
     return;
   }
 
-  // 连续军用地图纸底色（同步 Theme Token）
+  // 双投影底色：主地图偏向自然实地地貌色调，副地图偏向印刷羊皮纸军图色调
   const bg = ctx.createLinearGradient(0, 0, tf.widthPx, tf.heightPx);
-  bg.addColorStop(0, THEME_TOKENS.terrainPaper);
-  bg.addColorStop(0.5, '#dcd5bf');
-  bg.addColorStop(1, '#d5ceb6');
+  if (mapViewMode === 'tactical') {
+    bg.addColorStop(0, THEME_TOKENS.terrainPaper);
+    bg.addColorStop(0.5, '#dcd5bf');
+    bg.addColorStop(1, '#d5ceb6');
+  } else {
+    bg.addColorStop(0, '#9fa884');
+    bg.addColorStop(0.5, '#969f7d');
+    bg.addColorStop(1, '#8a9271');
+  }
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, tf.widthPx, tf.heightPx);
 
-  // 真后端 /api/terrain.bin 二进制高程与地类微调底色（纯填色、严禁描边成网格线）
+  // 真后端 /api/terrain.bin 二进制高程与地类烘焙底图（离屏缓存一次性烘焙，平移缩放零卡顿）
   if (terrain.binary) {
     const bin = terrain.binary;
-    const cellW = Math.ceil(scaleM(bin.cellM, tf)) + 1;
-    const cellH = Math.ceil(scaleM(bin.cellM, tf)) + 1;
-    const step = bin.rows * bin.cols > 6400 ? 2 : 1;
-    for (let r = 0; r < bin.rows; r += step) {
-      for (let c = 0; c < bin.cols; c += step) {
-        const idx = r * bin.cols + c;
-        const elev = bin.elevationM[idx] ?? 0;
-        const kind = bin.kind[idx] ?? 0;
-        const pos = worldToPx({ x: c * bin.cellM, y: r * bin.cellM }, tf);
-        if (kind === 1) {
-          ctx.fillStyle = 'rgba(104, 132, 88, 0.36)';
-        } else if (kind === 2) {
-          ctx.fillStyle = 'rgba(110, 142, 160, 0.45)';
-        } else if (kind === 3) {
-          ctx.fillStyle = 'rgba(142, 128, 98, 0.32)';
-        } else if (elev > 5) {
-          const alpha = Math.min(0.28, (elev - 5) / 120);
-          ctx.fillStyle = `rgba(116, 98, 68, ${alpha.toFixed(3)})`;
-        } else {
-          continue;
+    const baked = getBakedBinaryTerrain(bin);
+    if (baked && typeof ctx.drawImage === 'function') {
+      const tl = worldToPx({ x: 0, y: 0 }, tf);
+      const br = worldToPx({ x: bin.cols * bin.cellM, y: bin.rows * bin.cellM }, tf);
+      ctx.drawImage(baked, tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+    } else {
+      const cellW = Math.ceil(scaleM(bin.cellM, tf)) + 1;
+      const cellH = Math.ceil(scaleM(bin.cellM, tf)) + 1;
+      const step = bin.rows * bin.cols > 6400 ? 2 : 1;
+      for (let r = 0; r < bin.rows; r += step) {
+        for (let c = 0; c < bin.cols; c += step) {
+          const idx = r * bin.cols + c;
+          const elev = bin.elevationM[idx] ?? 0;
+          const kind = bin.kind[idx] ?? 0;
+          const pos = worldToPx({ x: c * bin.cellM, y: r * bin.cellM }, tf);
+          if (kind === 1) {
+            ctx.fillStyle = 'rgba(104, 132, 88, 0.36)';
+          } else if (kind === 2) {
+            ctx.fillStyle = 'rgba(110, 142, 160, 0.45)';
+          } else if (kind === 3) {
+            ctx.fillStyle = 'rgba(142, 128, 98, 0.32)';
+          } else if (elev > 5) {
+            const alpha = Math.min(0.28, (elev - 5) / 120);
+            ctx.fillStyle = `rgba(116, 98, 68, ${alpha.toFixed(3)})`;
+          } else {
+            continue;
+          }
+          ctx.fillRect(pos.x, pos.y, cellW * step, cellH * step);
         }
-        ctx.fillRect(pos.x, pos.y, cellW * step, cellH * step);
       }
     }
   }
@@ -318,16 +370,18 @@ export function renderLayer2Destruction(
     } else if (d.kind === 'foxhole' || d.kind === 'trench') {
       const pts = d.points && d.points.length >= 2 ? d.points : [d.pos, { x: d.pos.x + 14, y: d.pos.y }];
       const segImg = getArtImage(d.kind === 'trench' ? 'decal.trench' : 'decal.foxhole');
-      if (segImg && pts.length === 2) {
-        const p0 = worldToPx(pts[0]!, tf);
-        const p1 = worldToPx(pts[1]!, tf);
-        const len = Math.hypot(p1.x - p0.x, p1.y - p0.y) || r * 2;
-        const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-        ctx.save();
-        ctx.translate((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
-        ctx.rotate(ang);
-        ctx.drawImage(segImg, -len / 2, -r * 0.45, len, r * 0.9);
-        ctx.restore();
+      if (segImg && pts.length >= 2) {
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p0 = worldToPx(pts[i]!, tf);
+          const p1 = worldToPx(pts[i + 1]!, tf);
+          const len = Math.hypot(p1.x - p0.x, p1.y - p0.y) || r * 2;
+          const ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+          ctx.save();
+          ctx.translate((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+          ctx.rotate(ang);
+          ctx.drawImage(segImg, -len / 2, -r * 0.45, len, r * 0.9);
+          ctx.restore();
+        }
         continue;
       }
       ctx.save();
@@ -401,22 +455,37 @@ export function renderLayer3AmbientOcclusion(
   }
 }
 
-/** Layer 4: 实例兵牌层（作战单位、地面散落物品、散落武器、阵亡尸体、烟幕、走表瞬时演出特效）。 */
+/** Layer 4: 实例兵牌层（作战单位、地面散落物品、散落武器、阵亡尸体、烟幕、走表瞬时演出特效 + 主地图近距现场视野遮罩）。 */
 export function renderLayer4Entities(
   ctx: CanvasRenderingContext2D,
   snap: WorldSnapshot,
   selectedUnitId: number | undefined,
   tf: RenderTransform,
   playbackEffects?: { elapsedMs: number; playback: TickPlayback | null },
-  visibility?: { showUnits?: boolean; showGroundObjects?: boolean; selectedGroundObjectId?: string },
+  visibility?: {
+    showUnits?: boolean;
+    showGroundObjects?: boolean;
+    selectedGroundObjectId?: string;
+    mapViewMode?: MapViewMode;
+    hqPos?: Vec2;
+    fieldVisionRadiusM?: number;
+  },
 ): void {
   ctx.clearRect(0, 0, tf.widthPx, tf.heightPx);
   const showUnits = visibility?.showUnits !== false;
   const showGroundObjects = visibility?.showGroundObjects !== false;
+  const mapViewMode: MapViewMode = visibility?.mapViewMode ?? 'tactical';
+  const hqPos = visibility?.hqPos;
+  const fieldVisionRadiusM = visibility?.fieldVisionRadiusM ?? 220;
+  const inLocalField = (pos: Vec2): boolean => {
+    if (mapViewMode !== 'field' || !hqPos) return true;
+    return Math.hypot(pos.x - hqPos.x, pos.y - hqPos.y) <= fieldVisionRadiusM;
+  };
 
   // 散落物品 / 武器 / 尸体 / 炸药 / 地雷
   if (showGroundObjects) {
     for (const obj of snap.groundObjects) {
+      if (!inLocalField(obj.pos)) continue;
       const p = worldToPx(obj.pos, tf);
       const isObjSelected = obj.id === visibility?.selectedGroundObjectId;
       ctx.save();
@@ -505,6 +574,7 @@ export function renderLayer4Entities(
   // 作战单位兵牌
   if (showUnits) {
     for (const u of snap.units) {
+    if (!inLocalField(u.pos)) continue;
     const p = worldToPx(u.pos, tf);
     const isSelected = u.id === selectedUnitId;
     const isHq = u.role === 'platoon_hq';
@@ -702,6 +772,7 @@ export function renderLayer4Entities(
 
     // 交火曳光示意（仅在正在开火态或近期开火日志内）
     for (const u of snap.units) {
+      if (!inLocalField(u.pos)) continue;
       if (u.activity.type === 'fire') {
         const from = worldToPx(u.pos, tf);
         const to = worldToPx(u.activity.target, tf);
@@ -714,6 +785,32 @@ export function renderLayer4Entities(
         ctx.lineTo(to.x, to.y);
         ctx.stroke();
         ctx.restore();
+      }
+    }
+  }
+
+  // 主地图（近距写实现场）：指挥官直接感知圈外施加柔和暗雾迷遮，强化“附近已知”与“切副图看全局”差异
+  if (mapViewMode === 'field' && hqPos) {
+    const hqPx = worldToPx(hqPos, tf);
+    const rPx = Math.max(24, scaleM(fieldVisionRadiusM, tf));
+    if (Number.isFinite(hqPx.x) && Number.isFinite(hqPx.y) && Number.isFinite(rPx)) {
+      try {
+        ctx.save();
+        const fog = ctx.createRadialGradient(hqPx.x, hqPx.y, rPx * 0.75, hqPx.x, hqPx.y, rPx * 1.15);
+        fog.addColorStop(0, 'rgba(13, 20, 25, 0)');
+        fog.addColorStop(1, 'rgba(13, 20, 25, 0.76)');
+        ctx.fillStyle = fog;
+        ctx.fillRect(0, 0, tf.widthPx, tf.heightPx);
+
+        ctx.strokeStyle = 'rgba(200, 159, 85, 0.35)';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([4, 6]);
+        ctx.beginPath();
+        ctx.arc(hqPx.x, hqPx.y, rPx, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      } catch {
+        // ignore mock canvas gradient limits
       }
     }
   }

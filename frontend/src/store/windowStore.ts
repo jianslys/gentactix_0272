@@ -1,8 +1,8 @@
 // GenTactix V2 frontend · 浮动窗口状态树（Docked-by-Default -> Detach-on-Drag / localStorage 持久化）
 
-export type ManagedWindowId = 'W2' | 'W3' | 'W4' | 'W5' | 'W7' | 'W8';
+export type ManagedWindowId = 'W2' | 'W3' | 'W4' | 'W5' | 'W7' | 'W8' | 'W12';
 
-export const MANAGED_WINDOW_IDS: ManagedWindowId[] = ['W2', 'W3', 'W4', 'W5', 'W7', 'W8'];
+export const MANAGED_WINDOW_IDS: ManagedWindowId[] = ['W2', 'W3', 'W4', 'W5', 'W12', 'W7', 'W8'];
 
 export interface WindowState {
   id: ManagedWindowId;
@@ -66,7 +66,7 @@ export function createDefaultWindowLayout(): WindowLayoutMap {
     },
     W5: {
       id: 'W5',
-      title: '战术手写板',
+      title: '手写板 UIO（纯排纸条）',
       shortLabel: '手写板',
       sourceFile: 'src/ui/UioClipboardPanel.tsx',
       floating: false,
@@ -77,6 +77,20 @@ export function createDefaultWindowLayout(): WindowLayoutMap {
       open: true,
       minimized: false,
       zIndex: 24,
+    },
+    W12: {
+      id: 'W12',
+      title: '无头指令编写器',
+      shortLabel: '写纸条',
+      sourceFile: 'src/ui/DirectiveComposerWindow.tsx',
+      floating: false,
+      x: 880,
+      y: 420,
+      width: 420,
+      anchorRight: true,
+      open: true,
+      minimized: false,
+      zIndex: 25,
     },
     W7: {
       id: 'W7',

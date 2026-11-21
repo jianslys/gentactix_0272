@@ -17,6 +17,7 @@ import type {
 } from '../engine/types';
 import type { FreehandStroke, FreehandTool, WeatherMode } from '../store/layerStore';
 import { UiTag } from '../ui/UiTag';
+import { getArtImage } from '../art/assetLoader';
 import { THEME_TOKENS } from '../art/themeTokens';
 import {
   pxToWorld,
@@ -28,6 +29,7 @@ import {
   renderLayer6Freehand,
   renderLayer7VfxA,
   type CameraView,
+  type MapViewMode,
   type PlannedRouteOverlay,
   type RenderTransform,
 } from './canvasLayers';
@@ -76,6 +78,8 @@ export interface NineLayerViewportProps {
   showFreehand?: boolean;
   selectedGroundObjectId?: string;
   artVersion?: number;
+  mapViewMode?: MapViewMode;
+  onToggleMapView?: () => void;
   onMapClick?: (
     worldPos: Vec2,
     hitUnit?: UnitState,
@@ -132,6 +136,8 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
   showFreehand = true,
   selectedGroundObjectId,
   artVersion = 0,
+  mapViewMode = 'field',
+  onToggleMapView,
   onMapClick,
   hudChildren,
 }) => {
@@ -195,13 +201,13 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
   useEffect(() => {
     try {
       const c1 = l1Ref.current?.getContext('2d');
-      if (c1) renderLayer1BaseMap(c1, terrain, tf);
+      if (c1) renderLayer1BaseMap(c1, terrain, tf, mapViewMode);
       const c3 = l3Ref.current?.getContext('2d');
       if (c3) renderLayer3AmbientOcclusion(c3, terrain, tf);
     } catch (err) {
       console.error('[Layer 1/3 Render Error]', err);
     }
-  }, [terrain, stageW, stageH, camera, artVersion]);
+  }, [terrain, stageW, stageH, camera, artVersion, mapViewMode]);
 
   // Layer 2（地形破坏，压在 L3 之下）
   useEffect(() => {
@@ -218,13 +224,21 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
     try {
       const c4 = l4Ref.current?.getContext('2d');
       if (c4) {
+        const hq = snapshot.units.find((u) => u.id === hqUnitId);
         renderLayer4Entities(
           c4,
           snapshot,
           selectedUnitId,
           tf,
           { elapsedMs, playback: activePlayback },
-          { showUnits, showGroundObjects, selectedGroundObjectId },
+          {
+            showUnits,
+            showGroundObjects,
+            selectedGroundObjectId,
+            mapViewMode,
+            hqPos: hq?.pos,
+            fieldVisionRadiusM: 220,
+          },
         );
       }
     } catch (err) {
@@ -232,6 +246,7 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
     }
   }, [
     snapshot,
+    hqUnitId,
     selectedUnitId,
     selectedGroundObjectId,
     showUnits,
@@ -243,15 +258,17 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
     stageH,
     camera,
     artVersion,
+    mapViewMode,
   ]);
 
-  // Layer 5（范围圈、队列航路、波次投影、橡皮筋预览）
+  // Layer 5（范围圈、队列航路、波次投影、橡皮筋预览：主地图保持现场清爽，副地图全开参谋标绘）
   useEffect(() => {
     try {
       const c5 = l5Ref.current?.getContext('2d');
       if (!c5) return;
       const hq = snapshot.units.find((u) => u.id === hqUnitId);
       const selectedUnit = snapshot.units.find((u) => u.id === selectedUnitId);
+      const isTactical = mapViewMode === 'tactical';
       renderLayer5Rings(c5, {
         hq,
         selectedUnit,
@@ -263,15 +280,15 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
         draftTarget,
         plannedRoutes,
         hoveredDirectiveId,
-        showPlannedRoutes,
+        showPlannedRoutes: isTactical && showPlannedRoutes,
         pickingPoints,
         cursorWorldPos: cursorWorld,
         circleDragPreview: circleDrag,
         scheduledDetonations,
         iField,
-        showThreatOverlay,
-        showCommandRings,
-        showWavesAndDetonations,
+        showThreatOverlay: isTactical && showThreatOverlay,
+        showCommandRings: isTactical && showCommandRings,
+        showWavesAndDetonations: isTactical && showWavesAndDetonations,
         tf,
       });
     } catch (err) {
@@ -301,6 +318,7 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
     stageW,
     stageH,
     camera,
+    mapViewMode,
   ]);
 
   // Layer 6（本地手绘）
@@ -552,10 +570,14 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
     display: 'block',
   };
 
+  const paperGrainImg = getArtImage('fx.paper_grain');
+  const l6Visible = showFreehand && (mapViewMode === 'tactical' || freehandTool !== 'none');
+
   return (
     <div
       ref={outerRef}
       data-testid="nine-layer-viewport"
+      data-map-view={mapViewMode}
       className={shaking && l9Enabled ? 'viewport-shake' : undefined}
       style={{
         position: 'relative',
@@ -635,11 +657,11 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
           <canvas ref={l5Ref} width={stageW} height={stageH} style={canvasClass} />
         </div>
 
-        {/* Layer 6: 地图手绘辅助线层（100% 本地持久化） */}
+        {/* Layer 6: 地图手绘辅助线层（100% 本地持久化，主地图保持清爽，副地图展示红蓝铅手绘） */}
         <div
           data-layer="6"
           data-layer-name="freehand-overlay"
-          style={{ ...layerStyle(6, freehandTool !== 'none' ? 'auto' : 'none'), opacity: showFreehand ? 1 : 0 }}
+          style={{ ...layerStyle(6, freehandTool !== 'none' ? 'auto' : 'none'), opacity: l6Visible ? 1 : 0 }}
         >
           <canvas
             ref={l6Ref}
@@ -677,10 +699,21 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
       >
         {hudChildren}
 
-        {/* 按指令移除视觉上多余的 W6 底部条与指南针，仅保留 W6 隐藏测试兼容存根 */}
-        <div style={{ display: 'none' }}>
+        {/* W6 底部图台遥测、缩放与主/副双地图切换条（真实可见，居中不挡左右窗口） */}
+        <div className="map-hud-bottom-wrap" style={{ left: '266px', right: `${_rightInsetPx}px` }}>
           <div className="panel map-hud-bottom" data-testid="map-hud-bar" data-ui-id="W6">
-            <UiTag id="W6" kind="win" />
+            <UiTag id="W6" kind="win" source="src/render/NineLayerViewport.tsx" />
+            <button
+              type="button"
+              data-testid="toggle-map-view"
+              data-ui-id="MAP.SWITCH"
+              className={mapViewMode === 'tactical' ? 'btn primary' : 'btn active'}
+              onClick={onToggleMapView}
+              title="切换 主地图(近距写实现场) / 副地图(军用印刷参谋图) (快捷键: M)"
+            >
+              <UiTag id="MAP.SWITCH" />
+              {mapViewMode === 'field' ? '主地图：近距现场 (点此切副图 [M])' : '副地图：参谋军图 (点此回主图 [M])'}
+            </button>
             <div className="row" data-ui-id="M1">
               <UiTag id="M1" />
               <button
@@ -708,14 +741,14 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
                 className="btn"
                 onClick={() => setCamera({ zoom: 1, panX: 0, panY: 0 })}
               >
-                复位视野
+                复位
               </button>
             </div>
             <span className="meta-note" data-testid="cursor-telemetry" data-ui-id="M2">
               <UiTag id="M2" />
               {cursorWorld
-                ? `(${Math.round(cursorWorld.x)}, ${Math.round(cursorWorld.y)})m · ${cursorDistToHq ?? '-'}m`
-                : 'cursor'}
+                ? `(${Math.round(cursorWorld.x)}, ${Math.round(cursorWorld.y)})m · 距排部 ${cursorDistToHq ?? '-'}m`
+                : '移动鼠标查看坐标'}
             </span>
             {mapPickHint && (
               <span className="remote-banner" data-ui-id="M3">
@@ -725,12 +758,13 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
             )}
             <span className="meta-note" data-ui-id="M4">
               <UiTag id="M4" />
+              M 切图 · Space 播停 · Esc 取消
             </span>
           </div>
         </div>
       </div>
 
-      {/* Layer 9: 特效 B 层（气氛组：暗角/胶片颗粒/震屏，位于最顶层，支持独立开关） */}
+      {/* Layer 9: 特效 B 层（气氛组：暗角/纸纹颗粒/震屏，位于最顶层，支持独立开关） */}
       <div
         data-layer="9"
         data-layer-name="atmosphere-vfx-b"
@@ -741,8 +775,10 @@ export const NineLayerViewport: React.FC<NineLayerViewportProps> = ({
           zIndex: 9,
           pointerEvents: 'none',
           display: l9Enabled ? 'block' : 'none',
-          background:
-            'radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(10, 9, 8, 0.45) 100%)',
+          backgroundImage: paperGrainImg
+            ? `url(${paperGrainImg.src}), radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(10, 9, 8, 0.45) 100%)`
+            : 'radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(10, 9, 8, 0.45) 100%)',
+          backgroundRepeat: paperGrainImg ? 'repeat, no-repeat' : 'no-repeat',
           boxShadow: 'inset 0 0 64px rgba(0, 0, 0, 0.35)',
         }}
       />

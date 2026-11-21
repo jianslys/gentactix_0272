@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { MAX_STEP_CACHE_HORIZON_TICKS, TICK_MS, type ScheduledStepEvent } from '../engine/types';
+import type { MapViewMode } from '../render/canvasLayers';
 import type { WeatherMode } from '../store/layerStore';
 import { UiSelect } from './UiControls';
 import { UiTag } from './UiTag';
@@ -22,6 +23,8 @@ export interface TopControlBarProps {
   l9Enabled: boolean;
   showUiIds: boolean;
   rightCollapsed: boolean;
+  mapViewMode?: MapViewMode;
+  onToggleMapView?: () => void;
   onStepNext: () => void;
   onTogglePlay: () => void;
   onChangeSpeed: (speed: PlaybackSpeed) => void;
@@ -47,6 +50,8 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   l9Enabled,
   showUiIds,
   rightCollapsed,
+  mapViewMode = 'field',
+  onToggleMapView,
   onStepNext,
   onTogglePlay,
   onChangeSpeed,
@@ -356,6 +361,21 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
             <UiTag id="T13" />
             {rightCollapsed ? '手写板' : '收起'}
           </button>
+
+          {onToggleMapView && (
+            <button
+              type="button"
+              data-testid="top-toggle-map-view"
+              data-ui-id="W1.MAP"
+              className={mapViewMode === 'tactical' ? 'btn primary' : 'btn active'}
+              style={{ padding: '2px 6px', fontSize: '11px' }}
+              onClick={onToggleMapView}
+              title="切换 主地图(近距现场) / 副地图(参谋军图) (快捷键: M)"
+            >
+              <UiTag id="W1.MAP" />
+              {mapViewMode === 'field' ? '主图:现场' : '副图:参谋'}
+            </button>
+          )}
 
           {/* 窗口总坞栏 */}
           <WindowDockBar />

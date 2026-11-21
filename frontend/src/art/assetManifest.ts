@@ -21,12 +21,14 @@ export type ArtSlotKey =
   | 'obj.corpse'
   | 'obj.charge'
   | 'obj.mine'
-  | 'fx.smoke';
+  | 'fx.smoke'
+  | 'map.tactical_paper'
+  | 'fx.paper_grain';
 
 export interface ArtSlotSpec {
   key: ArtSlotKey;
   url: string;
-  layer: 'L1' | 'L2' | 'L3' | 'L4';
+  layer: 'L1' | 'L2' | 'L3' | 'L4' | 'L7' | 'L9';
   label: string;
   recommendedPx: string;
   description: string;
@@ -184,6 +186,22 @@ export const ART_ASSET_MANIFEST: Record<ArtSlotKey, ArtSlotSpec> = {
     label: '烟幕贴图',
     recommendedPx: '256x256',
     description: '半透明烟雾团精灵贴图',
+  },
+  'map.tactical_paper': {
+    key: 'map.tactical_paper',
+    url: '/assets/map/tactical_paper.png',
+    layer: 'L1',
+    label: '副地图军用印刷纸图',
+    recommendedPx: '1920x1440',
+    description: '参谋副地图专用的印刷等高线军图底图；未放置时自动使用暖灰纸面矢量底图',
+  },
+  'fx.paper_grain': {
+    key: 'fx.paper_grain',
+    url: '/assets/fx/paper_grain.png',
+    layer: 'L9',
+    label: '桌面/纸纹气氛层',
+    recommendedPx: '512x512',
+    description: 'L9 全局纸纹/胶片颗粒叠加纹理（支持平铺）',
   },
 };
 

@@ -1,5 +1,5 @@
-// GenTactix V2 frontend · 沉浸式连续手写板（W5 / UIO · 计算机基础 UI 便笺纸）
-// 无“+ 新建便签”按钮、无死板分区框线：所有指令在连续横线纸面上自然书写、流转与签发。
+// GenTactix V2 frontend · 纯手写板（W5 / UIO 四区夹纸板，只管排纸条与签发，写纸条已拆分至 W12）
+// 严禁在手写板内塞入新建表单或任何 display:none 假存根！
 
 import React, { useState } from 'react';
 import {
@@ -12,18 +12,13 @@ import {
   requiredTargetType,
 } from '../engine/directives';
 import type {
-  DirectiveMode,
   DirectiveTarget,
-  DirectiveTaskKind,
-  EngineerWorkKind,
-  FireDiscipline,
   HeadlessDirective,
-  MoveStance,
   UnitState,
   WaveDirective,
 } from '../engine/types';
 import { queueConflicts, type UioState } from '../store/uioStore';
-import { UiIdContext, UiTag } from './UiTag';
+import { UiTag } from './UiTag';
 
 export interface UioClipboardPanelProps {
   uio: UioState;
@@ -32,9 +27,7 @@ export interface UioClipboardPanelProps {
   directRadiusM: number;
   waves: WaveDirective[];
   activeWaveId?: string;
-  selectedUnitId?: number;
   mapPickTarget?: DirectiveTarget;
-  isPickingTarget: boolean;
   pickingDraftId?: string;
   pickingPointsCount: number;
   hoveredDirectiveId?: string;
@@ -42,23 +35,10 @@ export interface UioClipboardPanelProps {
   onTogglePlannedRoutes: () => void;
   onHoverDirective: (id: string | undefined) => void;
   onToggleWave: (waveId: string) => void;
-  onTogglePickTarget: (active: boolean) => void;
+  onOpenComposer: () => void;
+  onEditDraftInComposer?: (draft: HeadlessDirective) => void;
   onStartPickForDraft: (draftId: string, multiPoint: boolean) => void;
   onFinishPolylinePick: () => void;
-  onClearPickedTarget: () => void;
-  onCreateDraft: (opts: {
-    mode: DirectiveMode;
-    taskKind: DirectiveTaskKind;
-    unitId?: number;
-    target?: DirectiveTarget;
-    startSec: number;
-    endSec: number;
-    delayOffsetSec: number;
-    delayMultiplier: number;
-    stance: MoveStance;
-    discipline: FireDiscipline;
-    work: EngineerWorkKind;
-  }) => void;
   onBindDraftUnit: (draftId: string, unitId: number | undefined) => void;
   onBindDraftTarget: (draftId: string, target: DirectiveTarget | undefined) => void;
   onUpdateDraftTime: (draftId: string, startSec: number, endSec: number) => void;
@@ -72,10 +52,10 @@ export interface UioClipboardPanelProps {
 }
 
 function formatTarget(t: DirectiveTarget | undefined): string {
-  if (!t) return '未指明目标';
-  if (t.type === 'point') return `(${Math.round(t.pos.x)}, ${Math.round(t.pos.y)})`;
-  if (t.type === 'polyline') return `路线 ${t.points.length}点`;
-  return `敌#${t.unitId}`;
+  if (!t) return '未绑定标的物';
+  if (t.type === 'point') return `坐标 (${Math.round(t.pos.x)}, ${Math.round(t.pos.y)})`;
+  if (t.type === 'polyline') return `折线 ${t.points.length} 点`;
+  return `目标单位 #${t.unitId}`;
 }
 
 function directiveTitle(d: HeadlessDirective): string {
@@ -88,10 +68,8 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
   hqUnitId,
   directRadiusM,
   waves,
-  activeWaveId: _activeWaveId,
-  selectedUnitId,
+  activeWaveId,
   mapPickTarget,
-  isPickingTarget: _isPickingTarget,
   pickingDraftId,
   pickingPointsCount,
   hoveredDirectiveId,
@@ -99,13 +77,12 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
   onTogglePlannedRoutes,
   onHoverDirective,
   onToggleWave,
-  onTogglePickTarget: _onTogglePickTarget,
+  onOpenComposer,
+  onEditDraftInComposer,
   onStartPickForDraft,
   onFinishPolylinePick,
-  onClearPickedTarget: _onClearPickedTarget,
-  onCreateDraft,
   onBindDraftUnit,
-  onBindDraftTarget: _onBindDraftTarget,
+  onBindDraftTarget,
   onUpdateDraftTime,
   onUpdateQueueTime,
   onMoveToQueue,
@@ -115,60 +92,36 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
   onRequeueArchive,
   onIssueQueue,
 }) => {
-  const showIds = React.useContext(UiIdContext);
-  const optTxt = (optId: string, label: string) => (showIds ? `[${optId}] ${label}` : label);
-
-  // 常驻空白书写行本地输入态（随手选择/输入即自动成行，无需“新建便签”按钮）
-  const [newUnitId, setNewUnitId] = useState<number | undefined>(selectedUnitId);
-  const [newTaskKind, setNewTaskKind] = useState<DirectiveTaskKind>('move_unit');
-  const [newStartSec, setNewStartSec] = useState<number>(0);
-  const [newEndSec, setNewEndSec] = useState<number>(12);
+  const [dragTargetLane, setDragTargetLane] = useState<'queue' | 'draft' | null>(null);
 
   const hq = units.find((u) => u.id === hqUnitId);
   const friendlyUnits = units.filter((u) => u.team === 'red');
   const conflicts = queueConflicts(uio);
   const canIssue = uio.queue.length > 0 && conflicts.size === 0;
 
-  const commitWritingLine = () => {
-    onCreateDraft({
-      mode: 'task',
-      taskKind: newTaskKind,
-      unitId: newUnitId ?? selectedUnitId,
-      target: mapPickTarget,
-      startSec: newStartSec,
-      endSec: newEndSec,
-      delayOffsetSec: 0,
-      delayMultiplier: 1,
-      stance: 'normal',
-      discipline: 'return_fire',
-      work: 'foxhole_line',
-    });
-  };
+  // 按单位分组用于轻量时间槽可视化条（U10）
+  const timelineGroups = new Map<number, HeadlessDirective[]>();
+  let maxTimelineSec = 16;
+  for (const d of uio.queue) {
+    if (d.unitId === undefined) continue;
+    const w = effectiveWindow(d);
+    if (w.end > maxTimelineSec) maxTimelineSec = w.end;
+    const arr = timelineGroups.get(d.unitId);
+    if (arr) arr.push(d);
+    else timelineGroups.set(d.unitId, [d]);
+  }
 
-  // 测试用隐形创建入口（保留 data-testid="btn-create-draft" 兼容既有自动化测试）
-  const handleHiddenCreateDraft = () => {
-    onCreateDraft({
-      mode: 'task',
-      taskKind: 'move_unit',
-      unitId: selectedUnitId,
-      target: mapPickTarget,
-      startSec: 0,
-      endSec: 12,
-      delayOffsetSec: 0,
-      delayMultiplier: 1,
-      stance: 'normal',
-      discipline: 'return_fire',
-      work: 'foxhole_line',
-    });
-  };
-
-  const renderDelayText = (unitId: number | undefined) => {
-    if (unitId === undefined) return '';
+  const renderDelayBadge = (unitId: number | undefined) => {
+    if (unitId === undefined) return null;
     const u = units.find((x) => x.id === unitId);
-    if (!u) return '';
+    if (!u) return null;
     const info = computeCommandDelay(hq, u, directRadiusM);
-    if (!info.remote) return '直通0s';
-    return remoteDelayText(info);
+    if (!info.remote) return <span className="line-meta">直接指挥（零电台延迟）</span>;
+    return (
+      <div className="remote-banner" data-testid={`remote-delay-${unitId}`}>
+        {remoteDelayText(info)}
+      </div>
+    );
   };
 
   return (
@@ -176,58 +129,225 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
       className="basic-notepad-sheet"
       data-testid="uio-panel"
       data-ui-id="W5A"
+      style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
     >
-      {/* 极简手写纸面顶部工具行 */}
-      <div className="basic-notepad-top" data-ui-id="W5.HDR">
+      {/* 顶栏动作条：只呼出 W12 编写器与开关 L5 预览，绝不内嵌写表单 */}
+      <div className="basic-notepad-top">
         <div className="basic-notepad-status">
-          <UiTag id="W5" kind="win" />
-          <span className="basic-notepad-meta" data-ui-id="U8">
-            <UiTag id="U8" /> 待签 {uio.queue.length}
-          </span>
-          <span className="basic-notepad-meta" data-ui-id="U13">
-            <UiTag id="U13" /> 拟写 {uio.drafts.length}
-          </span>
-          <span className="basic-notepad-meta" data-ui-id="U16">
-            <UiTag id="U16" /> 归档 {uio.archive.length}
-          </span>
+          <UiTag id="W5A" kind="win" />
+          <strong>夹纸板 · 纯排纸条</strong>
         </div>
-
         <div className="basic-notepad-actions">
-          <label className="basic-notepad-check" data-ui-id="W5.L5">
-            <UiTag id="W5.L5" />
+          <label className="basic-notepad-check" data-ui-id="U18">
+            <UiTag id="U18" />
             <input
               type="checkbox"
               data-testid="toggle-planned-routes"
               checked={showPlannedRoutes}
               onChange={onTogglePlannedRoutes}
             />
-            <span>航路</span>
+            <span>L5 航路</span>
           </label>
           <button
             type="button"
-            data-testid="btn-issue-queue"
-            data-ui-id="U9"
             className="basic-ui-btn basic-ui-btn-primary"
-            disabled={!canIssue}
-            onClick={onIssueQueue}
+            data-testid="open-composer-w12"
+            data-ui-id="W5A.NEW"
+            onClick={onOpenComposer}
           >
-            <UiTag id="U9" />
-            <span>签发待命 ({uio.queue.length})</span>
+            <UiTag id="W5A.NEW" />+ 去 W12 写纸条
           </button>
         </div>
       </div>
 
-      {/* 门禁校验提示行 */}
+      {/* (1) 顶栏：回形针指挥纸条栏（只读波次栏 U1） */}
+      <div className="lane" data-testid="uio-wave-bar" data-ui-id="U1">
+        <div className="lane-title">
+          <span>
+            <UiTag id="U1" />📎 顶栏回形针指挥纸条（只读波次 · 排队列无需对齐）
+          </span>
+          <span>{waves.length} 张</span>
+        </div>
+        <div className="paper-clip-row">
+          {waves.map((w, idx) => {
+            const isActive = w.id === activeWaveId;
+            return (
+              <button
+                key={w.id}
+                type="button"
+                data-testid={`wave-slip-${w.id}`}
+                data-ui-id={`U1-${idx + 1}`}
+                className={isActive ? 'wave-slip active' : 'wave-slip'}
+                onClick={() => onToggleWave(w.id)}
+              >
+                <div>
+                  <UiTag id={`U1-${idx + 1}`} />
+                  <strong>{w.title}</strong>
+                </div>
+                <div>
+                  G 场生效：#{w.effectiveTick} ({(w.effectiveExactMs / 1000).toFixed(1)}s){' '}
+                  {w.effective ? '· 已生效' : w.remote ? `· 远程+${w.delayTicks}拍` : '· 直通'}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {uio.gateError && (
-        <div className="basic-notepad-error" data-testid="uio-gate-error" data-ui-id="U15">
+        <div className="warning-banner" data-testid="uio-gate-error" data-ui-id="U15">
           <UiTag id="U15" />
-          <span>[拦截] {uio.gateError}</span>
+          {uio.gateError}
         </div>
       )}
 
-      {/* 连续横线纸面正文：不划死分区，待签/执行/拟写/归档在纸上逐行自然流动 */}
-      <div className="basic-notepad-lines" data-ui-id="W5.SHEET">
-        {/* 1) 正在执行中（已锁定）的指令行 */}
+      {/* (2) 任务队列栏（U8..U12） */}
+      <div
+        className={dragTargetLane === 'queue' ? 'lane drag-over' : 'lane'}
+        data-testid="uio-queue-lane"
+        data-ui-id="U8"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragTargetLane('queue');
+        }}
+        onDragLeave={() => setDragTargetLane(null)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragTargetLane(null);
+          const draftId = e.dataTransfer.getData('text/gentactix-draft-id');
+          if (draftId) {
+            onMoveToQueue(draftId);
+            return;
+          }
+          const archivedId = e.dataTransfer.getData('text/gentactix-archive-id');
+          if (archivedId) onRequeueArchive(archivedId);
+        }}
+      >
+        <div className="lane-title">
+          <span>
+            <UiTag id="U8" />📋 任务队列栏（{uio.queue.length} 待签发 / {uio.locked.length} 已锁死）
+          </span>
+          <button
+            type="button"
+            data-testid="btn-issue-queue"
+            data-ui-id="U9"
+            className="btn primary"
+            disabled={!canIssue}
+            onClick={onIssueQueue}
+          >
+            <UiTag id="U9" />
+            签发任务队列
+          </button>
+        </div>
+
+        {/* 单单位时间槽可视化条（U10） */}
+        {timelineGroups.size > 0 && (
+          <div className="timeline-box" data-testid="queue-timeline" data-ui-id="U10">
+            <div className="meta-note">
+              <UiTag id="U10" />
+              单单位时间槽分布（0s ~ {maxTimelineSec}s · 红色表示互斥重叠）
+            </div>
+            {Array.from(timelineGroups.entries()).map(([unitId, list]) => {
+              const u = units.find((x) => x.id === unitId);
+              return (
+                <div key={unitId} className="timeline-row">
+                  <span className="timeline-unit-label">{u?.name ?? `#${unitId}`}</span>
+                  <div className="timeline-track">
+                    {list.map((d) => {
+                      const w = effectiveWindow(d);
+                      const leftPct = (w.start / maxTimelineSec) * 100;
+                      const widthPct = Math.max(8, ((w.end - w.start) / maxTimelineSec) * 100);
+                      const isConf = conflicts.has(d.id);
+                      return (
+                        <div
+                          key={d.id}
+                          data-testid={`timeline-bar-${d.id}`}
+                          className={isConf ? 'timeline-bar conflict' : 'timeline-bar'}
+                          style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                          title={`#${d.seq} [${w.start}s~${w.end}s]`}
+                          onMouseEnter={() => onHoverDirective(d.id)}
+                          onMouseLeave={() => onHoverDirective(undefined)}
+                        >
+                          #{d.seq} ({w.start}-{w.end}s)
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {uio.queue.map((d) => {
+          const u = units.find((x) => x.id === d.unitId);
+          const win = effectiveWindow(d);
+          const cs = conflicts.get(d.id);
+          const isHovered = hoveredDirectiveId === d.id;
+          return (
+            <div
+              key={d.id}
+              data-testid={`queue-card-${d.id}`}
+              data-ui-id="U11"
+              className={cs ? 'card conflict' : isHovered ? 'card hovered' : 'card'}
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData('text/gentactix-queue-id', d.id)}
+              onMouseEnter={() => onHoverDirective(d.id)}
+              onMouseLeave={() => onHoverDirective(undefined)}
+            >
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <strong>
+                  <UiTag id="U11" />#{d.seq} {directiveTitle(d)}
+                </strong>
+                <span className="meta-note">
+                  {u?.name ?? `#${d.unitId}`} · [{win.start}s ~ {win.end}s]
+                </span>
+              </div>
+              <div className="meta-note">{formatTarget(d.target)}</div>
+              <div className="row">
+                <label className="meta-note">
+                  起(s)
+                  <input
+                    type="number"
+                    data-testid={`queue-start-${d.id}`}
+                    className="input"
+                    style={{ width: '48px', marginLeft: '3px' }}
+                    min={0}
+                    value={d.startSec}
+                    onChange={(e) => onUpdateQueueTime(d.id, Number(e.target.value), d.endSec)}
+                  />
+                </label>
+                <label className="meta-note">
+                  止(s)
+                  <input
+                    type="number"
+                    data-testid={`queue-end-${d.id}`}
+                    className="input"
+                    style={{ width: '48px', marginLeft: '3px' }}
+                    min={1}
+                    value={d.endSec}
+                    onChange={(e) => onUpdateQueueTime(d.id, d.startSec, Number(e.target.value))}
+                  />
+                </label>
+              </div>
+              {renderDelayBadge(d.unitId)}
+              {cs && (
+                <div className="warning-banner" data-testid={`conflict-alert-${d.id}`}>
+                  时间槽冲突：同一单位与 {cs.map((c) => c.otherId).join(', ')} 在 [{cs[0]!.start}s ~ {cs[0]!.end}s] 重叠
+                </div>
+              )}
+              <div className="row">
+                <button type="button" className="btn" onClick={() => onMoveToDraft(d.id)}>
+                  退回草稿
+                </button>
+                <button type="button" className="btn" onClick={() => onCopyToDraft(d.id)}>
+                  复制副本到草稿栏
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
         {uio.locked.map(({ directive: d, receipt }) => {
           const u = units.find((x) => x.id === d.unitId);
           return (
@@ -235,86 +355,57 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
               key={d.id}
               data-testid={`locked-card-${d.id}`}
               data-ui-id="U12"
-              className={`basic-notepad-line line-locked ${hoveredDirectiveId === d.id ? 'hovered' : ''}`}
+              className={hoveredDirectiveId === d.id ? 'card locked hovered' : 'card locked'}
               onMouseEnter={() => onHoverDirective(d.id)}
               onMouseLeave={() => onHoverDirective(undefined)}
             >
-              <span className="line-seq">#{d.seq}</span>
-              <span className="line-state">[执行]</span>
-              <span className="line-main">
-                {u?.name ?? '未指派'} · {directiveTitle(d)} → {formatTarget(d.target)}
-                {' '}(#{receipt.firstTick}~#{receipt.endTick})
-              </span>
-              <button
-                type="button"
-                className="basic-ui-btn"
-                onClick={() => onCopyToDraft(d.id)}
-              >
-                重写
-              </button>
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <strong>
+                  <UiTag id="U12" />🔒 #{d.seq} {directiveTitle(d)}（已签发锁死）
+                </strong>
+                <span className="meta-note">{u?.name}</span>
+              </div>
+              <div className="meta-note">
+                槽位 #{receipt.lutSlot} ({receipt.category}) · 生效 #{receipt.firstTick} ({(receipt.firstExactMs / 1000).toFixed(1)}s) → 结束 #{receipt.endTick}{' '}
+                {receipt.remote ? `· 含远程+${receipt.delayTicks}拍` : ''}
+              </div>
+              <div className="row">
+                <button type="button" className="btn" onClick={() => onCopyToDraft(d.id)}>
+                  复制副本到草稿栏
+                </button>
+              </div>
             </div>
           );
         })}
+      </div>
 
-        {/* 2) 待签发队列指令行 */}
-        {uio.queue.map((d) => {
-          const u = units.find((x) => x.id === d.unitId);
-          const win = effectiveWindow(d);
-          const cs = conflicts.get(d.id);
-          return (
-            <div
-              key={d.id}
-              data-testid={`queue-card-${d.id}`}
-              data-ui-id="U11"
-              className={`basic-notepad-line line-queued ${cs ? 'conflict' : ''} ${hoveredDirectiveId === d.id ? 'hovered' : ''}`}
-              onMouseEnter={() => onHoverDirective(d.id)}
-              onMouseLeave={() => onHoverDirective(undefined)}
-            >
-              <span className="line-seq">#{d.seq}</span>
-              <span className="line-state">[待签]</span>
-              <span className="line-main">
-                {u?.name ?? '未指派'} · {directiveTitle(d)} → {formatTarget(d.target)}
-              </span>
-              <input
-                type="number"
-                data-testid={`queue-start-${d.id}`}
-                className="basic-notepad-num"
-                min={0}
-                value={d.startSec}
-                title="起始秒"
-                onChange={(e) => onUpdateQueueTime(d.id, Number(e.target.value), d.endSec)}
-              />
-              <span>-</span>
-              <input
-                type="number"
-                data-testid={`queue-end-${d.id}`}
-                className="basic-notepad-num"
-                min={1}
-                value={d.endSec}
-                title="结束秒"
-                onChange={(e) => onUpdateQueueTime(d.id, d.startSec, Number(e.target.value))}
-              />
-              <span>s</span>
-              <span className="line-meta">[{win.start}-{win.end}s {renderDelayText(d.unitId)}]</span>
-              {cs && (
-                <span className="line-conflict" data-testid={`conflict-alert-${d.id}`}>
-                  冲突({cs.map((c) => c.otherId).join(',')})
-                </span>
-              )}
-              <button type="button" className="basic-ui-btn" onClick={() => onMoveToDraft(d.id)}>
-                修改
-              </button>
-              <button type="button" className="basic-ui-btn" onClick={() => onCopyToDraft(d.id)}>
-                复写
-              </button>
-            </div>
-          );
-        })}
-
-        {/* 3) 正在纸上拟写的草稿指令行 */}
+      {/* (3) 草稿栏（U13..U14） */}
+      <div
+        className={dragTargetLane === 'draft' ? 'lane drag-over' : 'lane'}
+        data-testid="uio-draft-lane"
+        data-ui-id="U13"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragTargetLane('draft');
+        }}
+        onDragLeave={() => setDragTargetLane(null)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragTargetLane(null);
+          const queueId = e.dataTransfer.getData('text/gentactix-queue-id');
+          if (queueId) onMoveToDraft(queueId);
+        }}
+      >
+        <div className="lane-title">
+          <span>
+            <UiTag id="U13" />📝 草稿栏（{uio.drafts.length}）
+          </span>
+          <span className="meta-note">可拖拽至队列 · 未绑纸条暂存处</span>
+        </div>
         {uio.drafts.map((d) => {
           const gate = checkQueueGate(d);
           const req = requiredTargetType(d);
+          const win = effectiveWindow(d);
           const isCardPicking = pickingDraftId === d.id;
           const isPolylineKind =
             d.mode === 'task' && (d.taskKind === 'move_unit' || d.taskKind === 'build_work');
@@ -323,86 +414,138 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
               key={d.id}
               data-testid={`draft-card-${d.id}`}
               data-ui-id="U14"
-              className={`basic-notepad-line line-draft ${hoveredDirectiveId === d.id ? 'hovered' : ''}`}
+              className={hoveredDirectiveId === d.id ? 'card hovered' : 'card'}
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData('text/gentactix-draft-id', d.id)}
               onMouseEnter={() => onHoverDirective(d.id)}
               onMouseLeave={() => onHoverDirective(undefined)}
             >
-              <span className="line-seq">#{d.seq}</span>
-              <span className="line-state">[拟写]</span>
-              <select
-                aria-label={`绑定单位-${d.id}`}
-                data-testid={`bind-unit-${d.id}`}
-                className="basic-notepad-select"
-                value={d.unitId ?? ''}
-                onChange={(e) => onBindDraftUnit(d.id, e.target.value ? Number(e.target.value) : undefined)}
-              >
-                <option value="">-- 选单位 --</option>
-                {friendlyUnits.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
-              <span className="line-kind">{directiveTitle(d)}</span>
-              {req !== null && (
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <strong>
+                  <UiTag id="U14" />#{d.seq} {directiveTitle(d)} {d.origin === 'copy' ? '(副本)' : ''}
+                </strong>
+                <span className="meta-note">
+                  [{win.start}s ~ {win.end}s]
+                </span>
+              </div>
+              <div className="row">
+                <select
+                  aria-label={`绑定单位-${d.id}`}
+                  data-testid={`bind-unit-${d.id}`}
+                  className="select"
+                  value={d.unitId ?? ''}
+                  onChange={(e) => onBindDraftUnit(d.id, e.target.value ? Number(e.target.value) : undefined)}
+                >
+                  <option value="">-- 未绑定执行单位 --</option>
+                  {friendlyUnits.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+                {req !== null && (
+                  <>
+                    <button
+                      type="button"
+                      data-testid={`pick-for-${d.id}`}
+                      className={isCardPicking ? 'btn active' : 'btn'}
+                      onClick={() => onStartPickForDraft(d.id, isPolylineKind)}
+                    >
+                      {isCardPicking ? '副图点选中...' : isPolylineKind ? '拉折线/点标' : '图上点标'}
+                    </button>
+                    {isCardPicking && isPolylineKind && pickingPointsCount > 0 && (
+                      <button
+                        type="button"
+                        data-testid={`finish-poly-${d.id}`}
+                        className="btn primary"
+                        onClick={onFinishPolylinePick}
+                      >
+                        完成折线 ({pickingPointsCount}点)
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      data-testid={`bind-target-${d.id}`}
+                      className="btn"
+                      disabled={!mapPickTarget}
+                      onClick={() => mapPickTarget && onBindDraftTarget(d.id, mapPickTarget)}
+                    >
+                      绑定地图拾取标
+                    </button>
+                  </>
+                )}
+                {req === 'unit' && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      const enemy = units.find((u) => u.team !== 'red');
+                      if (enemy) onBindDraftTarget(d.id, { type: 'unit', unitId: enemy.id });
+                    }}
+                  >
+                    标定敌方
+                  </button>
+                )}
+              </div>
+              <div className="row">
+                <label className="meta-note">
+                  起(s)
+                  <input
+                    type="number"
+                    className="input"
+                    style={{ width: '46px', marginLeft: '3px' }}
+                    min={0}
+                    value={d.startSec}
+                    onChange={(e) => onUpdateDraftTime(d.id, Number(e.target.value), d.endSec)}
+                  />
+                </label>
+                <label className="meta-note">
+                  止(s)
+                  <input
+                    type="number"
+                    className="input"
+                    style={{ width: '46px', marginLeft: '3px' }}
+                    min={1}
+                    value={d.endSec}
+                    onChange={(e) => onUpdateDraftTime(d.id, d.startSec, Number(e.target.value))}
+                  />
+                </label>
+                {onEditDraftInComposer && (
+                  <button type="button" className="btn" onClick={() => onEditDraftInComposer(d)}>
+                    在 W12 编辑
+                  </button>
+                )}
+              </div>
+              <div className="meta-note">
+                标的物：{formatTarget(d.target)} · {gate.ok ? '门禁就绪' : gate.message}
+              </div>
+              {renderDelayBadge(d.unitId)}
+              <div className="row">
                 <button
                   type="button"
-                  data-testid={`pick-for-${d.id}`}
-                  className={`basic-ui-btn ${isCardPicking ? 'basic-ui-btn-active' : ''}`}
-                  onClick={() => onStartPickForDraft(d.id, isPolylineKind)}
+                  data-testid={`send-to-queue-${d.id}`}
+                  className="btn primary"
+                  onClick={() => onMoveToQueue(d.id)}
                 >
-                  {isCardPicking ? '点选图上位置...' : formatTarget(d.target)}
+                  送入任务队列
                 </button>
-              )}
-              {isCardPicking && isPolylineKind && pickingPointsCount > 0 && (
-                <button
-                  type="button"
-                  data-testid={`finish-poly-${d.id}`}
-                  className="basic-ui-btn basic-ui-btn-primary"
-                  onClick={onFinishPolylinePick}
-                >
-                  定线({pickingPointsCount})
+                <button type="button" className="btn danger" onClick={() => onDeleteDraft(d.id)}>
+                  删除
                 </button>
-              )}
-              <input
-                type="number"
-                className="basic-notepad-num"
-                min={0}
-                value={d.startSec}
-                onChange={(e) => onUpdateDraftTime(d.id, Number(e.target.value), d.endSec)}
-              />
-              <span>-</span>
-              <input
-                type="number"
-                className="basic-notepad-num"
-                min={1}
-                value={d.endSec}
-                onChange={(e) => onUpdateDraftTime(d.id, d.startSec, Number(e.target.value))}
-              />
-              <span>s</span>
-              <span className={gate.ok ? 'line-ok' : 'line-warn'}>
-                {gate.ok ? '可签' : '缺项'}
-              </span>
-              <button
-                type="button"
-                data-testid={`send-to-queue-${d.id}`}
-                className="basic-ui-btn basic-ui-btn-primary"
-                onClick={() => onMoveToQueue(d.id)}
-              >
-                入列
-              </button>
-              <button
-                type="button"
-                className="basic-ui-btn"
-                onClick={() => onDeleteDraft(d.id)}
-              >
-                划掉
-              </button>
+              </div>
             </div>
           );
         })}
+      </div>
 
-        {/* 4) 已归档行（自然留存于纸面末尾，淡色划横线） */}
+      {/* (4) 归档栏（U16..U17） */}
+      <div className="lane" data-testid="uio-archive-lane" data-ui-id="U16">
+        <div className="lane-title">
+          <span>
+            <UiTag id="U16" />📦 归档栏（{uio.archive.length}）
+          </span>
+          <span className="meta-note">可拖拽回任务队列栏重用</span>
+        </div>
         {uio.archive.map((d) => {
           const u = units.find((x) => x.id === d.unitId);
           return (
@@ -410,120 +553,33 @@ export const UioClipboardPanel: React.FC<UioClipboardPanelProps> = ({
               key={d.id}
               data-testid={`archive-card-${d.id}`}
               data-ui-id="U17"
-              className="basic-notepad-line line-archived"
+              className="card"
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData('text/gentactix-archive-id', d.id)}
             >
-              <span className="line-seq">#{d.seq}</span>
-              <span className="line-state">[完成]</span>
-              <span className="line-main line-strike">
-                {u?.name ?? '未指派'} · {directiveTitle(d)} → {formatTarget(d.target)}
-              </span>
-              <button
-                type="button"
-                data-testid={`requeue-${d.id}`}
-                className="basic-ui-btn"
-                onClick={() => onRequeueArchive(d.id)}
-              >
-                重用
-              </button>
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <strong>
+                  <UiTag id="U17" />✓ #{d.seq} {directiveTitle(d)}
+                </strong>
+                <span className="meta-note">{u?.name}</span>
+              </div>
+              <div className="meta-note">{formatTarget(d.target)}</div>
+              <div className="row">
+                <button
+                  type="button"
+                  data-testid={`requeue-${d.id}`}
+                  className="btn primary"
+                  onClick={() => onRequeueArchive(d.id)}
+                >
+                  拖回任务队列
+                </button>
+                <button type="button" className="btn" onClick={() => onCopyToDraft(d.id)}>
+                  复制副本到草稿栏
+                </button>
+              </div>
             </div>
           );
         })}
-
-        {/* 5) 纸面常驻空白直写行（无需任何“+ 新建便签”按钮，随时落笔成行） */}
-        <div className="basic-notepad-line line-writing" data-ui-id="W5.LINE_NEW">
-          <UiTag id="W5.LINE_NEW" />
-          <select
-            aria-label="新书写行单位"
-            data-ui-id="W5.NEW_UNIT"
-            className="basic-notepad-select"
-            value={newUnitId ?? selectedUnitId ?? ''}
-            onChange={(e) => setNewUnitId(e.target.value ? Number(e.target.value) : undefined)}
-          >
-            <option value="">-- 选择单位落笔 --</option>
-            {friendlyUnits.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="新书写行动作"
-            data-ui-id="W5.NEW_KIND"
-            className="basic-notepad-select"
-            value={newTaskKind}
-            onChange={(e) => setNewTaskKind(e.target.value as DirectiveTaskKind)}
-          >
-            <option value="move_unit">机动移动</option>
-            <option value="attack_pos">火力打击</option>
-            <option value="attack_unit">集火敌军</option>
-            <option value="hold_unit">原地固守</option>
-            <option value="pop_smoke">施放烟幕</option>
-            <option value="build_work">修筑工事</option>
-          </select>
-          <input
-            type="number"
-            aria-label="起秒"
-            className="basic-notepad-num"
-            min={0}
-            value={newStartSec}
-            onChange={(e) => setNewStartSec(Number(e.target.value))}
-          />
-          <span>-</span>
-          <input
-            type="number"
-            aria-label="止秒"
-            className="basic-notepad-num"
-            min={1}
-            value={newEndSec}
-            onChange={(e) => setNewEndSec(Number(e.target.value))}
-          />
-          <span>s</span>
-          <button
-            type="button"
-            data-testid="btn-write-line"
-            data-ui-id="W5.NEW_COMMIT"
-            className="basic-ui-btn basic-ui-btn-primary"
-            onClick={commitWritingLine}
-          >
-            <UiTag id="W5.NEW_COMMIT" />
-            记入此行
-          </button>
-        </div>
-      </div>
-
-      {/* 自动化测试隐形存根（保持既有测试用例 100% 绿灯兼容，对用户不可见） */}
-      <div style={{ display: 'none' }} data-ui-id="U1">
-        <UiTag id="W5A" />
-        <button
-          type="button"
-          data-testid="btn-create-draft"
-          data-ui-id="U7"
-          onClick={handleHiddenCreateDraft}
-        >
-          新建草稿
-        </button>
-        <div data-testid="uio-queue-lane" />
-        <div data-testid="uio-draft-lane" />
-        <div data-testid="uio-archive-lane" />
-        <select data-testid="select-mode" defaultValue="task">
-          <option data-ui-id="W5A.U2.opt_task" value="task">
-            {optTxt('W5A.U2.opt_task', '战术任务模式')}
-          </option>
-          <option data-ui-id="W5A.U2.opt_macro" value="macro">
-            {optTxt('W5A.U2.opt_macro', '宏策略模式')}
-          </option>
-        </select>
-        {waves.map((w, idx) => (
-          <button
-            key={w.id}
-            type="button"
-            data-testid={`wave-slip-${w.id}`}
-            data-ui-id={`U1-${idx + 1}`}
-            onClick={() => onToggleWave(w.id)}
-          >
-            {w.title}
-          </button>
-        ))}
       </div>
     </div>
   );

@@ -399,7 +399,7 @@ export const UnitInspectorBody: React.FC<UnitInspectorBodyProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} data-ui-id="I2">
                 <UiTag id="I2" />
                 <span style={{ fontSize: '13px', fontWeight: 800, color: '#e2ddd1', letterSpacing: '0.4px' }}>
-                  {selected.role === 'rifle_squad' ? '第 3 步兵营' : selected.name}
+                  {selected.name}
                 </span>
               </div>
               <span style={{ fontSize: '10px', color: '#8ba0ae', fontFamily: 'monospace' }}>
@@ -423,19 +423,22 @@ export const UnitInspectorBody: React.FC<UnitInspectorBodyProps> = ({
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              <span style={{ fontSize: '26px', fontWeight: 300, color: '#ffffff', fontFamily: 'monospace', lineHeight: 1 }}>
-                {selected.soldiers}
+              <span
+                data-testid="inspector-soldiers"
+                style={{ fontSize: '20px', fontWeight: 300, color: '#ffffff', fontFamily: 'monospace', lineHeight: 1 }}
+              >
+                {selected.soldiers}/{selected.maxSoldiers}
               </span>
-              <span style={{ fontSize: '11px', color: '#8ba0ae' }}>
-                / {selected.maxSoldiers} 人员
-              </span>
+              <span style={{ fontSize: '11px', color: '#8ba0ae' }}>人员</span>
             </div>
             {/* 三条极细刻度槽 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#a0b4c0', marginBottom: '2px' }}>
                   <span>组织度</span>
-                  <span style={{ fontFamily: 'monospace' }}>{Math.max(0, 100 - (selected.suppression ?? 0))}%</span>
+                  <span data-testid="inspector-suppression" style={{ fontFamily: 'monospace' }}>
+                    {Math.max(0, 100 - (selected.suppression ?? 0))}% (压制 {selected.suppression}%)
+                  </span>
                 </div>
                 <div style={{ height: '2px', background: '#1c2933', borderRadius: '1px', overflow: 'hidden' }}>
                   <div style={{ width: `${Math.max(0, 100 - (selected.suppression ?? 0))}%`, height: '100%', background: (selected.suppression ?? 0) > 50 ? '#c94a3d' : '#4e9a68' }} />
@@ -444,8 +447,9 @@ export const UnitInspectorBody: React.FC<UnitInspectorBodyProps> = ({
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#a0b4c0', marginBottom: '2px' }}>
                   <span>弹药储备</span>
-                  <span style={{ fontFamily: 'monospace' }}>
-                    {(selected.maxAmmo ?? 0) > 0 ? Math.round(((selected.ammo ?? 0) / selected.maxAmmo) * 100) : 100}%
+                  <span data-testid="inspector-ammo" style={{ fontFamily: 'monospace' }}>
+                    {selected.ammo}/{selected.maxAmmo} (
+                    {(selected.maxAmmo ?? 0) > 0 ? Math.round(((selected.ammo ?? 0) / selected.maxAmmo) * 100) : 100}%)
                   </span>
                 </div>
                 <div style={{ height: '2px', background: '#1c2933', borderRadius: '1px', overflow: 'hidden' }}>
@@ -471,9 +475,12 @@ export const UnitInspectorBody: React.FC<UnitInspectorBodyProps> = ({
             </span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '10px', marginTop: '2px' }}>
               <div>
-                <span style={{ color: '#6e8494' }}>军用格网</span>
-                <div style={{ color: '#e2ddd1', fontWeight: 600, fontFamily: 'monospace' }}>
-                  36U {Math.floor(Number.isFinite(selected.pos?.x) ? selected.pos.x : 0).toString().padStart(3, '0')} · {Math.floor(Number.isFinite(selected.pos?.y) ? selected.pos.y : 0).toString().padStart(3, '0')}
+                <span style={{ color: '#6e8494' }}>坐标位置</span>
+                <div
+                  data-testid="inspector-pos"
+                  style={{ color: '#e2ddd1', fontWeight: 600, fontFamily: 'monospace' }}
+                >
+                  ({selected.pos.x.toFixed(1)}, {selected.pos.y.toFixed(1)}) m
                 </div>
               </div>
               <div>
@@ -525,14 +532,6 @@ export const UnitInspectorBody: React.FC<UnitInspectorBodyProps> = ({
             >
               <span>⌖</span> 火控与视线分析
             </button>
-          </div>
-
-          {/* 自动化测试选择器锚点（保持 100% 兼容与隐形穿透） */}
-          <div style={{ display: 'none' }}>
-            <span data-testid="inspector-pos">({selected.pos.x.toFixed(1)}, {selected.pos.y.toFixed(1)}) m</span>
-            <span data-testid="inspector-soldiers">人数：{selected.soldiers}/{selected.maxSoldiers}</span>
-            <span data-testid="inspector-ammo">弹药：{selected.ammo}/{selected.maxAmmo}</span>
-            <span data-testid="inspector-suppression">压制：{selected.suppression}%</span>
           </div>
 
           <div className="meta-note" data-ui-id="I4" style={{ fontSize: '10px', color: '#6e8494' }}>

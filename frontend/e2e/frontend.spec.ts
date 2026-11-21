@@ -13,16 +13,34 @@ test('GenTactix V2 Frontend 全套 12 项端到端实机交互验收 + UI ID 标
   await page.goto('/');
   await expect(page.getByTestId('wave-slip-wave-1')).toBeVisible();
 
-  // 0. 校验全量窗口/控件 UI ID 标牌可见，且 T12 开关可切换显隐
-  for (const id of ['W1', 'W2', 'W3', 'W5', 'W5A', 'W6', 'T2', 'U8', 'U9']) {
-    await expect(page.locator(`[data-ui-tag="${id}"]`)).toBeVisible();
+  // 0. 校验全量窗口/控件 UI ID 标牌可见（含 W10/W12），零 display:none 假节点，且 T12 开关可切换显隐
+  for (const id of ['W1', 'W2', 'W3', 'W5', 'W5A', 'W6', 'W10', 'W12', 'T2', 'U8', 'U9']) {
+    await expect(page.locator(`[data-ui-tag="${id}"]`).first()).toBeVisible();
   }
+  const hiddenInlineCount = await page.evaluate(
+    () => Array.from(document.querySelectorAll<HTMLElement>('*')).filter((el) => el.style.display === 'none').length,
+  );
+  expect(hiddenInlineCount).toBe(0);
+
   await page.getByTestId('toggle-ui-ids').click();
   await expect(page.locator('[data-ui-tag]')).toHaveCount(0);
   await page.getByTestId('toggle-ui-ids').click();
-  await expect(page.locator('[data-ui-tag="W1"]')).toBeVisible();
+  await expect(page.locator('[data-ui-tag="W1"]').first()).toBeVisible();
 
-  // 校验视野缩放 (M1) 与右侧手写板折叠/展开 (R3)
+  // 0b. 单壳双地图切换验收：默认全屏主地图 field -> 底部 W6/MAP.SWITCH 切副图 tactical -> W10 图例内切回 field
+  const viewportEl = page.getByTestId('nine-layer-viewport');
+  await expect(viewportEl).toHaveAttribute('data-map-view', 'field');
+  await page.getByTestId('toggle-map-view').click();
+  await expect(viewportEl).toHaveAttribute('data-map-view', 'tactical');
+  await page.getByTestId('legend-toggle').click();
+  await expect(page.getByTestId('legend-switch-map')).toBeVisible();
+  await page.getByTestId('legend-switch-map').click();
+  await expect(viewportEl).toHaveAttribute('data-map-view', 'field');
+  await page.getByTestId('legend-toggle').click();
+
+  // 0c. 验证 W5 纯排纸条与 W12 独立编写器分离，并校验视野缩放 (M1) 与右侧手写板折叠/展开 (R3)
+  await expect(page.getByTestId('directive-composer')).toBeVisible();
+  await expect(page.getByTestId('uio-panel').getByTestId('btn-create-draft')).toHaveCount(0);
   await page.getByTestId('zoom-in').click();
   await expect(page.getByTestId('zoom-level')).toContainText('120%');
   await page.getByTestId('zoom-reset').click();
@@ -44,17 +62,29 @@ test('GenTactix V2 Frontend 全套 12 项端到端实机交互验收 + UI ID 标
   });
   expect(zOrder).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
-  // 2. 未绑定无头指令移入任务队列被拦截并留在草稿栏
+  // 1b. 点击主地图上的己方排部兵牌 -> 弹出 W3 单位编制卡片并可点开士兵详情与个人物品栏
+  const stageBox = (await page.getByTestId('map-stage').boundingBox())!;
+  const baseScale = Math.min(stageBox.width / 640, stageBox.height / 480);
+  const originX = (stageBox.width - 640 * baseScale) / 2;
+  const originY = (stageBox.height - 480 * baseScale) / 2;
+  await page.mouse.click(stageBox.x + originX + 160 * baseScale, stageBox.y + originY + 240 * baseScale);
+  await expect(page.getByTestId('unit-card-modal')).toBeVisible();
+  await page.getByTestId('unit-card-modal').locator('[data-testid^="soldier-row-"]').first().click();
+  await expect(page.getByTestId('unit-card-modal').locator('[data-testid^="soldier-detail-"]')).toBeVisible();
+  await expect(page.getByTestId('unit-card-modal').locator('[data-testid^="soldier-inventory-"]')).toBeVisible();
+  await page.getByTestId('unit-card-close').click();
+  await expect(page.getByTestId('unit-card-modal')).toHaveCount(0);
+
+  // 2. W12 生成无头指令写入 W5 草稿栏；未绑定移入任务队列被拦截并留在草稿栏
   await page.getByTestId('btn-create-draft').click();
   await page.getByTestId('send-to-queue-dir-1').click();
   await expect(page.getByTestId('uio-gate-error')).toBeVisible();
   await expect(page.getByTestId('draft-card-dir-1')).toBeVisible();
 
-  // 3. 绑定远程 3 班时显示明确中文远程延迟偏移文案；同时使用逐卡就地拾取绑定目标
+  // 3. 绑定远程 3 班时显示明确中文远程延迟偏移文案；同时使用逐卡就地拾取绑定目标（自动切副图标绘）
   await page.getByTestId('bind-unit-dir-1').selectOption('4'); // 3 班 id=4
   await expect(page.getByTestId('remote-delay-4')).toContainText('远程指挥：超出直接指挥半径');
 
-  const stageBox = (await page.getByTestId('map-stage').boundingBox())!;
   await page.getByTestId('pick-for-dir-1').click();
   await page.mouse.click(stageBox.x + stageBox.width * 0.56, stageBox.y + stageBox.height * 0.52);
   await page.getByTestId('finish-poly-dir-1').click();
@@ -175,6 +205,11 @@ test('GenTactix V2 Frontend 全套 12 项端到端实机交互验收 + UI ID 标
     return nonZero;
   });
   expect(l6NonZeroAfterReload).toBeGreaterThan(0);
+  // 主地图默认清爽隐藏 L6 手绘，切到副地图时透明还原展示
+  await expect(page.locator('[data-layer="6"]')).toHaveCSS('opacity', '0');
+  await page.getByTestId('toggle-map-view').click();
+  await expect(viewportEl).toHaveAttribute('data-map-view', 'tactical');
+  await expect(page.locator('[data-layer="6"]')).toHaveCSS('opacity', '1');
 
   // 11. 点击 Layer 7 与 Layer 9 开关按钮，图层渲染真实启停变化
   await page.getByTestId('toggle-l7').click();

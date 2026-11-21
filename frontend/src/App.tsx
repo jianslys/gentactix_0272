@@ -1,4 +1,4 @@
-// GenTactix V2 frontend · 主装配（9 层全屏沙盘 + 16s 走表倍速 + UIO 四区 + 独立指挥 UI + UI ID 标牌）
+// GenTactix V2 frontend · 单壳双视图主装配（全屏主地图现场 ↔ 参谋副地图 + 纯四区手写板 W5 + 独立编写器 W12）
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { BackendAdapter } from './engine/backendAdapter';
@@ -15,6 +15,7 @@ import {
   type EngineerWorkKind,
   type FireDiscipline,
   type GroundObject,
+  type HeadlessDirective,
   type IFieldTriplet,
   type InitialWorld,
   type MoveStance,
@@ -28,7 +29,7 @@ import {
   type WorldSnapshot,
 } from './engine/types';
 import { NineLayerViewport } from './render/NineLayerViewport';
-import type { PlannedRouteOverlay } from './render/canvasLayers';
+import type { MapViewMode, PlannedRouteOverlay } from './render/canvasLayers';
 import {
   GameContext,
   useArtRegistry,
@@ -72,13 +73,15 @@ import {
 } from './store/waveStore';
 import { CommanderWavePanel } from './ui/CommanderWavePanel';
 import { DevArtPanel } from './ui/DevArtPanel';
+import { DirectiveComposerWindow } from './ui/DirectiveComposerWindow';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 import { ExampleCustomWindow } from './ui/ExampleCustomWindow';
 import { FloatingWindow } from './ui/FloatingWindow';
 import { FreehandToolbar } from './ui/FreehandToolbar';
+import { MapLegendPanel } from './ui/MapLegendPanel';
 import { TopControlBar, type PlaybackSpeed } from './ui/TopControlBar';
 import { UiIdContext, UiTag } from './ui/UiTag';
 import { UioClipboardPanel } from './ui/UioClipboardPanel';
-import { ErrorBoundary } from './ui/ErrorBoundary';
 import { PlaybackLogBody, UnitCardModal, UnitInspectorBody } from './ui/UnitInspector';
 
 export const App: React.FC = () => {
@@ -105,6 +108,9 @@ export const App: React.FC = () => {
   const [activeWaveId, setActiveWaveId] = useState<string | undefined>(undefined);
   const [selectedUnitId, setSelectedUnitId] = useState<number | undefined>(HQ_UNIT_ID);
 
+  // 同壳双视图切换：'field' = 全屏主地图近距现场（默认），'tactical' = 军用印刷参谋副地图
+  const [mapViewMode, setMapViewMode] = useState<MapViewMode>('field');
+
   // 16s 逐秒走表与 60 天 StepCache 书签
   const [currentTick, setCurrentTick] = useState<number>(0);
   const [activePlayback, setActivePlayback] = useState<TickPlayback | null>(null);
@@ -115,8 +121,9 @@ export const App: React.FC = () => {
   const [scheduledEvents, setScheduledEvents] = useState<ScheduledStepEvent[]>([]);
   const settledTicksRef = useRef<Set<number>>(new Set());
 
-  // 手写板 UIO & 独立指挥 UI & 地图联动状态
+  // 手写板 W5 / 编写器 W12 / 指挥 UI 联动状态
   const [uio, setUio] = useState<UioState>(() => createInitialUioState());
+  const [editingDraftId, setEditingDraftId] = useState<string | undefined>(undefined);
   const [rightTab, setRightTab] = useState<'uio' | 'wave'>('uio');
   const [rightCollapsed, setRightCollapsed] = useState<boolean>(false);
   const [waveDraft, setWaveDraft] = useState<CommanderWaveDraft>(() => createEmptyWaveDraft());
@@ -130,7 +137,7 @@ export const App: React.FC = () => {
   const [cursorWorld, setCursorWorld] = useState<Vec2 | undefined>(undefined);
   const [statusNote, setStatusNote] = useState<string>('');
 
-  // Layer 6/7/9 本地态 + UI ID 标牌可见开关 + 右下角图层视图开关 + 兵牌/地面实例交互浮层
+  // Layer 6/7/9 本地态 + UI ID 开关 + W3 弹窗 / W9 鼠标旁浮窗 / W10 图例
   const [strokes, setStrokes] = useState<FreehandStroke[]>([]);
   const [freehandTool, setFreehandTool] = useState<FreehandTool>('none');
   const [freehandColor, setFreehandColor] = useState<string>('#dc2626');
@@ -142,7 +149,7 @@ export const App: React.FC = () => {
 
   const [unitCardOpen, setUnitCardOpen] = useState<boolean>(false);
   const [inspectedObject, setInspectedObject] = useState<{ obj: GroundObject; x: number; y: number } | null>(null);
-  const [legendCollapsed, setLegendCollapsed] = useState<boolean>(false);
+  const [legendCollapsed, setLegendCollapsed] = useState<boolean>(true);
   const [showUnits, setShowUnits] = useState<boolean>(true);
   const [showGroundObjects, setShowGroundObjects] = useState<boolean>(true);
   const [showDestruction, setShowDestruction] = useState<boolean>(true);
@@ -255,7 +262,7 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // 16s 实时逐秒播放循环（支持 1x / 2x / 4x 倍速，严禁提前剧透）
+  // 16s 实时逐秒播放循环
   useEffect(() => {
     if (!playing || !activePlayback) return;
     const stepMs = 200 * playbackSpeed;
@@ -272,7 +279,7 @@ export const App: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [playing, playbackSpeed, activePlayback, settlePlayback]);
 
-  // 全局鼠标光标坐标追踪（用于快捷键 Shift+A 呼出手写板精准定位于光标位置）
+  // 全局鼠标位置记录（用于 Shift+A 呼出手写板到鼠标附近）
   const mousePosRef = useRef<{ x: number; y: number }>({ x: 720, y: 360 });
   useEffect(() => {
     const handlePointerMove = (ev: PointerEvent) => {
@@ -282,10 +289,10 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('pointermove', handlePointerMove);
   }, []);
 
-  // 全局快捷键：Space 播停走表，Esc 退出当前标绘/拾取/手绘模式，Shift+A 呼出手写板于鼠标位置
   const winMgrRef = useRef(winMgr);
   winMgrRef.current = winMgr;
 
+  // 全局快捷键：M 切换主/副地图，Space 播停，Esc 退出标绘/拾取，Shift+A 呼出手写板
   useEffect(() => {
     const onKeyDown = (ev: KeyboardEvent) => {
       const tag = (ev.target as HTMLElement | null)?.tagName;
@@ -301,6 +308,9 @@ export const App: React.FC = () => {
         setPickingPoints([]);
         setFreehandTool('none');
         setWaveDraft((d) => ({ ...d, tool: 'none', pendingPoints: [] }));
+      } else if (!ev.shiftKey && !ev.ctrlKey && !ev.altKey && !ev.metaKey && (ev.code === 'KeyM' || ev.key === 'm' || ev.key === 'M')) {
+        ev.preventDefault();
+        setMapViewMode((m) => (m === 'field' ? 'tactical' : 'field'));
       } else if (
         ev.shiftKey &&
         !ev.ctrlKey &&
@@ -314,18 +324,14 @@ export const App: React.FC = () => {
         const vw = typeof window !== 'undefined' && window.innerWidth > 0 ? window.innerWidth : 1440;
         const vh = typeof window !== 'undefined' && window.innerHeight > 0 ? window.innerHeight : 900;
         const mgr = winMgrRef.current;
-        const winW = mgr.windows.W5?.width || 380;
-
-        // 目标定位：光标紧贴手写板左上角，并确保整个手写板 100% 落在屏幕视口内
+        const winW = mgr.windows.W5?.width || 420;
         const targetX = Math.max(12, Math.min(vw - winW - 12, mouseX - 24));
-        const targetY = Math.max(12, Math.min(Math.max(12, vh - 320), mouseY - 12));
+        const targetY = Math.max(54, Math.min(Math.max(54, vh - 320), mouseY - 12));
 
         setRightCollapsed(false);
         setRightTab('uio');
         mgr.openWindow('W5');
-        if (mgr.windows.W5?.minimized) {
-          mgr.toggleMinimizeWindow('W5');
-        }
+        if (mgr.windows.W5?.minimized) mgr.toggleMinimizeWindow('W5');
         mgr.moveWindow('W5', targetX, targetY);
         mgr.focusWindow('W5');
       }
@@ -483,6 +489,8 @@ export const App: React.FC = () => {
     work: EngineerWorkKind;
   }) => {
     setUio((prev) => addDraftDirective(prev, opts).state);
+    winMgr.openWindow('W5');
+    if (winMgr.windows.W5?.minimized) winMgr.toggleMinimizeWindow('W5');
   };
 
   const handleIssueQueue = async () => {
@@ -511,7 +519,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // 当前用于渲染的逐秒渐进快照（防剧透）
   const displaySnapshot: WorldSnapshot = useMemo(() => {
     if (activePlayback) {
       return progressiveSnapshot(activePlayback, elapsedMs);
@@ -577,15 +584,18 @@ export const App: React.FC = () => {
 
   const mapPickHint = pickingDraftId
     ? pickingMultiPoint
-      ? `正在为草稿折线拾取点位（已点 ${pickingPoints.length} 点，双击或右键完成，Esc 取消）`
-      : '点击地图为草稿卡片绑定标的物（Esc 取消）'
+      ? `正在副图拾取草稿折线（已点 ${pickingPoints.length} 点，双击/右键完成，Esc 取消）`
+      : '请点击副地图为草稿卡片绑定标的物（Esc 取消）'
     : isPickingTarget
-      ? '点击地图拾取全局标的物（Esc 取消）'
+      ? '请点击副地图拾取全局标的物（Esc 取消）'
       : rightTab === 'wave' && waveDraft.tool !== 'none'
         ? `独立指挥标绘：${waveDraft.tool}（Esc 退出）`
         : undefined;
 
   const selectedUnit = displaySnapshot.units.find((u) => u.id === selectedUnitId) ?? null;
+  const editingDraft: HeadlessDirective | undefined = editingDraftId
+    ? uio.drafts.find((d) => d.id === editingDraftId)
+    : undefined;
 
   const gameContextValue: GameContextValue = {
     backendMode,
@@ -632,51 +642,51 @@ export const App: React.FC = () => {
           <ErrorBoundary fallbackTitle="沙盘视口渲染异常 (VIEWPORT_CRASH)">
             <NineLayerViewport
               terrain={initial?.terrain ?? presetTerrain()}
-            snapshot={displaySnapshot}
-            hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
-            directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
-            radioRadiusM={initial?.radioRadiusM ?? RADIO_RADIUS_M}
-            selectedUnitId={selectedUnitId}
-            activeWave={activeWave}
-            waveDraftGeometry={wavePreview}
-            draftTarget={mapPickTarget}
-            plannedRoutes={plannedRoutes}
-            hoveredDirectiveId={hoveredDirectiveId}
-            showPlannedRoutes={showPlannedRoutes}
-            pickingPoints={pickingPoints}
-            circleDragMode={rightTab === 'wave' && waveDraft.tool === 'barrage_circle'}
-            onCircleDraw={(center, radiusM) => setWaveDraft((d) => addWaveCircle(d, center, radiusM))}
-            onFinishPolyline={finishPolylinePick}
-            onCursorWorldMove={setCursorWorld}
-            activePlayback={activePlayback}
-            elapsedMs={elapsedMs}
-            scheduledDetonations={scheduledDetonations}
-            strokes={strokes}
-            freehandTool={freehandTool}
-            freehandColor={freehandColor}
-            onStrokesChange={handleStrokesChange}
-            l7Enabled={l7Enabled}
-            l7Weather={l7Weather}
-            l9Enabled={l9Enabled}
-            shaking={shaking}
-            rightInsetPx={winMgr.windows.W5.open && !winMgr.windows.W5.floating ? (rightCollapsed ? 140 : 456) : 24}
-            iField={iField}
-            showThreatOverlay={showThreatOverlay}
-            showUnits={showUnits}
-            showGroundObjects={showGroundObjects}
-            showDestruction={showDestruction}
-            showAo={showAo}
-            showCommandRings={showCommandRings}
-            showWavesAndDetonations={showWavesAndDetonations}
-            showFreehand={showFreehand}
-            selectedGroundObjectId={inspectedObject?.obj.id}
-            artVersion={art.artVersion}
-            mapPickHint={mapPickHint}
-            onMapClick={handleMapClick}
-            hudChildren={
-              <div className="hud-shell">
-                {/* 仅保留隐藏自动化测试兼容层（W1/W2/旧W3/W4/W7/W8）：视觉画面彻底清理顶部与左侧杂乱窗口 */}
-                <div style={{ display: 'none' }}>
+              snapshot={displaySnapshot}
+              hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
+              directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
+              radioRadiusM={initial?.radioRadiusM ?? RADIO_RADIUS_M}
+              selectedUnitId={selectedUnitId}
+              activeWave={activeWave}
+              waveDraftGeometry={wavePreview}
+              draftTarget={mapPickTarget}
+              plannedRoutes={plannedRoutes}
+              hoveredDirectiveId={hoveredDirectiveId}
+              showPlannedRoutes={showPlannedRoutes}
+              pickingPoints={pickingPoints}
+              circleDragMode={rightTab === 'wave' && waveDraft.tool === 'barrage_circle'}
+              onCircleDraw={(center, radiusM) => setWaveDraft((d) => addWaveCircle(d, center, radiusM))}
+              onFinishPolyline={finishPolylinePick}
+              onCursorWorldMove={setCursorWorld}
+              activePlayback={activePlayback}
+              elapsedMs={elapsedMs}
+              scheduledDetonations={scheduledDetonations}
+              strokes={strokes}
+              freehandTool={freehandTool}
+              freehandColor={freehandColor}
+              onStrokesChange={handleStrokesChange}
+              l7Enabled={l7Enabled}
+              l7Weather={l7Weather}
+              l9Enabled={l9Enabled}
+              shaking={shaking}
+              rightInsetPx={winMgr.windows.W5.open && !winMgr.windows.W5.floating ? (rightCollapsed ? 140 : 440) : 24}
+              iField={iField}
+              showThreatOverlay={showThreatOverlay}
+              showUnits={showUnits}
+              showGroundObjects={showGroundObjects}
+              showDestruction={showDestruction}
+              showAo={showAo}
+              showCommandRings={showCommandRings}
+              showWavesAndDetonations={showWavesAndDetonations}
+              showFreehand={showFreehand}
+              selectedGroundObjectId={inspectedObject?.obj.id}
+              artVersion={art.artVersion}
+              mapViewMode={mapViewMode}
+              onToggleMapView={() => setMapViewMode((m) => (m === 'field' ? 'tactical' : 'field'))}
+              mapPickHint={mapPickHint}
+              onMapClick={handleMapClick}
+              hudChildren={
+                <div className="hud-shell">
                   <div className="hud-top">
                     <TopControlBar
                       currentTick={currentTick}
@@ -691,6 +701,8 @@ export const App: React.FC = () => {
                       l9Enabled={l9Enabled}
                       showUiIds={showUiIds}
                       rightCollapsed={rightCollapsed}
+                      mapViewMode={mapViewMode}
+                      onToggleMapView={() => setMapViewMode((m) => (m === 'field' ? 'tactical' : 'field'))}
                       onStepNext={() => void handleStepNext()}
                       onTogglePlay={() => setPlaying((p) => !p)}
                       onChangeSpeed={setPlaybackSpeed}
@@ -703,61 +715,231 @@ export const App: React.FC = () => {
                       onToggleRightCollapsed={() => setRightCollapsed((v) => !v)}
                     />
                   </div>
-                  <div className="hud-left">
-                    <FloatingWindow
-                      id="W3"
-                      testId="unit-inspector"
-                      winState={winMgr.windows.W3}
-                      onFocus={winMgr.focusWindow}
-                      onMove={winMgr.moveWindow}
-                      onToggleMinimize={winMgr.toggleMinimizeWindow}
-                      onClose={winMgr.closeWindow}
-                    >
-                      <UnitInspectorBody
-                        units={displaySnapshot.units}
-                        hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
-                        directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
-                        selectedUnitId={selectedUnitId}
-                        onSelectUnit={setSelectedUnitId}
-                      />
-                    </FloatingWindow>
-                    <FloatingWindow
-                      id="W2"
-                      testId="freehand-toolbar"
-                      winState={winMgr.windows.W2}
-                      onFocus={winMgr.focusWindow}
-                      onMove={winMgr.moveWindow}
-                      onToggleMinimize={winMgr.toggleMinimizeWindow}
-                      onClose={winMgr.closeWindow}
-                    >
-                      <FreehandToolbar
-                        embedded
-                        tool={freehandTool}
-                        color={freehandColor}
-                        strokeCount={strokes.length}
-                        storageBackend={storageBackend}
-                        onChangeTool={setFreehandTool}
-                        onChangeColor={setFreehandColor}
-                        onClear={handleClearStrokes}
-                      />
-                    </FloatingWindow>
-                    <FloatingWindow
-                      id="W4"
-                      testId="playback-log"
-                      winState={winMgr.windows.W4}
-                      onFocus={winMgr.focusWindow}
-                      onMove={winMgr.moveWindow}
-                      onToggleMinimize={winMgr.toggleMinimizeWindow}
-                      onClose={winMgr.closeWindow}
-                    >
-                      <PlaybackLogBody log={activePlayback ? playedLog(activePlayback, elapsedMs) : []} />
-                    </FloatingWindow>
-                    {statusNote && (
-                      <div className="panel meta-note" data-testid="status-note">
-                        {statusNote}
-                      </div>
-                    )}
+
+                  {mapPickHint && (
+                    <div className="basic-pick-banner" data-ui-id="W11">
+                      <UiTag id="W11" />
+                      <span>{mapPickHint}</span>
+                    </div>
+                  )}
+
+                  <div className="hud-main">
+                    <div className="hud-left">
+                      <FloatingWindow
+                        id="W2"
+                        testId="freehand-toolbar"
+                        winState={winMgr.windows.W2}
+                        onFocus={winMgr.focusWindow}
+                        onMove={winMgr.moveWindow}
+                        onToggleMinimize={winMgr.toggleMinimizeWindow}
+                        onClose={winMgr.closeWindow}
+                      >
+                        <FreehandToolbar
+                          embedded
+                          tool={freehandTool}
+                          color={freehandColor}
+                          strokeCount={strokes.length}
+                          storageBackend={storageBackend}
+                          onChangeTool={(t) => {
+                            setFreehandTool(t);
+                            if (t !== 'none') setMapViewMode('tactical');
+                          }}
+                          onChangeColor={setFreehandColor}
+                          onClear={handleClearStrokes}
+                        />
+                      </FloatingWindow>
+
+                      <FloatingWindow
+                        id="W3"
+                        testId="unit-inspector"
+                        winState={winMgr.windows.W3}
+                        onFocus={winMgr.focusWindow}
+                        onMove={winMgr.moveWindow}
+                        onToggleMinimize={winMgr.toggleMinimizeWindow}
+                        onClose={winMgr.closeWindow}
+                      >
+                        <UnitInspectorBody
+                          units={displaySnapshot.units}
+                          hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
+                          directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
+                          selectedUnitId={selectedUnitId}
+                          onSelectUnit={setSelectedUnitId}
+                        />
+                      </FloatingWindow>
+
+                      <FloatingWindow
+                        id="W4"
+                        testId="playback-log"
+                        winState={winMgr.windows.W4}
+                        onFocus={winMgr.focusWindow}
+                        onMove={winMgr.moveWindow}
+                        onToggleMinimize={winMgr.toggleMinimizeWindow}
+                        onClose={winMgr.closeWindow}
+                      >
+                        <PlaybackLogBody log={activePlayback ? playedLog(activePlayback, elapsedMs) : []} />
+                      </FloatingWindow>
+
+                      {statusNote && (
+                        <div className="panel meta-note" data-testid="status-note">
+                          {statusNote}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="hud-right-stack">
+                      <FloatingWindow
+                        id="W5"
+                        testId="right-drawer"
+                        className={rightCollapsed ? 'hud-right collapsed' : 'hud-right'}
+                        winState={winMgr.windows.W5}
+                        onFocus={winMgr.focusWindow}
+                        onMove={winMgr.moveWindow}
+                        onToggleMinimize={winMgr.toggleMinimizeWindow}
+                        onClose={winMgr.closeWindow}
+                      >
+                        <div className="row" style={{ justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <div className="row">
+                            {!rightCollapsed && (
+                              <>
+                                <button
+                                  type="button"
+                                  data-testid="tab-uio"
+                                  data-ui-id="R1"
+                                  className={rightTab === 'uio' ? 'btn active' : 'btn'}
+                                  onClick={() => setRightTab('uio')}
+                                >
+                                  <UiTag id="R1" />
+                                  手写板 UIO
+                                </button>
+                                <button
+                                  type="button"
+                                  data-testid="tab-commander-wave"
+                                  data-ui-id="R2"
+                                  className={rightTab === 'wave' ? 'btn active' : 'btn'}
+                                  onClick={() => {
+                                    setRightTab('wave');
+                                    setMapViewMode('tactical');
+                                  }}
+                                >
+                                  <UiTag id="R2" />
+                                  独立【指挥 UI】
+                                </button>
+                              </>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            data-testid="btn-collapse-right"
+                            data-ui-id="R3"
+                            className="btn"
+                            onClick={() => setRightCollapsed((v) => !v)}
+                          >
+                            <UiTag id="R3" />
+                            {rightCollapsed ? '展开手写板' : '收起'}
+                          </button>
+                        </div>
+
+                        {!rightCollapsed &&
+                          (rightTab === 'uio' ? (
+                            <UioClipboardPanel
+                              uio={uio}
+                              units={displaySnapshot.units}
+                              hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
+                              directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
+                              waves={waves}
+                              activeWaveId={activeWaveId}
+                              mapPickTarget={mapPickTarget}
+                              pickingDraftId={pickingDraftId}
+                              pickingPointsCount={pickingPoints.length}
+                              hoveredDirectiveId={hoveredDirectiveId}
+                              showPlannedRoutes={showPlannedRoutes}
+                              onTogglePlannedRoutes={() => setShowPlannedRoutes((v) => !v)}
+                              onHoverDirective={setHoveredDirectiveId}
+                              onToggleWave={(id) => {
+                                setActiveWaveId((cur) => (cur === id ? undefined : id));
+                                setMapViewMode('tactical');
+                              }}
+                              onOpenComposer={() => {
+                                setEditingDraftId(undefined);
+                                winMgr.openWindow('W12');
+                                if (winMgr.windows.W12?.minimized) winMgr.toggleMinimizeWindow('W12');
+                                winMgr.focusWindow('W12');
+                              }}
+                              onEditDraftInComposer={(draft) => {
+                                setEditingDraftId(draft.id);
+                                winMgr.openWindow('W12');
+                                if (winMgr.windows.W12?.minimized) winMgr.toggleMinimizeWindow('W12');
+                                winMgr.focusWindow('W12');
+                              }}
+                              onStartPickForDraft={(draftId, multiPoint) => {
+                                setIsPickingTarget(false);
+                                setPickingDraftId(draftId);
+                                setPickingMultiPoint(multiPoint);
+                                setPickingPoints([]);
+                                setMapViewMode('tactical');
+                              }}
+                              onFinishPolylinePick={finishPolylinePick}
+                              onBindDraftUnit={(id, unitId) => setUio((prev) => updateDraftDirective(prev, id, { unitId }))}
+                              onBindDraftTarget={(id, target) => setUio((prev) => updateDraftDirective(prev, id, { target }))}
+                              onUpdateDraftTime={(id, s, e) =>
+                                setUio((prev) => updateDraftDirective(prev, id, { startSec: s, endSec: e }))
+                              }
+                              onUpdateQueueTime={(id, s, e) => setUio((prev) => updateQueueDirectiveTime(prev, id, s, e))}
+                              onMoveToQueue={(id) => setUio((prev) => moveDraftToQueue(prev, id).state)}
+                              onMoveToDraft={(id) => setUio((prev) => moveQueueToDraft(prev, id))}
+                              onDeleteDraft={(id) => setUio((prev) => removeDraftDirective(prev, id))}
+                              onCopyToDraft={(id) => setUio((prev) => copyDirectiveToDraft(prev, id))}
+                              onRequeueArchive={(id) => setUio((prev) => moveArchiveToQueue(prev, id).state)}
+                              onIssueQueue={() => void handleIssueQueue()}
+                            />
+                          ) : (
+                            <CommanderWavePanel
+                              draft={waveDraft}
+                              onChangeTitle={(title) => setWaveDraft((d) => ({ ...d, title }))}
+                              onSelectTool={(tool: WaveDrawTool) => {
+                                setWaveDraft((d) => ({ ...d, tool, pendingPoints: [] }));
+                                if (tool !== 'none') setMapViewMode('tactical');
+                              }}
+                              onCommitShape={() => setWaveDraft((d) => commitPendingWaveShape(d))}
+                              onUndoPoint={() => setWaveDraft((d) => undoWavePoint(d))}
+                              onClearDraft={() => setWaveDraft(createEmptyWaveDraft())}
+                              onIssueWave={() => void handleIssueWave()}
+                            />
+                          ))}
+                      </FloatingWindow>
+
+                      <FloatingWindow
+                        id="W12"
+                        testId="directive-composer-win"
+                        winState={winMgr.windows.W12}
+                        onFocus={winMgr.focusWindow}
+                        onMove={winMgr.moveWindow}
+                        onToggleMinimize={winMgr.toggleMinimizeWindow}
+                        onClose={winMgr.closeWindow}
+                      >
+                        <DirectiveComposerWindow
+                          units={displaySnapshot.units}
+                          selectedUnitId={selectedUnitId}
+                          mapPickTarget={mapPickTarget}
+                          isPickingTarget={isPickingTarget && !pickingDraftId}
+                          editingDraft={editingDraft}
+                          onTogglePickTarget={(active) => {
+                            setPickingDraftId(undefined);
+                            setPickingMultiPoint(false);
+                            setPickingPoints([]);
+                            setIsPickingTarget(active);
+                            if (active) setMapViewMode('tactical');
+                          }}
+                          onClearPickedTarget={() => setMapPickTarget(undefined)}
+                          onCreateDraft={handleCreateDraft}
+                          onSaveEditedDraft={(id, patch) => setUio((prev) => updateDraftDirective(prev, id, patch))}
+                          onCancelEdit={() => setEditingDraftId(undefined)}
+                        />
+                      </FloatingWindow>
+                    </div>
                   </div>
+
+                  {/* 其余独立浮动窗口（W7 开发美术台 / W8 模板） */}
                   <FloatingWindow
                     id="W7"
                     winState={winMgr.windows.W7}
@@ -768,6 +950,7 @@ export const App: React.FC = () => {
                   >
                     <DevArtPanel />
                   </FloatingWindow>
+
                   <FloatingWindow
                     id="W8"
                     winState={winMgr.windows.W8}
@@ -778,380 +961,116 @@ export const App: React.FC = () => {
                   >
                     <ExampleCustomWindow />
                   </FloatingWindow>
-                </div>
 
-                {/* 图上点选提示条（仅在点选手写板目标时出现） */}
-                {mapPickHint && (
-                  <div className="basic-pick-banner" data-ui-id="W11">
-                    <UiTag id="W11" />
-                    <span>{mapPickHint}</span>
-                  </div>
-                )}
+                  {/* 点地图兵牌弹出 W3 编制与士兵物品卡片 */}
+                  {unitCardOpen && selectedUnit && (
+                    <UnitCardModal
+                      unit={selectedUnit}
+                      hq={displaySnapshot.units.find((u) => u.id === (initial?.hqUnitId ?? HQ_UNIT_ID))}
+                      directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
+                      detail={selectedUnitDetail}
+                      onClose={() => setUnitCardOpen(false)}
+                    />
+                  )}
 
-                {/* 点击地图兵牌弹出的单位编制卡片 (W3) */}
-                {unitCardOpen && selectedUnit && (
-                  <UnitCardModal
-                    unit={selectedUnit}
-                    hq={displaySnapshot.units.find((u) => u.id === (initial?.hqUnitId ?? HQ_UNIT_ID))}
-                    directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
-                    detail={selectedUnitDetail}
-                    onClose={() => setUnitCardOpen(false)}
-                  />
-                )}
-
-                {/* 点击地面散落实例（武器/物品/尸体/炸药/地雷）于鼠标旁展示基本信息 (W9) */}
-                {inspectedObject && (
-                  <div
-                    className="basic-ui-tooltip"
-                    data-testid="instance-tooltip"
-                    data-ui-id="W9"
-                    style={{ left: `${inspectedObject.x}px`, top: `${inspectedObject.y}px` }}
-                  >
-                    <div className="basic-ui-tooltip-hdr">
-                      <span>
-                        <UiTag id="W9" kind="win" />
-                        <strong>
-                          {inspectedObject.obj.category ?? '地面实例'} · {inspectedObject.obj.label}
-                        </strong>
-                      </span>
-                      <button
-                        type="button"
-                        className="basic-ui-btn"
-                        data-testid="instance-tooltip-close"
-                        data-ui-id="W9.CLOSE"
-                        onClick={() => setInspectedObject(null)}
-                      >
-                        <UiTag id="W9.CLOSE" />×
-                      </button>
-                    </div>
-                    <div className="basic-ui-tooltip-body">
-                      <div data-ui-id="W9.ID">
-                        <UiTag id="W9.ID" /> 编号：{inspectedObject.obj.id} · 坐标：({Math.round(inspectedObject.obj.pos.x)},{' '}
-                        {Math.round(inspectedObject.obj.pos.y)}) m
-                      </div>
-                      {inspectedObject.obj.spec && (
-                        <div data-ui-id="W9.SPEC">
-                          <UiTag id="W9.SPEC" /> 规格：{inspectedObject.obj.spec}
-                        </div>
-                      )}
-                      {inspectedObject.obj.detail && (
-                        <div data-ui-id="W9.DETAIL">
-                          <UiTag id="W9.DETAIL" /> 说明：{inspectedObject.obj.detail}
-                        </div>
-                      )}
-                      <div data-ui-id="W9.STATUS">
-                        <UiTag id="W9.STATUS" /> 状态：{inspectedObject.obj.status ?? '现场可见'}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 沉浸式连续手写板 (W5) */}
-                <div className="hud-main">
-                  <div />
-                  <FloatingWindow
-                    id="W5"
-                    testId="right-drawer"
-                    className={rightCollapsed ? 'hud-right collapsed basic-w5-shell' : 'hud-right basic-w5-shell'}
-                    winState={winMgr.windows.W5}
-                    onFocus={winMgr.focusWindow}
-                    onMove={winMgr.moveWindow}
-                    onToggleMinimize={winMgr.toggleMinimizeWindow}
-                    onClose={winMgr.closeWindow}
-                  >
-                    <div style={{ display: 'none' }}>
-                      <button
-                        type="button"
-                        data-testid="tab-uio"
-                        data-ui-id="R1"
-                        className={rightTab === 'uio' ? 'btn active' : 'btn'}
-                        onClick={() => setRightTab('uio')}
-                      >
-                        <UiTag id="R1" />
-                        手写板 UIO
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="tab-commander-wave"
-                        data-ui-id="R2"
-                        className={rightTab === 'wave' ? 'btn active' : 'btn'}
-                        onClick={() => setRightTab('wave')}
-                      >
-                        <UiTag id="R2" />
-                        独立【指挥 UI】
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="btn-collapse-right"
-                        data-ui-id="R3"
-                        className="btn"
-                        onClick={() => setRightCollapsed((v) => !v)}
-                      >
-                        <UiTag id="R3" />
-                        {rightCollapsed ? '展开手写板' : '收起'}
-                      </button>
-                    </div>
-
-                    {!rightCollapsed && (
-                      <div>
-                        {rightTab === 'uio' ? (
-                          <UioClipboardPanel
-                            uio={uio}
-                            units={displaySnapshot.units}
-                            hqUnitId={initial?.hqUnitId ?? HQ_UNIT_ID}
-                            directRadiusM={initial?.directCommandRadiusM ?? DIRECT_COMMAND_RADIUS_M}
-                            waves={waves}
-                            activeWaveId={activeWaveId}
-                            selectedUnitId={selectedUnitId}
-                            mapPickTarget={mapPickTarget}
-                            isPickingTarget={isPickingTarget}
-                            pickingDraftId={pickingDraftId}
-                            pickingPointsCount={pickingPoints.length}
-                            hoveredDirectiveId={hoveredDirectiveId}
-                            showPlannedRoutes={showPlannedRoutes}
-                            onTogglePlannedRoutes={() => setShowPlannedRoutes((v) => !v)}
-                            onHoverDirective={setHoveredDirectiveId}
-                            onToggleWave={(id) => setActiveWaveId((cur) => (cur === id ? undefined : id))}
-                            onTogglePickTarget={(active) => {
-                              setPickingDraftId(undefined);
-                              setPickingMultiPoint(false);
-                              setPickingPoints([]);
-                              setIsPickingTarget(active);
-                            }}
-                            onStartPickForDraft={(draftId, multiPoint) => {
-                              setIsPickingTarget(false);
-                              setPickingDraftId(draftId);
-                              setPickingMultiPoint(multiPoint);
-                              setPickingPoints([]);
-                            }}
-                            onFinishPolylinePick={finishPolylinePick}
-                            onClearPickedTarget={() => setMapPickTarget(undefined)}
-                            onCreateDraft={handleCreateDraft}
-                            onBindDraftUnit={(id, unitId) => setUio((prev) => updateDraftDirective(prev, id, { unitId }))}
-                            onBindDraftTarget={(id, target) => setUio((prev) => updateDraftDirective(prev, id, { target }))}
-                            onUpdateDraftTime={(id, s, e) => setUio((prev) => updateDraftDirective(prev, id, { startSec: s, endSec: e }))}
-                            onUpdateQueueTime={(id, s, e) => setUio((prev) => updateQueueDirectiveTime(prev, id, s, e))}
-                            onMoveToQueue={(id) => setUio((prev) => moveDraftToQueue(prev, id).state)}
-                            onMoveToDraft={(id) => setUio((prev) => moveQueueToDraft(prev, id))}
-                            onDeleteDraft={(id) => setUio((prev) => removeDraftDirective(prev, id))}
-                            onCopyToDraft={(id) => setUio((prev) => copyDirectiveToDraft(prev, id))}
-                            onRequeueArchive={(id) => setUio((prev) => moveArchiveToQueue(prev, id).state)}
-                            onIssueQueue={() => void handleIssueQueue()}
-                          />
-                        ) : (
-                          <CommanderWavePanel
-                            draft={waveDraft}
-                            onChangeTitle={(title) => setWaveDraft((d) => ({ ...d, title }))}
-                            onSelectTool={(tool: WaveDrawTool) => setWaveDraft((d) => ({ ...d, tool, pendingPoints: [] }))}
-                            onCommitShape={() => setWaveDraft((d) => commitPendingWaveShape(d))}
-                            onUndoPoint={() => setWaveDraft((d) => undoWavePoint(d))}
-                            onClearDraft={() => setWaveDraft(createEmptyWaveDraft())}
-                            onIssueWave={() => void handleIssueWave()}
-                          />
-                        )}
-                      </div>
-                    )}
-                  </FloatingWindow>
-                </div>
-
-                {/* 右下角：图例与视图开关 (W10 · 计算机基础 UI) */}
-                <section
-                  className="basic-legend-panel"
-                  data-testid="legend-view-panel"
-                  data-ui-id="W10"
-                >
-                  <div className="basic-ui-header" data-ui-id="W10.HDR">
-                    <div className="basic-ui-title">
-                      <UiTag id="W10" kind="win" />
-                      <span>图例与视图开关</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="basic-ui-btn"
-                      data-testid="legend-toggle"
-                      data-ui-id="W10.TOGGLE"
-                      onClick={() => setLegendCollapsed((v) => !v)}
+                  {/* 点地面散落实例于鼠标旁展示基本信息 (W9) */}
+                  {inspectedObject && (
+                    <div
+                      className="basic-ui-tooltip"
+                      data-testid="instance-tooltip"
+                      data-ui-id="W9"
+                      style={{ left: `${inspectedObject.x}px`, top: `${inspectedObject.y}px` }}
                     >
-                      <UiTag id="W10.TOGGLE" />
-                      {legendCollapsed ? '展开' : '收起'}
-                    </button>
-                  </div>
-
-                  {!legendCollapsed && (
-                    <div className="basic-legend-body">
-                      {/* 视图图层开关矩阵 */}
-                      <div className="basic-legend-section" data-ui-id="W10.VIEWS">
-                        <div className="basic-legend-subhdr">
-                          <UiTag id="W10.VIEWS" />
-                          <strong>战术图层开关</strong>
-                        </div>
-                        <div className="basic-view-grid">
-                          <label data-ui-id="V1">
-                            <UiTag id="V1" />
-                            <input type="checkbox" checked={showUnits} onChange={() => setShowUnits((v) => !v)} />
-                            <span>兵牌实体</span>
-                          </label>
-                          <label data-ui-id="V2">
-                            <UiTag id="V2" />
-                            <input
-                              type="checkbox"
-                              checked={showGroundObjects}
-                              onChange={() => setShowGroundObjects((v) => !v)}
-                            />
-                            <span>地面实例</span>
-                          </label>
-                          <label data-ui-id="V3">
-                            <UiTag id="V3" />
-                            <input
-                              type="checkbox"
-                              checked={showDestruction}
-                              onChange={() => setShowDestruction((v) => !v)}
-                            />
-                            <span>弹坑工事</span>
-                          </label>
-                          <label data-ui-id="V4">
-                            <UiTag id="V4" />
-                            <input
-                              type="checkbox"
-                              checked={showCommandRings}
-                              onChange={() => setShowCommandRings((v) => !v)}
-                            />
-                            <span>指挥通联圈</span>
-                          </label>
-                          <label data-ui-id="V5">
-                            <UiTag id="V5" />
-                            <input
-                              type="checkbox"
-                              checked={showPlannedRoutes}
-                              onChange={() => setShowPlannedRoutes((v) => !v)}
-                            />
-                            <span>计划航路</span>
-                          </label>
-                          <label data-ui-id="V6">
-                            <UiTag id="V6" />
-                            <input
-                              type="checkbox"
-                              checked={showWavesAndDetonations}
-                              onChange={() => setShowWavesAndDetonations((v) => !v)}
-                            />
-                            <span>波次预警</span>
-                          </label>
-                          <label data-ui-id="V7">
-                            <UiTag id="V7" />
-                            <input
-                              type="checkbox"
-                              checked={showThreatOverlay}
-                              onChange={() => setShowThreatOverlay((v) => !v)}
-                            />
-                            <span>I场威胁图</span>
-                          </label>
-                          <label data-ui-id="V8">
-                            <UiTag id="V8" />
-                            <input type="checkbox" checked={showAo} onChange={() => setShowAo((v) => !v)} />
-                            <span>地形阴影AO</span>
-                          </label>
-                          <label data-ui-id="V9">
-                            <UiTag id="V9" />
-                            <input type="checkbox" checked={l7Enabled} onChange={() => setL7Enabled((v) => !v)} />
-                            <span>天气云雾</span>
-                          </label>
-                          <label data-ui-id="V10">
-                            <UiTag id="V10" />
-                            <input
-                              type="checkbox"
-                              checked={showFreehand}
-                              onChange={() => setShowFreehand((v) => !v)}
-                            />
-                            <span>手绘标绘</span>
-                          </label>
-                          <label data-ui-id="V11">
-                            <UiTag id="V11" />
-                            <input type="checkbox" checked={showUiIds} onChange={() => setShowUiIds((v) => !v)} />
-                            <span>显示UI ID</span>
-                          </label>
-                          <label data-ui-id="V14">
-                            <UiTag id="V14" />
-                            <input type="checkbox" checked={l9Enabled} onChange={() => setL9Enabled((v) => !v)} />
-                            <span>暗角特效</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* 图例说明 */}
-                      <div className="basic-legend-section" data-ui-id="W10.LEGEND">
-                        <div className="basic-legend-subhdr">
-                          <UiTag id="W10.LEGEND" />
-                          <strong>地图图例（点图交互）</strong>
-                        </div>
-                        <div className="basic-legend-list">
-                          <div data-ui-id="LGD.1">
-                            <UiTag id="LGD.1" />
-                            <span className="lgd-swatch lgd-red" />
-                            <span className="lgd-swatch lgd-blue" />
-                            <span>己/敌兵牌（点开查编制与士兵物品）</span>
-                          </div>
-                          <div data-ui-id="LGD.2">
-                            <UiTag id="LGD.2" />
-                            <span className="lgd-swatch lgd-item" />
-                            <span className="lgd-swatch lgd-wpn" />
-                            <span>物资箱 / 散落武器（旁显基本信息）</span>
-                          </div>
-                          <div data-ui-id="LGD.3">
-                            <UiTag id="LGD.3" />
-                            <span className="lgd-symbol">×</span>
-                            <span>阵亡士兵遗体</span>
-                          </div>
-                          <div data-ui-id="LGD.4">
-                            <UiTag id="LGD.4" />
-                            <span className="lgd-swatch lgd-charge" />
-                            <span className="lgd-swatch lgd-mine" />
-                            <span>定时炸药 / 地雷</span>
-                          </div>
-                          <div data-ui-id="LGD.5">
-                            <UiTag id="LGD.5" />
-                            <span className="lgd-dash" />
-                            <span>直接指挥圈 / 预定航路</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 快捷入口：呼出手写板 / 步进 */}
-                      <div className="basic-legend-actions" data-ui-id="W10.ACT">
+                      <div className="basic-ui-tooltip-hdr">
+                        <span>
+                          <UiTag id="W9" kind="win" />
+                          <strong>
+                            {inspectedObject.obj.category ?? '地面实例'} · {inspectedObject.obj.label}
+                          </strong>
+                        </span>
                         <button
                           type="button"
                           className="basic-ui-btn"
-                          data-testid="legend-open-w5"
-                          data-ui-id="V12"
-                          onClick={() => {
-                            setRightCollapsed(false);
-                            setRightTab('uio');
-                            winMgr.openWindow('W5');
-                            if (winMgr.windows.W5?.minimized) winMgr.toggleMinimizeWindow('W5');
-                            winMgr.focusWindow('W5');
-                          }}
+                          data-testid="instance-tooltip-close"
+                          data-ui-id="W9.CLOSE"
+                          onClick={() => setInspectedObject(null)}
                         >
-                          <UiTag id="V12" />
-                          手写板(Shift+A)
+                          <UiTag id="W9.CLOSE" />×
                         </button>
-                        <button
-                          type="button"
-                          className="basic-ui-btn"
-                          data-testid="legend-step-next"
-                          data-ui-id="V13"
-                          onClick={() => void handleStepNext()}
-                        >
-                          <UiTag id="V13" />
-                          推进+16s (#{currentTick})
-                        </button>
+                      </div>
+                      <div className="basic-ui-tooltip-body">
+                        <div data-ui-id="W9.ID">
+                          <UiTag id="W9.ID" /> 编号：{inspectedObject.obj.id} · 坐标：({Math.round(inspectedObject.obj.pos.x)},{' '}
+                          {Math.round(inspectedObject.obj.pos.y)}) m
+                        </div>
+                        {inspectedObject.obj.spec && (
+                          <div data-ui-id="W9.SPEC">
+                            <UiTag id="W9.SPEC" /> 规格：{inspectedObject.obj.spec}
+                          </div>
+                        )}
+                        {inspectedObject.obj.detail && (
+                          <div data-ui-id="W9.DETAIL">
+                            <UiTag id="W9.DETAIL" /> 说明：{inspectedObject.obj.detail}
+                          </div>
+                        )}
+                        <div data-ui-id="W9.STATUS">
+                          <UiTag id="W9.STATUS" /> 状态：{inspectedObject.obj.status ?? '现场可见'}
+                        </div>
                       </div>
                     </div>
                   )}
-                </section>
-              </div>
-            }
-          />
-        </ErrorBoundary>
-      </div>
+
+                  {/* 右下角：图例与双地图视图开关 (W10) */}
+                  <MapLegendPanel
+                    collapsed={legendCollapsed}
+                    onToggleCollapse={() => setLegendCollapsed((v) => !v)}
+                    mapViewMode={mapViewMode}
+                    onToggleMapView={() => setMapViewMode((m) => (m === 'field' ? 'tactical' : 'field'))}
+                    currentTick={currentTick}
+                    showUnits={showUnits}
+                    onToggleUnits={() => setShowUnits((v) => !v)}
+                    showGroundObjects={showGroundObjects}
+                    onToggleGroundObjects={() => setShowGroundObjects((v) => !v)}
+                    showDestruction={showDestruction}
+                    onToggleDestruction={() => setShowDestruction((v) => !v)}
+                    showCommandRings={showCommandRings}
+                    onToggleCommandRings={() => setShowCommandRings((v) => !v)}
+                    showPlannedRoutes={showPlannedRoutes}
+                    onTogglePlannedRoutes={() => setShowPlannedRoutes((v) => !v)}
+                    showWavesAndDetonations={showWavesAndDetonations}
+                    onToggleWavesAndDetonations={() => setShowWavesAndDetonations((v) => !v)}
+                    showThreatOverlay={showThreatOverlay}
+                    onToggleThreatOverlay={() => setShowThreatOverlay((v) => !v)}
+                    showAo={showAo}
+                    onToggleAo={() => setShowAo((v) => !v)}
+                    l7Enabled={l7Enabled}
+                    onToggleL7={() => setL7Enabled((v) => !v)}
+                    showFreehand={showFreehand}
+                    onToggleFreehand={() => setShowFreehand((v) => !v)}
+                    showUiIds={showUiIds}
+                    onToggleUiIds={() => setShowUiIds((v) => !v)}
+                    l9Enabled={l9Enabled}
+                    onToggleL9={() => setL9Enabled((v) => !v)}
+                    onOpenClipboard={() => {
+                      setRightCollapsed(false);
+                      setRightTab('uio');
+                      winMgr.openWindow('W5');
+                      if (winMgr.windows.W5?.minimized) winMgr.toggleMinimizeWindow('W5');
+                      winMgr.focusWindow('W5');
+                    }}
+                    onOpenComposer={() => {
+                      setEditingDraftId(undefined);
+                      winMgr.openWindow('W12');
+                      if (winMgr.windows.W12?.minimized) winMgr.toggleMinimizeWindow('W12');
+                      winMgr.focusWindow('W12');
+                    }}
+                    onStepNext={() => void handleStepNext()}
+                  />
+                </div>
+              }
+            />
+          </ErrorBoundary>
+        </div>
       </UiIdContext.Provider>
     </GameContext.Provider>
   );
